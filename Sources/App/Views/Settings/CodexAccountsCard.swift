@@ -268,6 +268,7 @@ struct AccountNameSheet: View {
                 .textFieldStyle(.roundedBorder)
                 .accessibilityLabel("Account name, optional")
             Text("Optional. Leave blank to use the email. A single account still displays \(account.provider.name); names distinguish multiple accounts.")
+                .fixedSize(horizontal: false, vertical: true)
                 .font(.callout)
                 .foregroundStyle(theme.textSecondary)
             if let error { Text(error).foregroundStyle(theme.statusWarning) }

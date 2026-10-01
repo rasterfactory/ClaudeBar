@@ -59,9 +59,21 @@ struct CodexAccountPresentationTests {
         let provider = Provider(definition: try Providers.builtIn("codex"), settings: settings, accounts: [config],
                                 makeDataSource: { DataSources.make($0, providerId: "codex") })
         let account = try #require(provider.accounts.last)
-        let renderer = ImageRenderer(content: AccountNameSheet(account: account).environment(\.appTheme, DarkTheme()))
-        renderer.scale = 2
-        let image = try #require(renderer.nsImage)
+        // ImageRenderer cannot draw AppKit-backed text fields. Capture the
+        // native hosting view instead so visual QA includes the editable field.
+        let view = NSHostingView(rootView: AccountNameSheet(account: account).environment(\.appTheme, DarkTheme()))
+        let size = view.fittingSize
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.contentView = view
+        view.frame = NSRect(origin: .zero, size: size)
+        view.layoutSubtreeIfNeeded()
+        window.displayIfNeeded()
+        let bitmap = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        let image = NSImage(size: size)
+        image.addRepresentation(bitmap)
         #expect(image.size.width == 420)
         #expect(image.size.height < 400)
         try capture(image, named: "account-name-editor")

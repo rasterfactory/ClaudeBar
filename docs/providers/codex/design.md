@@ -233,3 +233,20 @@ RPC identity comes from `account/read` with `refreshToken: false`, which also
 supports the default Keychain login. File credentials provide the email from the
 ID token as display metadata only; decoding that claim does not verify a token.
 Full email remains in menu-bar tooltips when a visible label is shortened.
+
+### Guided added-account sign-in
+
+The settings sheet launches `BrowserAccountLogin` with the resolved Codex executable,
+`-c cli_auth_credentials_store="file" login`, and a fresh private directory under
+`~/.codex-claudebar/`. Arguments go directly to `Process`, without a shell. The
+subprocess gets its own `CODEX_HOME` and excludes inherited API and identity tokens.
+Its output is discarded rather than logged. Cancellation and a five-minute timeout
+terminate the login process; failed or abandoned sign-ins never register an account.
+Login folders remain in place, including when a sign-in is cancelled.
+
+After exit status zero, `AddedAccounts.configuration` checks the credential and
+rejects default or duplicate identities. The sheet shows the email before saving,
+and revalidates the identity on **Add Account**. Existing folders use the same checks.
+`BinaryLocator` tries the login-shell PATH and common installation paths first,
+then conventional CLI locations in system and user application bundles. This same
+lookup serves login and usage fetches, including desktop-only installations.

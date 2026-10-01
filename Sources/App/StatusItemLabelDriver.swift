@@ -72,6 +72,8 @@ final class StatusItemLabelDriver {
     /// Everything the menu-bar pixels depend on. Reading these properties
     /// inside the sync's `read` registers observation for each of them.
     struct LabelContent: Equatable {
+        var accountLabels: [String: String] = [:]
+
         var label: MenuBarLabel?
         var additionalLabels: [MenuBarProviderLabel] = []
         var primaryProviderId: String? = nil
@@ -216,7 +218,11 @@ final class StatusItemLabelDriver {
         let primaryProviderName = !showsQuota || (additionalLabels.isEmpty && (primaryProvider as? Account)?.isNamedByAccount != true)
             ? nil : primaryProvider?.name
 
+        let codexAccounts = (monitor.provider(for: "codex") as? Account)?.provider.accounts ?? []
+        let accountLabels = CodexAccountLabel.labels(for: Dictionary(uniqueKeysWithValues:
+            codexAccounts.map { ($0.id, $0.accountEmail ?? "Account") }))
         return LabelContent(
+            accountLabels: accountLabels,
             label: label,
             additionalLabels: additionalLabels,
             primaryProviderId: primaryProviderName == nil ? nil : settings.menuBarPercentageProviderId,
@@ -315,10 +321,8 @@ final class StatusItemLabelDriver {
             parts.append(providerIcon(for: providerId))
         }
 
-        let codexEmails = ([content.primaryProviderName].compactMap { $0 } + content.additionalLabels.map(\.providerName))
-            .filter { $0.contains("@") }
-        if let id = content.primaryProviderId, let name = content.primaryProviderName {
-            appendAccountLabel(id: id, email: name, emails: codexEmails, to: &parts)
+        if let id = content.primaryProviderId {
+            appendAccountLabel(id: id, labels: content.accountLabels, to: &parts)
         }
 
         if let label = content.label {
@@ -337,18 +341,16 @@ final class StatusItemLabelDriver {
                 text: " | ", color: theme.statusColor(for: label.status)
             ))
             parts.append(providerIcon(for: label.providerId))
-            appendAccountLabel(id: label.providerId, email: label.providerName, emails: codexEmails, to: &parts)
+            appendAccountLabel(id: label.providerId, labels: content.accountLabels, to: &parts)
             parts.append(quotaImage(label.label, stacked: label.stacked, size: label.stackedSize,
                                     colonVisible: content.colonVisible, theme: theme))
         }
         return hStack(parts, spacing: 3)
     }
 
-    private static func appendAccountLabel(id: String, email: String, emails: [String], to parts: inout [NSImage]) {
-        guard (id == "codex" || id.hasPrefix("codex.")), email.contains("@") else { return }
-        parts.append(StatusBarPercentageImageRenderer.image(
-            text: CodexAccountLabel.compact(email, among: emails), color: .primary
-        ))
+    private static func appendAccountLabel(id: String, labels: [String: String], to parts: inout [NSImage]) {
+        guard let label = labels[id] else { return }
+        parts.append(StatusBarPercentageImageRenderer.image(text: label, color: .primary))
     }
 
     private static func quotaImage(_ label: MenuBarLabel, stacked: Bool, size: MenuBarStackedSize,

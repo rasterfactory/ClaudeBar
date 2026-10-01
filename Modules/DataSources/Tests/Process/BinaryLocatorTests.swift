@@ -71,3 +71,16 @@ struct BinaryLocatorTests {
         #expect(path?.hasSuffix("/ls") == true)
     }
 }
+@Suite struct BundledExecutableTests {
+    @Test func `desktop executable is found without a CLI on PATH`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let binary = directory.appendingPathComponent("Desktop.app/Contents/Resources/example-cli/ExampleCLI.app/Contents/MacOS/example")
+        try FileManager.default.createDirectory(at: binary.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data().write(to: binary)
+        #expect(BinaryLocator.findInApplicationBundles("example", applicationDirectories: [directory.path]) == nil)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: binary.path)
+        #expect(BinaryLocator.findInApplicationBundles("example", applicationDirectories: [directory.path]) == binary.path)
+        #expect(BinaryLocator.findInApplicationBundles("../example", applicationDirectories: [directory.path]) == nil)
+    }
+}

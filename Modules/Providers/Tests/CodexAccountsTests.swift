@@ -91,6 +91,23 @@ struct CodexAccountsTests {
         #expect(usage.lowestQuota?.percentRemaining == 80)
     }
 
+    @Test func `one account keeps the product name and removing the second restores it`() async throws {
+        let stub = try StubbedProvider(providerId: "codex")
+        defer { stub.cleanUp() }
+        stub.answerRPC(Self.usage, account: #"{"id":3,"result":{"account":{"type":"chatgpt","email":"personal@example.com"}}}"#)
+        let account = try stub.make("codex")
+        try await account.refresh()
+        #expect(account.name == "Codex")
+        #expect(!account.isNamedByAccount)
+        let second = try #require(account.provider.add(config(
+            "work", folder: stub.home.appendingPathComponent("work"), accountId: "work", email: "work@example.com")))
+        #expect(account.name == "personal@example.com")
+        #expect(second.name == "work@example.com")
+        account.provider.remove(second)
+        #expect(account.name == "Codex")
+        #expect(account.accountEmail == "personal@example.com")
+    }
+
     // MARK: - Added accounts
 
     @Test

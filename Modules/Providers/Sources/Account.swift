@@ -66,8 +66,8 @@ public final class Account: AIProvider {
     /// The email the data source reported, else the one it was added with.
     public var accountEmail: String? { snapshot?.accountEmail ?? email }
 
-    /// Whether logins of this provider are named by email.
-    public var isNamedByAccount: Bool { provider.definition.accounts?.nameFromEmail == true }
+    /// Whether this provider needs email labels to distinguish multiple logins.
+    public var isNamedByAccount: Bool { provider.definition.accounts?.nameFromEmail == true && provider.accounts.count > 1 }
 
     // MARK: - AIProvider (forwarded to the provider)
 

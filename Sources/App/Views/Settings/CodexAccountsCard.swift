@@ -3,6 +3,7 @@ import AppKit
 import Domain
 import Infrastructure
 import Providers
+import DataSources
 
 /// Email identifies the login; users never need to invent an account name.
 struct CodexAccountsCard: View {
@@ -71,42 +72,41 @@ struct CodexAccountsCard: View {
     }
 }
 
-private struct CodexAccountSetupSheet: View {
+struct CodexAccountSetupSheet: View {
     let monitor: QuotaMonitor
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appTheme) private var theme
     @State private var error: String?
-    @State private var copied = false
-    @State private var home = NSHomeDirectory() + "/.codex-claudebar/" + UUID().uuidString.lowercased()
-
-    private var loginCommand: String {
-        let quoted = "'" + home.replacingOccurrences(of: "'", with: "'\\''") + "'"
-        return "mkdir -p \(quoted) && chmod 700 \(quoted) && CODEX_HOME=\(quoted) codex -c 'cli_auth_credentials_store=\"file\"' login"
-    }
+    @State private var loginTask: Task<Void, Never>?
+    @State private var pendingAccount: ProviderAccountConfig?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Add Codex Account")
                 .font(.title2.weight(.semibold))
-            Text("Sign in once in a separate Codex folder. ClaudeBar reads the account’s email automatically.")
-
-            Text("1. Copy this command and run it in Terminal.")
-                .font(.headline)
-            Text(loginCommand)
-                .font(.system(.caption, design: .monospaced))
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-            Button(copied ? "Copied" : "Copy Login Command") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(loginCommand, forType: .string)
-                copied = true
-            }
-
-            Text("2. In the browser, sign in to the account you want to add. Check the email before continuing.")
-            Text("3. Choose the folder after sign-in finishes. You can also choose an existing Codex folder that uses file credential storage.")
-            Text("Removing an account from ClaudeBar leaves its Codex login and files in place.")
+            Text("Sign in to another ChatGPT account to see its Codex usage alongside your current account.")
+            Text("You can keep switching accounts in the desktop app and working on the same repos. ClaudeBar keeps a separate sign-in for this account.")
                 .font(.callout)
                 .foregroundStyle(theme.textSecondary)
+
+            if let pendingAccount {
+                Text("Signed in as")
+                    .foregroundStyle(theme.textSecondary)
+                Text(pendingAccount.email ?? "Codex account")
+                    .font(.headline)
+                    .textSelection(.enabled)
+                Button("Use a Different Account", action: signIn)
+            } else if loginTask != nil {
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text("Waiting for browser sign-in…")
+                }
+                Text("Choose the account you want to add in your browser. ClaudeBar will read its email when sign-in finishes.")
+                    .font(.callout)
+                    .foregroundStyle(theme.textSecondary)
+            } else {
+                Text("Your browser will open so you can choose the account to add.")
+            }
 
             if let error {
                 Text(error)
@@ -114,18 +114,85 @@ private struct CodexAccountSetupSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel("Could not add account: \(error)")
             }
+
+            Text("Removing an account from ClaudeBar leaves its sign-in in place.")
+                .font(.callout)
+                .foregroundStyle(theme.textSecondary)
+
             HStack {
-                Button("Cancel") { dismiss() }
+                Button("Cancel") { loginTask?.cancel(); dismiss() }
                     .keyboardShortcut(.cancelAction)
+                if loginTask == nil {
+                    Button("Choose Existing Folder…", action: chooseFolder)
+                }
                 Spacer()
-                Button("Choose Signed-in Folder…", action: chooseFolder)
-                    .keyboardShortcut(.defaultAction)
+                if let pendingAccount {
+                    Button("Add Account") { add(pendingAccount) }
+                        .keyboardShortcut(.defaultAction)
+                } else {
+                    Button(error == nil ? "Sign In…" : "Try Again", action: signIn)
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(loginTask != nil)
+                }
             }
         }
         .padding(24)
         .frame(width: 520)
         .foregroundStyle(theme.textPrimary)
         .background(theme.backgroundGradient)
+        .interactiveDismissDisabled(loginTask != nil)
+        .onDisappear { loginTask?.cancel() }
+    }
+
+    private func signIn() {
+        error = nil
+        pendingAccount = nil
+        let home = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".codex-claudebar")
+            .appendingPathComponent(UUID().uuidString.lowercased())
+        loginTask = Task { @MainActor in
+            defer { loginTask = nil }
+            do {
+                let login = BrowserAccountLogin(locate: { BinaryLocator.which("codex") })
+                try await login.signIn(home: home)
+                try Task.checkCancellation()
+                pendingAccount = try configuration(folder: home.path)
+            } catch is CancellationError {
+                // Closing the sheet cancels its login, never the desktop session.
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
+    }
+
+    private func configuration(folder: String) throws -> ProviderAccountConfig {
+        try AddedAccounts.configuration(
+            "codex", folder: folder,
+            existing: JSONSettingsRepository.shared.accounts(forProvider: "codex"))
+    }
+
+    private func add(_ config: ProviderAccountConfig) {
+        do {
+            // Revalidate at save time in case the folder or default login changed.
+            let validated = try configuration(folder: config.probeConfig["codexHome"] ?? "")
+            guard validated.probeConfig["chatgptAccountId"] == config.probeConfig["chatgptAccountId"] else {
+                error = "This folder’s account changed. Sign in again to confirm its email."
+                pendingAccount = nil
+                return
+            }
+            guard let codex = (monitor.provider(for: "codex") as? Account)?.provider,
+                  let provider = codex.add(validated) else {
+                error = "Codex is unavailable. Close this window and try again."
+                return
+            }
+            JSONSettingsRepository.shared.addAccount(validated, forProvider: "codex")
+            monitor.addProvider(provider)
+            Task { await monitor.refresh(providerId: provider.id) }
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+            pendingAccount = nil
+        }
     }
 
     private func chooseFolder() {
@@ -134,23 +201,14 @@ private struct CodexAccountSetupSheet: View {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         panel.showsHiddenFiles = true
-        panel.directoryURL = URL(fileURLWithPath: home)
-        panel.prompt = "Add Account"
-        panel.message = "Choose the Codex folder containing auth.json."
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex-claudebar")
+        panel.prompt = "Choose Folder"
+        panel.message = "Choose an existing Codex folder containing auth.json."
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             do {
-                let settings = JSONSettingsRepository.shared
-                let config = try AddedAccounts.configuration(
-                    "codex", folder: url.path, existing: settings.accounts(forProvider: "codex"))
-                guard let codex = (monitor.provider(for: "codex") as? Account)?.provider,
-                      let provider = codex.add(config) else {
-                    return
-                }
-                settings.addAccount(config, forProvider: "codex")
-                monitor.addProvider(provider)
-                Task { await monitor.refresh(providerId: provider.id) }
-                dismiss()
+                pendingAccount = try configuration(folder: url.path)
+                error = nil
             } catch {
                 self.error = error.localizedDescription
             }

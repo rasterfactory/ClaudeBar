@@ -137,7 +137,33 @@ public struct BinaryLocator: Sendable {
         }
 
         // Fallback: check common paths directly (for sandboxed/launchd contexts)
-        return findInCommonPaths(tool)
+        return findInCommonPaths(tool) ?? findInApplicationBundles(tool)
+    }
+
+    /// Desktop apps can bundle a CLI without installing it on the shell PATH.
+    /// Check conventional executable locations, never an app's GUI executable.
+    static func findInApplicationBundles(
+        _ tool: String,
+        applicationDirectories: [String] = ["/Applications", NSHomeDirectory() + "/Applications"]
+    ) -> String? {
+        guard tool.range(of: "^[A-Za-z0-9._-]+$", options: .regularExpression) != nil else { return nil }
+        let fm = FileManager.default
+        let relativePaths = [
+            "Contents/Resources/\(tool)",
+            "Contents/MacOS/\(tool)",
+            "Contents/Resources/\(tool)-cli/\(tool.capitalized)CLI.app/Contents/MacOS/\(tool)",
+        ]
+        for directory in applicationDirectories {
+            let apps = (try? fm.contentsOfDirectory(atPath: directory)) ?? []
+            for app in apps.filter({ $0.hasSuffix(".app") }).sorted() {
+                let bundle = URL(fileURLWithPath: directory).appendingPathComponent(app)
+                for relative in relativePaths {
+                    let path = bundle.appendingPathComponent(relative).path
+                    if fm.isExecutableFile(atPath: path) { return path }
+                }
+            }
+        }
+        return nil
     }
 
     /// Tries to find a tool using the user's login shell.

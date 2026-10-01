@@ -10,11 +10,12 @@ struct SecureCredentialMigration {
     let legacyStore: UserDefaults
     let secureKey: String
     let legacyKey: String
+    var allowsLegacy: Bool = true
 
     /// Saves a credential securely and removes its legacy copy after verification.
     func save(_ value: String) {
         secureStore.save(value, forKey: secureKey)
-        if secureStore.get(forKey: secureKey) == value {
+        if allowsLegacy, secureStore.get(forKey: secureKey) == value {
             legacyStore.removeObject(forKey: legacyKey)
         }
     }
@@ -25,7 +26,7 @@ struct SecureCredentialMigration {
             return value
         }
 
-        guard let legacyValue = legacyStore.string(forKey: legacyKey) else {
+        guard allowsLegacy, let legacyValue = legacyStore.string(forKey: legacyKey) else {
             return nil
         }
 
@@ -41,6 +42,7 @@ struct SecureCredentialMigration {
             return false
         }
 
+        guard allowsLegacy else { return true }
         legacyStore.removeObject(forKey: legacyKey)
         return legacyStore.object(forKey: legacyKey) == nil
     }

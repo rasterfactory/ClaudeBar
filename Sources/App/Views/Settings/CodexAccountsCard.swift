@@ -6,94 +6,10 @@ import Providers
 import DataSources
 
 /// Verified email identifies the login; an optional name helps people recognize it.
-struct CodexAccountsCard: View {
+struct BrowserAccountSetupSheet: View {
     let monitor: QuotaMonitor
-    @Environment(\.appTheme) private var theme
-    @State private var showingSetup = false
-    @State private var editingAccount: Account?
-    @State private var showingNameEditor = false
-
-    /// The Codex product — one provider, its logins as accounts.
-    private var codex: Provider? {
-        (monitor.provider(for: "codex") as? Account)?.provider
-    }
-
-    private var accounts: [Account] {
-        codex?.accounts ?? []
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Codex Accounts")
-                .font(.headline)
-                .foregroundStyle(theme.textPrimary)
-
-            ForEach(accounts, id: \.id) { provider in
-                HStack(alignment: .top, spacing: 10) {
-                    ProviderIconView(providerId: provider.id, size: 24)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(provider.label.isEmpty ? (provider.accountEmail ?? "Default Codex login") : provider.label)
-                            .font(.body)
-                            .foregroundStyle(theme.textPrimary)
-                            .textSelection(.enabled)
-                        if !provider.label.isEmpty, let email = provider.accountEmail {
-                            Text(email)
-                                .font(.callout)
-                                .foregroundStyle(theme.textSecondary)
-                                .textSelection(.enabled)
-                        }
-                        Text(provider.isDefault ? "Uses your default Codex login" : "Separate Codex login")
-                            .font(.caption)
-                            .foregroundStyle(theme.textSecondary)
-                    }
-                    Spacer(minLength: 8)
-                    Button("Edit Name…") {
-                        editingAccount = provider
-                        showingNameEditor = true
-                    }
-                    .accessibilityLabel("Edit name for \(provider.accountEmail ?? provider.name)")
-                    .disabled(provider.isDefault && provider.accountEmail == nil)
-                    if !provider.isDefault {
-                        Button("Remove") { remove(provider) }
-                            .accessibilityLabel("Remove \(provider.name) from ClaudeBar")
-                    }
-                }
-            }
-
-            Text("Each account has its own quota display. Select both in Menu Bar settings to keep both visible.")
-                .font(.callout)
-                .foregroundStyle(theme.textSecondary)
-
-            Button("Add Codex Account…") { showingSetup = true }
-        }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: theme.cardCornerRadius).fill(theme.cardGradient))
-        .overlay(RoundedRectangle(cornerRadius: theme.cardCornerRadius).stroke(theme.glassBorder, lineWidth: 1))
-        .sheet(isPresented: $showingSetup) {
-            CodexAccountSetupSheet(monitor: monitor)
-                .environment(\.appTheme, theme)
-        }
-        .sheet(isPresented: $showingNameEditor) {
-            if let editingAccount {
-                AccountNameSheet(account: editingAccount)
-                    .environment(\.appTheme, theme)
-            }
-        }
-    }
-
-    private func remove(_ provider: Account) {
-        codex?.remove(provider)
-        JSONSettingsRepository.shared.removeAccount(accountId: provider.accountId, forProvider: "codex")
-        let settings = AppSettings.shared
-        let remaining = settings.menuBarProviderIds.filter { $0 != provider.id }
-        settings.setMenuBarProviderIds(remaining.isEmpty ? ["codex"] : remaining)
-        if monitor.selectedProviderId == provider.id { monitor.selectedProviderId = "codex" }
-        monitor.removeProvider(id: provider.id)
-    }
-}
-
-struct CodexAccountSetupSheet: View {
-    let monitor: QuotaMonitor
+    var providerId: String = "codex"
+    private var productName: String { providerId == "claude" ? "Claude" : "Codex" }
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appTheme) private var theme
     @State private var error: String?
@@ -103,9 +19,9 @@ struct CodexAccountSetupSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Add Codex Account")
+            Text("Add \(productName) Account")
                 .font(.title2.weight(.semibold))
-            Text("Sign in to another ChatGPT account to see its Codex usage alongside your current account.")
+            Text("Sign in to another \(productName) account to see its usage alongside your current account.")
             Text("You can keep switching accounts in the desktop app and working on the same repos. ClaudeBar keeps a separate sign-in for this account.")
                 .font(.callout)
                 .foregroundStyle(theme.textSecondary)
@@ -113,7 +29,7 @@ struct CodexAccountSetupSheet: View {
             if let pendingAccount {
                 Text("Signed in as")
                     .foregroundStyle(theme.textSecondary)
-                Text(pendingAccount.email ?? "Codex account")
+                Text(pendingAccount.email ?? "\(productName) account")
                     .font(.headline)
                     .textSelection(.enabled)
                 TextField("Account name (optional)", text: $accountName)
@@ -175,15 +91,17 @@ struct CodexAccountSetupSheet: View {
         error = nil
         pendingAccount = nil
         let home = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".codex-claudebar")
+            .appendingPathComponent(providerId == "claude" ? ".claude-claudebar" : ".codex-claudebar")
             .appendingPathComponent(UUID().uuidString.lowercased())
         loginTask = Task { @MainActor in
             defer { loginTask = nil }
             do {
                 let login = BrowserAccountLogin(locate: {
                     BinaryLocator.invalidateCaches()
-                    return BinaryLocator.which("codex")
-                })
+                    return BinaryLocator.which(providerId)
+                }, arguments: providerId == "claude" ? ["auth", "login", "--claudeai"] : ["-c", "cli_auth_credentials_store=\"file\"", "login"],
+                   homeEnvironmentKey: providerId == "claude" ? "CLAUDE_CONFIG_DIR" : "CODEX_HOME",
+                   environmentExclusions: ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_PROFILE", "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY"])
                 try await login.signIn(home: home)
                 try Task.checkCancellation()
                 pendingAccount = try configuration(folder: home.path)
@@ -196,26 +114,30 @@ struct CodexAccountSetupSheet: View {
     }
 
     private func configuration(folder: String) throws -> ProviderAccountConfig {
-        try AddedAccounts.configuration(
-            "codex", folder: folder,
-            existing: JSONSettingsRepository.shared.accounts(forProvider: "codex"))
+        let config = try AddedAccounts.configuration(
+            providerId, folder: folder,
+            existing: JSONSettingsRepository.shared.accounts(forProvider: providerId))
+        if let primary = (monitor.provider(for: providerId) as? Account)?.accountEmail, primary == config.email {
+            throw UsageError.executionFailed("This account is already your default login. Sign in to another account.")
+        }
+        return config
     }
 
     private func add(_ config: ProviderAccountConfig) {
         do {
             // Revalidate at save time in case the folder or default login changed.
-            let validated = try configuration(folder: config.probeConfig["codexHome"] ?? "").named(accountName)
-            guard validated.probeConfig["chatgptAccountId"] == config.probeConfig["chatgptAccountId"] else {
+            let validated = try configuration(folder: config.probeConfig[providerId == "claude" ? "configDirectory" : "codexHome"] ?? "").named(accountName)
+            guard validated.probeConfig[providerId == "claude" ? "loginEmail" : "chatgptAccountId"] == config.probeConfig[providerId == "claude" ? "loginEmail" : "chatgptAccountId"] else {
                 error = "This folder’s account changed. Sign in again to confirm its email."
                 pendingAccount = nil
                 return
             }
-            guard let codex = (monitor.provider(for: "codex") as? Account)?.provider,
+            guard let codex = (monitor.provider(for: providerId) as? Account)?.provider,
                   let provider = codex.add(validated) else {
-                error = "Codex is unavailable. Close this window and try again."
+                error = "\(productName) is unavailable. Close this window and try again."
                 return
             }
-            JSONSettingsRepository.shared.addAccount(validated, forProvider: "codex")
+            JSONSettingsRepository.shared.addAccount(validated, forProvider: providerId)
             monitor.addProvider(provider)
             Task { await monitor.refresh(providerId: provider.id) }
             dismiss()
@@ -231,9 +153,9 @@ struct CodexAccountSetupSheet: View {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         panel.showsHiddenFiles = true
-        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex-claudebar")
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(providerId == "claude" ? ".claude-claudebar" : ".codex-claudebar")
         panel.prompt = "Choose Folder"
-        panel.message = "Choose an existing Codex folder containing auth.json."
+        panel.message = providerId == "claude" ? "Choose a separate signed-in Claude configuration folder." : "Choose an existing Codex folder containing auth.json."
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             do {

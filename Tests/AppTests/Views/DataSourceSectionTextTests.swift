@@ -19,7 +19,7 @@ struct DataSourceSectionTextTests {
         #expect(text.title == "Codex Configuration")
         #expect(text.subtitle == "Data fetching method for all Codex accounts")
         #expect(text.origin == "Built in")
-        #expect(DataSourceSectionText(definition: try claude()).subtitle == "Data fetching method")
+        #expect(DataSourceSectionText(definition: try claude()).subtitle == "Data fetching method for all Claude accounts")
     }
 
     @Test

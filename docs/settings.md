@@ -91,3 +91,19 @@ Default-login display names for definition-driven multi-account providers are
 stored by email in `providers.<id>.defaultAccountLabels`. An empty name clears the
 entry. This display metadata contains no credentials and does not rename or switch
 the CLI login. Added accounts continue to use their existing `label` field.
+
+
+## Accounts across providers
+
+Every provider now uses the same Accounts controls. Added configurations live in
+`providers.<providerId>.accounts`, with stable `accountId`, optional `label`,
+reported identity and non-secret source/options. Added instances use
+`<providerId>.<accountId>`; existing default IDs remain unchanged. Per-account
+reader settings live under `~/.claudebar/account-settings/`. Entered added-account
+keys and extension secrets use a provider/account-scoped Keychain namespace and
+never fall back to the ordinary app credential store. Existing default credential
+storage remains unchanged. Removing an added account forgets its entered keys,
+leaves upstream login files in place and clears its menu bar pins.
+
+Default names work for every provider. When no identity is reported, the name is
+bound to the default connection. See [Multiple accounts](features/multi-account/README.md).

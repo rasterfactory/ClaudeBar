@@ -33,3 +33,8 @@ ClaudeBar chooses the mode itself; there is no switch.
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [Oh My Pi](../omp/README.md) also reports OpenCode Go accounts it is signed into
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Accounts** to connect separate sources. See [Multiple accounts](../../features/multi-account/README.md) for the route and validation status. Your default connection keeps its existing configuration.

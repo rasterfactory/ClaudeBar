@@ -103,6 +103,7 @@ struct ClaudeBarApp: App {
         let claude = Self.builtIn(
             "claude",
             settings: settingsRepository,
+            accounts: settingsRepository.accounts(forProvider: "claude"),
             dailyUsage: ClaudeDailyUsageAnalyzer(
                 isLocallyServed: { ClaudeLocalInferenceDetector.isLocallyServed() }
             ),
@@ -112,10 +113,10 @@ struct ClaudeBarApp: App {
         // product once, with the logins added beside the default one (#326).
         let codex = Self.builtIn("codex", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "codex"))
 
-        // The lineup: each login is its own pill. Legacy providers are their
-        // own single login until they become definitions.
+        // The lineup: each login is its own pill, with legacy readers adapted
+        // behind the same account lifecycle as definition-driven providers.
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
-        let repository = AIProviders(providers: [
+        let defaultProviders: [any AIProvider] = [
             claude.defaultAccount,
             codex.defaultAccount,
             GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
@@ -177,9 +178,14 @@ struct ClaudeBarApp: App {
                 probe: CommandCodeUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-        ])
-        // Added Codex logins follow the built-in lineup, as they always have.
-        for account in codex.accounts.dropFirst() {
+        ]
+        let repository = AIProviders(providers: defaultProviders.flatMap { original -> [any AIProvider] in
+            guard !(original is Account), AccountConnectionRecipe.builtIn(original.id) != nil else { return [original] }
+            do { return try LegacyAccountConnections.shared.make(original, settings: settingsRepository).accounts }
+            catch { preconditionFailure("Account source for \(original.id) failed to load: \(error.localizedDescription)") }
+        })
+        // Added native logins follow the built-in lineup.
+        for account in claude.accounts.dropFirst() + codex.accounts.dropFirst() {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after
@@ -187,7 +193,9 @@ struct ClaudeBarApp: App {
         let vault = ProviderVault()
         for definition in ProviderCatalog().custom() {
             Providers.register(custom: definition)
-            repository.add(Providers.make(definition, settings: settingsRepository, secrets: vault).defaultAccount)
+            if let custom = try? CustomAccountConnections.make(definition, settings: settingsRepository, secrets: vault) {
+                for account in custom.accounts { repository.add(account) }
+            }
         }
         AppLog.providers.info("Created \(repository.all.count) providers")
 

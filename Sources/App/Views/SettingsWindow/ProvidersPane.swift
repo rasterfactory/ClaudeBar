@@ -218,8 +218,11 @@ private struct ProviderDetailView: View {
                 }
                 .padding(.bottom, 6)
 
+                if let account = provider as? Account {
+                    ProviderAccountsCard(provider: account.provider, monitor: monitor)
+                }
                 if provider.isEnabled {
-                    configCard
+                    if (provider as? Account)?.isDefault != false { configCard }
 
                     SettingsCard {
                         SettingsFieldLabel(text: "CUSTOM WEB CARD")
@@ -274,7 +277,6 @@ private struct ProviderDetailView: View {
             if let codex = (provider as? Account)?.provider {
                 DataSourceSection(provider: codex, monitor: monitor)
             }
-            CodexAccountsCard(monitor: monitor)
         case "kimi":
             KimiConfigCard(monitor: monitor)
         case "minimax":
@@ -295,7 +297,7 @@ private struct ProviderDetailView: View {
             if let custom = (provider as? Account)?.provider, custom.definition.profile.origin == .custom {
                 DataSourceSection(provider: custom, monitor: monitor)
                 CustomProviderCard(provider: custom, monitor: monitor, onDeleted: onBack)
-            } else if let extProvider = provider as? ExtensionProvider, extProvider.manifest.hasConfig {
+            } else if let extProvider = (provider as? ExtensionProvider) ?? (LegacyAccountConnections.shared.original(provider.id) as? ExtensionProvider), extProvider.manifest.hasConfig {
                 ExtensionConfigCard(
                     provider: extProvider,
                     configRepository: AppSettings.shared.extensionConfig

@@ -25,21 +25,26 @@ public enum DataSources {
         _ definition: DataSourceDefinition,
         providerId: String,
         scripts: @escaping ScriptSource = { _ in nil },
-        secrets: (any SecretStore)? = nil
+        secrets: (any SecretStore)? = nil,
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] },
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        makeCLIExecutor: (@Sendable (CLICall) -> any CLIExecutor)? = nil,
+        makeTransport: TransportFactory? = nil,
+        security: (@Sendable ([String]) -> (status: Int32, output: String))? = nil
     ) -> DataSource {
         make(
             definition,
             providerId: providerId,
-            makeCLIExecutor: CLIFetcher.system,
+            makeCLIExecutor: makeCLIExecutor ?? CLIFetcher.system,
             network: URLSession.shared,
-            makeTransport: { executable, arguments, environment, directory in
+            makeTransport: makeTransport ?? { executable, arguments, environment, directory in
                 try ProcessRPCTransport(executable: executable, arguments: arguments, environment: environment, workingDirectory: directory)
             },
-            security: KeychainReader.system,
+            security: security ?? KeychainReader.system,
             scripts: scripts,
             secrets: secrets,
-            environment: { ProcessInfo.processInfo.environment[$0] },
-            homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+            environment: environment,
+            homeDirectory: homeDirectory,
             now: { Date() }
         )
     }

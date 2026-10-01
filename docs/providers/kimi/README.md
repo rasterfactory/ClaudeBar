@@ -40,3 +40,8 @@ Kimi runs two separate platforms: **kimi.com** (China) and **kimi.ai** (internat
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Kimi → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

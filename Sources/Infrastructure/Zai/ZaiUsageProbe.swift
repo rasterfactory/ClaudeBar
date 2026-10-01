@@ -17,6 +17,7 @@ public struct ZaiUsageProbe: UsageProbe {
     private let settingsRepository: any ZaiSettingsRepository
     private let loginShellEnvironment: LoginShellEnvironment
     private let timeout: TimeInterval
+    private let storedKeyOnly: Bool
 
     // Claude config file location
     private static let defaultConfigPath = URL(fileURLWithPath: NSHomeDirectory())
@@ -33,7 +34,8 @@ public struct ZaiUsageProbe: UsageProbe {
         cliExecutor: (any CLIExecutor)? = nil,
         networkClient: (any NetworkClient)? = nil,
         settingsRepository: any ZaiSettingsRepository,
-        timeout: TimeInterval = 10.0
+        timeout: TimeInterval = 10.0,
+        storedKeyOnly: Bool = false
     ) {
         let executor = cliExecutor ?? DefaultCLIExecutor()
         self.cliExecutor = executor
@@ -41,6 +43,7 @@ public struct ZaiUsageProbe: UsageProbe {
         self.settingsRepository = settingsRepository
         self.loginShellEnvironment = LoginShellEnvironment(cliExecutor: executor, timeout: timeout)
         self.timeout = timeout
+        self.storedKeyOnly = storedKeyOnly
     }
 
     // MARK: - UsageProbe
@@ -53,6 +56,8 @@ public struct ZaiUsageProbe: UsageProbe {
             AppLog.probes.debug("Zai: Available via API key saved in settings")
             return true
         }
+
+        if storedKeyOnly { return false }
 
         // Check if Claude CLI is installed
         guard cliExecutor.locate("claude") != nil else {
@@ -76,6 +81,7 @@ public struct ZaiUsageProbe: UsageProbe {
     /// Fetches the current usage quota from Z.ai API
     public func probe() async throws -> UsageSnapshot {
         let settingsKey = settingsApiKey()
+        if storedKeyOnly, settingsKey == nil { throw UsageError.authenticationRequired }
 
         // The quota API never needs the claude CLI; only the config-file path does
         if settingsKey == nil {

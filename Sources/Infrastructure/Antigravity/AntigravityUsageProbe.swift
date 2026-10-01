@@ -16,6 +16,7 @@ public struct AntigravityUsageProbe: UsageProbe {
     private let credentialLoader: AntigravityKeychainCredentialLoader
     private let timeout: TimeInterval
     private let now: @Sendable () -> Date
+    private let accountToken: (@Sendable () -> String?)?
 
     // Match the app's language server (current and older names) and the `agy` CLI.
     private static let processNames = ["language_server", "language_server_macos", "language_server_macos_arm", "agy"]
@@ -27,7 +28,8 @@ public struct AntigravityUsageProbe: UsageProbe {
         networkClient: (any NetworkClient)? = nil,
         remoteNetworkClient: (any NetworkClient)? = nil,
         timeout: TimeInterval = 8.0,
-        now: @escaping @Sendable () -> Date = Date.init
+        now: @escaping @Sendable () -> Date = Date.init,
+        accountToken: (@Sendable () -> String?)? = nil
     ) {
         let executor = cliExecutor ?? DefaultCLIExecutor()
         self.cliExecutor = executor
@@ -38,11 +40,13 @@ public struct AntigravityUsageProbe: UsageProbe {
         self.credentialLoader = AntigravityKeychainCredentialLoader(cliExecutor: executor, timeout: timeout)
         self.timeout = timeout
         self.now = now
+        self.accountToken = accountToken
     }
 
     // MARK: - UsageProbe
 
     public func isAvailable() async -> Bool {
+        if let accountToken { return accountToken()?.isEmpty == false }
         do {
             let processInfo = try await detectProcess()
             AppLog.probes.debug("Antigravity process detected: PID=\(processInfo.pid)")
@@ -59,6 +63,14 @@ public struct AntigravityUsageProbe: UsageProbe {
     }
 
     public func probe() async throws -> UsageSnapshot {
+        if let accountToken {
+            guard let token = accountToken(), !token.isEmpty else { throw UsageError.authenticationRequired }
+            switch await fetchCloudQuota(token: token) {
+            case .snapshot(let snapshot): return snapshot
+            case .authFailed: throw UsageError.sessionExpired(hint: "Reconnect this Antigravity account with a current OAuth token.")
+            case .unavailable: throw UsageError.executionFailed("Could not reach the Antigravity quota API")
+            }
+        }
         AppLog.probes.info("Starting Antigravity probe...")
 
         // Step 1: Detect running Antigravity process

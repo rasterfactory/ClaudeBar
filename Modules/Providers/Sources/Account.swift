@@ -27,7 +27,7 @@ public final class Account: AIProvider {
         get {
             let current = savedLabel // Observe edits as well as snapshot identity changes.
             guard isDefault, let naming = provider.settings as? AccountNamingSettingsRepository else { return current }
-            return naming.defaultAccountLabel(forProvider: provider.id, email: accountEmail) ?? ""
+            return naming.defaultAccountLabel(forProvider: provider.id, email: namingIdentity) ?? ""
         }
         set { savedLabel = newValue }
     }
@@ -73,6 +73,8 @@ public final class Account: AIProvider {
 
     /// The email the data source reported, else the one it was added with.
     public var accountEmail: String? { snapshot?.accountEmail ?? email }
+    /// Sources without a reported identity still have a stable implicit default connection.
+    public var namingIdentity: String { accountEmail ?? values["identity"] ?? "default" }
 
     /// Whether this provider needs email labels to distinguish multiple logins.
     public var isNamedByAccount: Bool { provider.accounts.count > 1 && (provider.definition.accounts?.nameFromEmail == true || provider.accounts.contains { !$0.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) }
@@ -82,23 +84,28 @@ public final class Account: AIProvider {
     /// The optional display name never changes the authenticated identity.
     public var accountDisplayName: String {
         let name = label.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? (accountEmail ?? provider.name) : name
+        if !name.isEmpty { return name }
+        if let accountEmail { return accountEmail }
+        if isDefault { return provider.accounts.count > 1 ? "Default" : provider.name }
+        let source = values["source"].map { ($0 as NSString).lastPathComponent }.flatMap { $0.isEmpty ? nil : $0 }
+        return source ?? "Account \(String(accountId.prefix(6)))"
     }
 
     /// One login keeps the product name; multiple logins need differentiation.
     public var name: String { isNamedByAccount ? accountDisplayName : provider.name }
 
     public var accountDescription: String {
-        guard let accountEmail, name != accountEmail else { return name }
-        return "\(name) (\(accountEmail))"
+        let identity = accountEmail ?? values["identity"] ?? values["source"]
+        guard let identity, name != identity else { return name }
+        return "\(name) (\(identity))"
     }
 
     public var cliCommand: String { provider.definition.cli ?? "" }
     /// The dashboard for the plan the last usage reported (#328).
-    public var dashboardURL: URL? { provider.definition.profile.links.dashboard(for: snapshot?.accountTier) }
+    public var dashboardURL: URL? { provider.dashboardURL(for: self) }
     public var statusPageURL: URL? { provider.definition.profile.links.status }
-    public var backgroundRefreshFloor: Duration? { provider.backgroundRefreshFloor }
-    public var guestPasses: GuestPasses? { provider.guestPasses }
+    public var backgroundRefreshFloor: Duration? { provider.backgroundRefreshFloor(for: self) }
+    public var guestPasses: GuestPasses? { isDefault ? provider.guestPasses : nil }
 
     public func isAvailable() async -> Bool {
         await provider.isAvailable(self)

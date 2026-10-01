@@ -42,3 +42,8 @@ Each mode falls back to the other when it fails. In API mode, **CLI fallback** (
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [Notch](../../features/notch/README.md)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Claude → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

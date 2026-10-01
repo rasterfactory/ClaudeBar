@@ -29,13 +29,15 @@ public final class JSONSettingsRepository:
     private let store: JSONSettingsStore
     private let credentials: UserDefaults
     private let secureCredentials: any CredentialRepository
+    private let isolatedAccountCredentials: Bool
 
     private var vercelCredentials: SecureCredentialMigration {
         SecureCredentialMigration(
             secureStore: secureCredentials,
             legacyStore: credentials,
             secureKey: CredentialKey.vercelApiKey,
-            legacyKey: Self.legacyVercelApiKeyKey
+            legacyKey: Self.legacyVercelApiKeyKey,
+            allowsLegacy: !isolatedAccountCredentials
         )
     }
 
@@ -44,18 +46,35 @@ public final class JSONSettingsRepository:
             secureStore: secureCredentials,
             legacyStore: credentials,
             secureKey: CredentialKey.zaiApiKey,
-            legacyKey: Self.legacyZaiApiKeyKey
+            legacyKey: Self.legacyZaiApiKeyKey,
+            allowsLegacy: !isolatedAccountCredentials
         )
     }
 
     public init(
         store: JSONSettingsStore,
         credentials: UserDefaults = .standard,
-        secureCredentials: any CredentialRepository = KeychainCredentialRepository.shared
+        secureCredentials: any CredentialRepository = KeychainCredentialRepository.shared,
+        isolatedAccountCredentials: Bool = false
     ) {
         self.store = store
         self.credentials = credentials
         self.secureCredentials = secureCredentials
+        self.isolatedAccountCredentials = isolatedAccountCredentials
+    }
+
+    private func saveLegacyCredential(_ value: String, forKey key: String) {
+        if isolatedAccountCredentials { secureCredentials.save(value, forKey: key) }
+        else { credentials.set(value, forKey: key) }
+    }
+
+    private func legacyCredential(forKey key: String) -> String? {
+        isolatedAccountCredentials ? secureCredentials.get(forKey: key) : credentials.string(forKey: key)
+    }
+
+    private func deleteLegacyCredential(forKey key: String) {
+        if isolatedAccountCredentials { secureCredentials.delete(forKey: key) }
+        else { credentials.removeObject(forKey: key) }
     }
 
     // MARK: - AppSettingsRepository
@@ -514,15 +533,15 @@ public final class JSONSettingsRepository:
     // Credentials (UserDefaults for now, Keychain migration later)
 
     public func saveGithubToken(_ token: String) {
-        credentials.set(token, forKey: "com.claudebar.credentials.github-copilot-token")
+        saveLegacyCredential(token, forKey: "com.claudebar.credentials.github-copilot-token")
     }
 
     public func getGithubToken() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.github-copilot-token")
+        legacyCredential(forKey: "com.claudebar.credentials.github-copilot-token")
     }
 
     public func deleteGithubToken() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.github-copilot-token")
+        deleteLegacyCredential(forKey: "com.claudebar.credentials.github-copilot-token")
     }
 
     public func hasGithubToken() -> Bool {
@@ -530,15 +549,15 @@ public final class JSONSettingsRepository:
     }
 
     public func saveGithubUsername(_ username: String) {
-        credentials.set(username, forKey: "com.claudebar.credentials.github-username")
+        saveLegacyCredential(username, forKey: "com.claudebar.credentials.github-username")
     }
 
     public func getGithubUsername() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.github-username")
+        legacyCredential(forKey: "com.claudebar.credentials.github-username")
     }
 
     public func deleteGithubUsername() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.github-username")
+        deleteLegacyCredential(forKey: "com.claudebar.credentials.github-username")
     }
 
     // MARK: - BedrockSettingsRepository
@@ -597,27 +616,27 @@ public final class JSONSettingsRepository:
     }
 
     public func saveAlibabaManualCookie(_ cookie: String) {
-        credentials.set(cookie, forKey: "com.claudebar.credentials.alibaba-manual-cookie")
+        saveLegacyCredential(cookie, forKey: "com.claudebar.credentials.alibaba-manual-cookie")
     }
 
     public func getAlibabaManualCookie() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.alibaba-manual-cookie")
+        legacyCredential(forKey: "com.claudebar.credentials.alibaba-manual-cookie")
     }
 
     public func saveAlibabaApiKey(_ key: String) {
-        credentials.set(key, forKey: "com.claudebar.credentials.alibaba-api-key")
+        saveLegacyCredential(key, forKey: "com.claudebar.credentials.alibaba-api-key")
     }
 
     public func getAlibabaApiKey() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.alibaba-api-key")
+        legacyCredential(forKey: "com.claudebar.credentials.alibaba-api-key")
     }
 
     public func deleteAlibabaApiKey() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.alibaba-api-key")
+        deleteLegacyCredential(forKey: "com.claudebar.credentials.alibaba-api-key")
     }
 
     public func hasAlibabaApiKey() -> Bool {
-        credentials.object(forKey: "com.claudebar.credentials.alibaba-api-key") != nil
+        legacyCredential(forKey: "com.claudebar.credentials.alibaba-api-key") != nil
     }
 
     // MARK: - HookSettingsRepository
@@ -821,15 +840,15 @@ public final class JSONSettingsRepository:
     // MiniMax Credentials (UserDefaults for now)
 
     public func saveMinimaxApiKey(_ key: String) {
-        credentials.set(key, forKey: "com.claudebar.credentials.minimax-api-key")
+        saveLegacyCredential(key, forKey: "com.claudebar.credentials.minimax-api-key")
     }
 
     public func getMinimaxApiKey() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.minimax-api-key")
+        legacyCredential(forKey: "com.claudebar.credentials.minimax-api-key")
     }
 
     public func deleteMinimaxApiKey() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.minimax-api-key")
+        deleteLegacyCredential(forKey: "com.claudebar.credentials.minimax-api-key")
     }
 
     public func hasMinimaxApiKey() -> Bool {
@@ -881,15 +900,15 @@ extension JSONSettingsRepository: DeepSeekSettingsRepository {
     // DeepSeek Credentials (UserDefaults for now)
 
     public func saveDeepSeekApiKey(_ key: String) {
-        credentials.set(key, forKey: "com.claudebar.credentials.deepseek-api-key")
+        saveLegacyCredential(key, forKey: "com.claudebar.credentials.deepseek-api-key")
     }
 
     public func getDeepSeekApiKey() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.deepseek-api-key")
+        legacyCredential(forKey: "com.claudebar.credentials.deepseek-api-key")
     }
 
     public func deleteDeepSeekApiKey() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.deepseek-api-key")
+        deleteLegacyCredential(forKey: "com.claudebar.credentials.deepseek-api-key")
     }
 
     public func hasDeepSeekApiKey() -> Bool {

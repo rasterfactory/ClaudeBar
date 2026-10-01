@@ -25,3 +25,8 @@ The `grok` binary doesn't need to be on your PATH; ClaudeBar only needs the sign
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [status.x.ai](https://status.x.ai)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Grok → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

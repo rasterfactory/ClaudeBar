@@ -36,3 +36,8 @@ These are AWS IAM permissions, not macOS ones:
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [Kiro](../kiro/README.md)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → AWS Bedrock → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

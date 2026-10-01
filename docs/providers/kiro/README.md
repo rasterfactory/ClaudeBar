@@ -23,3 +23,8 @@ Shows your Kiro plan credits for the month (with the date they reset) and any bo
 ## See also
 
 [troubleshooting](../../troubleshooting.md) · [AWS Bedrock](../bedrock/README.md)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Kiro → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

@@ -224,7 +224,7 @@ final class StatusItemLabelDriver {
         var accountDescriptions: [String: String] = [:]
         for account in monitor.allProviders.compactMap({ $0 as? Account }) {
             let siblings = account.provider.accounts
-            let names = Dictionary(uniqueKeysWithValues: siblings.map { ($0.id, $0.accountEmail ?? "Account") })
+            let names = Dictionary(uniqueKeysWithValues: siblings.map { ($0.id, $0.accountEmail ?? $0.accountDisplayName) })
             let custom = Dictionary(uniqueKeysWithValues: siblings.map { ($0.id, $0.label) })
             accountLabels.merge(AccountMenuBarLabel.labels(for: names, customNames: custom)) { first, _ in first }
             accountDescriptions[account.id] = account.accountDescription

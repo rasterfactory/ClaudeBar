@@ -48,7 +48,7 @@ struct CustomProviderCard: View {
         panel.begin { result in
             guard result == .OK, let url = panel.url else { return }
             do {
-                try provider.definition.exported().write(to: url, options: .atomic)
+                try (Providers.definition(forLineupId: provider.id) ?? provider.definition).exported().write(to: url, options: .atomic)
             } catch {
                 self.error = error.localizedDescription
             }
@@ -64,6 +64,7 @@ struct CustomProviderCard: View {
         }
         ProviderVault().delete("apiKey", provider: provider.id)
         for account in provider.accounts {
+            if !account.isDefault { JSONSettingsRepository.shared.removeAccount(accountId: account.accountId, forProvider: provider.id) }
             monitor.removeProvider(id: account.id)
         }
         Providers.unregister(custom: provider.id)

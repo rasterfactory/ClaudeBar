@@ -11,6 +11,7 @@ public final class ScriptProbe: UsageProbe, @unchecked Sendable {
     private let timeout: TimeInterval
     private let cliExecutor: CLIExecutor
     private let configRepository: (any ExtensionConfigRepository)?
+    private let expectedAccountId: String?
     private let manifest: ExtensionManifest?
 
     public init(
@@ -21,7 +22,8 @@ public final class ScriptProbe: UsageProbe, @unchecked Sendable {
         timeout: TimeInterval = 10,
         cliExecutor: CLIExecutor? = nil,
         configRepository: (any ExtensionConfigRepository)? = nil,
-        manifest: ExtensionManifest? = nil
+        manifest: ExtensionManifest? = nil,
+        expectedAccountId: String? = nil
     ) {
         self.scriptPath = scriptPath
         self.extensionDir = extensionDir
@@ -31,6 +33,7 @@ public final class ScriptProbe: UsageProbe, @unchecked Sendable {
         self.cliExecutor = cliExecutor ?? DefaultCLIExecutor()
         self.configRepository = configRepository
         self.manifest = manifest
+        self.expectedAccountId = expectedAccountId
     }
 
     public func probe() async throws -> UsageSnapshot {
@@ -46,13 +49,17 @@ public final class ScriptProbe: UsageProbe, @unchecked Sendable {
         )
 
         guard result.exitCode == 0 else {
-            throw UsageError.executionFailed("Extension probe '\(scriptPath)' exited with code \(result.exitCode): \(result.output)")
+            throw UsageError.executionFailed("Extension probe '\(scriptPath)' exited with code \(result.exitCode)")
         }
 
         guard let data = result.output.data(using: .utf8) else {
             throw UsageError.parseFailed("Extension probe output is not valid UTF-8")
         }
 
+        if let expectedAccountId {
+            let identity = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            guard identity?["accountId"] as? String == expectedAccountId else { throw UsageError.sessionExpired(hint: "This script did not confirm the selected account. Update it to return CLAUDEBAR_ACCOUNT_ID as accountId.") }
+        }
         let sectionData = try SectionData.decode(from: data, type: sectionType, providerId: providerId)
         return sectionDataToSnapshot(sectionData)
     }

@@ -26,3 +26,8 @@ No key, no network access and no permission prompts: ClaudeBar only reads the lo
 ## See also
 
 [troubleshooting](../../troubleshooting.md) · [#209](https://github.com/tddworks/ClaudeBar/pull/209), an open PR that would add Vibe plan usage from Mistral's web API with a chat.mistral.ai session cookie
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Mistral → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

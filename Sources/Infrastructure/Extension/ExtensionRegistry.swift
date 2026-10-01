@@ -49,7 +49,12 @@ public final class ExtensionRegistry: Sendable {
                 probes: probes,
                 settingsRepository: settingsRepository
             )
-            monitor.addProvider(provider)
+            if let multiple = settingsRepository as? any MultiAccountSettingsRepository,
+               let group = try? ExtensionAccountConnections.make(original: provider, result: result, settings: multiple) {
+                for account in group.accounts { monitor.addProvider(account) }
+            } else {
+                monitor.addProvider(provider)
+            }
             providers.append(provider)
         }
 

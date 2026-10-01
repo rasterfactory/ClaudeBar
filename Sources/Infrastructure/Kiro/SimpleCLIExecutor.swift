@@ -8,7 +8,21 @@ import System
 /// they are attached to a terminal. Providers that do need that go through
 /// `DefaultCLIExecutor`/`InteractiveRunner` instead.
 public struct SimpleCLIExecutor: CLIExecutor {
-    public init() {}
+    private let environmentExclusions: [String]
+    private let environmentAdditions: [String: String]
+    private let isolatedDirectory: URL?
+    public init(environmentExclusions: [String] = [], environmentAdditions: [String: String] = [:], isolatedDirectory: URL? = nil) {
+        self.environmentExclusions = environmentExclusions
+        self.environmentAdditions = environmentAdditions
+        self.isolatedDirectory = isolatedDirectory
+    }
+
+    func childEnvironment(binaryPath: String) -> [String: String] {
+        var environment = Self.augmentedEnvironment(binaryPath: binaryPath)
+        for key in environmentExclusions { environment.removeValue(forKey: key) }
+        environment.merge(environmentAdditions) { _, selected in selected }
+        return environment
+    }
     
     public func locate(_ binary: String) -> String? {
         BinaryLocator.which(binary)
@@ -34,9 +48,9 @@ public struct SimpleCLIExecutor: CLIExecutor {
                         executablePath: binaryPath,
                         arguments: args,
                         environment: SubprocessSupport.environment(
-                            Self.augmentedEnvironment(binaryPath: binaryPath)
+                            childEnvironment(binaryPath: binaryPath)
                         ),
-                        workingDirectory: workingDirectory.map { FilePath($0.path) },
+                        workingDirectory: (isolatedDirectory ?? workingDirectory).map { FilePath($0.path) },
                         input: input
                     )
                 }

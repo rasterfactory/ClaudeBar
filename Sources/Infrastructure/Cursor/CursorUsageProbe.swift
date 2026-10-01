@@ -91,6 +91,12 @@ public struct CursorUsageProbe: UsageProbe {
         return snapshot
     }
 
+    public func accountIdentity() async throws -> String {
+        let path = dbPathOverride ?? Self.defaultDatabasePath
+        guard FileManager.default.fileExists(atPath: path) else { throw UsageError.authenticationRequired }
+        return try Self.extractUserIdFromJWT(try await readAccessToken(from: path))
+    }
+
     // MARK: - Token Extraction
 
     /// Reads the access token from Cursor's SQLite database using the sqlite3 CLI.

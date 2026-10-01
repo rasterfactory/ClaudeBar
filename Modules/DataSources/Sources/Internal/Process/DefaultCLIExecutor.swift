@@ -22,17 +22,20 @@ public struct DefaultCLIExecutor: CLIExecutor {
     /// How long to wait after launch before sending input, so typed commands
     /// land on a settled TUI screen (see InteractiveRunner.Options.inputDelay).
     private let inputDelay: TimeInterval
+    private let isolatedDirectory: URL?
 
     public init(
         environmentExclusions: [String] = [],
         environmentAdditions: [String: String] = [:],
         completionRule: CLICompletionRule? = nil,
-        inputDelay: TimeInterval = 0.4
+        inputDelay: TimeInterval = 0.4,
+        isolatedDirectory: URL? = nil
     ) {
         self.environmentExclusions = environmentExclusions
         self.environmentAdditions = environmentAdditions
         self.completionRule = completionRule
         self.inputDelay = inputDelay
+        self.isolatedDirectory = isolatedDirectory
     }
 
     public func locate(_ binary: String) -> String? {
@@ -53,7 +56,7 @@ public struct DefaultCLIExecutor: CLIExecutor {
         // off the cooperative pool below (task locals do not cross that hop).
         let options = InteractiveRunner.Options(
             timeout: timeout,
-            workingDirectory: workingDirectory,
+            workingDirectory: isolatedDirectory ?? workingDirectory,
             arguments: args,
             autoResponses: autoResponses,
             environmentExclusions: environmentExclusions,

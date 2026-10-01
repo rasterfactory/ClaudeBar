@@ -11,6 +11,7 @@ public struct BedrockUsageProbe: UsageProbe {
     private let cloudWatchClient: any BedrockCloudWatchClient
     private let pricingService: any BedrockPricingService
     private let settingsRepository: any BedrockSettingsRepository
+    private let failOnAllRegionFailures: Bool
 
     // MARK: - Initialization
 
@@ -20,17 +21,20 @@ public struct BedrockUsageProbe: UsageProbe {
         self.cloudWatchClient = AWSBedrockCloudWatchClient(profileName: profileName.isEmpty ? nil : profileName)
         self.pricingService = AWSBedrockPricingService()
         self.settingsRepository = settingsRepository
+        self.failOnAllRegionFailures = false
     }
 
     /// Creates a probe with custom dependencies for testing
     init(
         cloudWatchClient: any BedrockCloudWatchClient,
         pricingService: any BedrockPricingService,
-        settingsRepository: any BedrockSettingsRepository
+        settingsRepository: any BedrockSettingsRepository,
+        failOnAllRegionFailures: Bool = false
     ) {
         self.cloudWatchClient = cloudWatchClient
         self.pricingService = pricingService
         self.settingsRepository = settingsRepository
+        self.failOnAllRegionFailures = failOnAllRegionFailures
     }
 
     // MARK: - UsageProbe Protocol
@@ -56,6 +60,7 @@ public struct BedrockUsageProbe: UsageProbe {
 
         // Aggregate metrics from all configured regions
         var allMetrics: [BedrockMetricData] = []
+        var failures = 0
 
         for region in regions {
             do {
@@ -67,9 +72,14 @@ public struct BedrockUsageProbe: UsageProbe {
                 allMetrics.append(contentsOf: metrics)
                 AppLog.probes.debug("Fetched \(metrics.count) models from \(region)")
             } catch {
+                failures += 1
                 AppLog.probes.warning("Failed to fetch metrics from \(region): \(error.localizedDescription)")
                 // Continue with other regions
             }
+        }
+
+        if failOnAllRegionFailures, failures == regions.count {
+            throw UsageError.authenticationRequired
         }
 
         // If no metrics at all, return empty snapshot

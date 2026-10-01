@@ -26,3 +26,8 @@ Instead of pasting a key, you can put the name of an environment variable in **A
 ## See also
 
 [troubleshooting](../../troubleshooting.md)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → DeepSeek → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

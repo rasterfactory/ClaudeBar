@@ -90,6 +90,12 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 }
             }
 
+            public struct DerivedValue: Sendable, Equatable, Codable {
+                public let prefix: String
+                public let hashLength: Int
+            }
+            /// Values derived from the canonical selected folder, e.g. a scoped vault service.
+            public let derivedValues: [String: DerivedValue]?
             public let savedAs: String
             /// The default login's folder — never added a second time.
             public let `default`: String?
@@ -97,6 +103,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             public let notSignedIn: String?
 
             public init(savedAs: String, default folder: String? = nil, accountId: AccountId, notSignedIn: String? = nil) {
+                self.derivedValues = nil
                 self.savedAs = savedAs
                 self.default = folder
                 self.accountId = accountId

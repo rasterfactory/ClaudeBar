@@ -9,6 +9,7 @@ public struct MiniMaxUsageProbe: UsageProbe {
     private let networkClient: any NetworkClient
     private let settingsRepository: any MiniMaxSettingsRepository
     private let timeout: TimeInterval
+    private let environment: [String: String]
 
     /// Resolves the API URL based on the configured region (根据区域配置动态选择 API URL)
     var apiURL: String {
@@ -18,11 +19,13 @@ public struct MiniMaxUsageProbe: UsageProbe {
     public init(
         networkClient: any NetworkClient = URLSession.shared,
         settingsRepository: any MiniMaxSettingsRepository,
-        timeout: TimeInterval = 30
+        timeout: TimeInterval = 30,
+        environment: [String: String] = ProcessInfo.processInfo.environment
     ) {
         self.networkClient = networkClient
         self.settingsRepository = settingsRepository
         self.timeout = timeout
+        self.environment = environment
     }
 
     // MARK: - Token Resolution
@@ -31,7 +34,7 @@ public struct MiniMaxUsageProbe: UsageProbe {
         // First, check environment variable if configured
         let envVarName = settingsRepository.minimaxAuthEnvVar()
         let effectiveEnvVar = envVarName.isEmpty ? "MINIMAX_API_KEY" : envVarName
-        if let envValue = ProcessInfo.processInfo.environment[effectiveEnvVar], !envValue.isEmpty {
+        if let envValue = environment[effectiveEnvVar], !envValue.isEmpty {
             AppLog.probes.debug("MiniMax: Using API key from env var '\(effectiveEnvVar)'")
             return envValue
         }

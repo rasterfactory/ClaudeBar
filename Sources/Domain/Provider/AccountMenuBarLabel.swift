@@ -16,17 +16,29 @@ public enum AccountMenuBarLabel {
             let lhs = accounts[$0] ?? "", rhs = accounts[$1] ?? ""
             return lhs == rhs ? $0 < $1 : lhs < rhs
         }
-        var result: [String: String] = [:]
+        var candidates: [String: String] = [:]
+        var limits: [String: Int] = [:]
         for id in ids {
             let custom = customNames[id]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let limit = custom.isEmpty ? 8 : 12
-            let candidate = custom.isEmpty ? abbreviated(accounts[id] ?? "") : shortened(custom, limit: limit)
-            let collisions = ids.filter {
-                let name = customNames[$0]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                return (name.isEmpty ? abbreviated(accounts[$0] ?? "") : shortened(name, limit: 12)) == candidate
+            limits[id] = custom.isEmpty ? 8 : 12
+            candidates[id] = custom.isEmpty ? abbreviated(accounts[id] ?? "") : shortened(custom, limit: 12)
+        }
+        let reserved = Set(candidates.values)
+        var used = Set<String>()
+        var result: [String: String] = [:]
+        for id in ids {
+            let candidate = candidates[id] ?? "Account"
+            let collisions = ids.filter { candidates[$0] == candidate }
+            var label = candidate
+            if collisions.count > 1 || used.contains(label) {
+                var index = collisions.firstIndex(of: id) ?? 0
+                repeat {
+                    label = numbered(candidate, index: index, limit: limits[id] ?? 8)
+                    index += 1
+                } while reserved.contains(label) || used.contains(label)
             }
-            result[id] = collisions.count > 1
-                ? numbered(candidate, index: collisions.firstIndex(of: id) ?? 0, limit: limit) : candidate
+            used.insert(label)
+            result[id] = label
         }
         return result
     }

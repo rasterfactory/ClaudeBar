@@ -37,3 +37,8 @@ RPC mode starts `codex app-server` for each refresh and asks it for your rate li
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Codex → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

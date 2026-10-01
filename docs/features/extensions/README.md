@@ -75,3 +75,22 @@ Sections run in parallel. The provider shows everything the successful sections 
 
 - [manifest.md](manifest.md): every manifest field, config field type and output format
 - [design.md](design.md): how extensions are loaded and run, for contributors
+
+
+## Multiple accounts
+
+Extensions use the shared Accounts controls. Added accounts supply their own
+manifest fields; secret fields are stored in a separate Keychain namespace.
+Scripts receive `CLAUDEBAR_ACCOUNT_ID`, `CLAUDEBAR_ACCOUNT_HOME`, scoped `HOME` and
+XDG directories, and only that account's `CLAUDEBAR_*` configuration. Account
+scripts must read the selected configuration and return a top-level `accountId`
+equal to `CLAUDEBAR_ACCOUNT_ID` alongside their existing section payload. ClaudeBar
+rejects missing or mismatched IDs. If any added-account section fails, the account
+refresh fails rather than reporting partial data as a complete successful refresh.
+Existing default scripts do not need this field and retain their original behavior.
+
+Health-check sections require an explicit account-specific URL distinct from the
+default URL. A second label for the same global endpoint is not an account.
+Scripts are trusted local code: the environment supplies an explicit account
+contract, not an operating-system sandbox. Authors must avoid reading global
+credentials or reporting global usage under the supplied account ID.

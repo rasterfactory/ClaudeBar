@@ -574,6 +574,9 @@ enum ProviderVisualIdentityLookup {
     }
 
     static func color(for providerId: String, scheme: ColorScheme) -> Color {
+        if providerId.contains("."), let base = providerId.split(separator: ".").first {
+            return color(for: String(base), scheme: scheme)
+        }
         if let color = look(for: providerId)?.color { return color.color(for: scheme) }
         switch providerId {
         case "gemini":
@@ -654,6 +657,7 @@ enum ProviderVisualIdentityLookup {
 
     /// Get provider gradient by ID
     static func gradient(for providerId: String, scheme: ColorScheme) -> LinearGradient {
+        if providerId.contains("."), let base = providerId.split(separator: ".").first { return gradient(for: String(base), scheme: scheme) }
         if let gradient = look(for: providerId)?.gradient(for: scheme) { return gradient }
         let primaryColor = color(for: providerId, scheme: scheme)
         let secondaryColor: Color
@@ -745,6 +749,7 @@ enum ProviderVisualIdentityLookup {
 
     /// Get provider icon asset name by ID
     static func iconAssetName(for providerId: String) -> String {
+        if providerId.contains("."), let base = providerId.split(separator: ".").first { return iconAssetName(for: String(base)) }
         if let icon = look(for: providerId)?.icon { return icon }
         switch providerId {
         case "gemini": return "GeminiIcon"
@@ -770,6 +775,7 @@ enum ProviderVisualIdentityLookup {
 
     /// Get provider display name by ID
     static func name(for providerId: String) -> String {
+        if providerId.contains("."), let base = providerId.split(separator: ".").first { return name(for: String(base)) }
         if let definition = Providers.definition(forLineupId: providerId) { return definition.profile.name }
         switch providerId {
         case "gemini": return "Gemini"
@@ -795,6 +801,7 @@ enum ProviderVisualIdentityLookup {
 
     /// Get provider SF symbol icon by ID
     static func symbolIcon(for providerId: String) -> String {
+        if providerId.contains("."), let base = providerId.split(separator: ".").first { return symbolIcon(for: String(base)) }
         if let symbol = look(for: providerId)?.symbol { return symbol }
         switch providerId {
         case "gemini": return "sparkles"

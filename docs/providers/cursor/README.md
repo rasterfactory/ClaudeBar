@@ -24,3 +24,8 @@ Shows your Cursor plan's included usage for the current billing month as separat
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Cursor → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

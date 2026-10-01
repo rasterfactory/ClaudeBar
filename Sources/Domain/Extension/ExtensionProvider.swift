@@ -32,6 +32,7 @@ public final class ExtensionProvider: AIProvider {
     // MARK: - Dependencies
 
     /// Section-keyed probes (section.id → probe)
+    private let requireAllSections: Bool
     private let probes: [String: any UsageProbe]
     private let settingsRepository: ProviderSettingsRepository
 
@@ -40,8 +41,10 @@ public final class ExtensionProvider: AIProvider {
     public init(
         manifest: ExtensionManifest,
         probes: [String: any UsageProbe],
-        settingsRepository: ProviderSettingsRepository
+        settingsRepository: ProviderSettingsRepository,
+        requireAllSections: Bool = false
     ) {
+        self.requireAllSections = requireAllSections
         self.manifest = manifest
         self.id = "ext-\(manifest.id)"
         self.name = manifest.name
@@ -70,28 +73,28 @@ public final class ExtensionProvider: AIProvider {
 
         // Run all section probes concurrently
         let probeEntries = Array(probes)
-        let results = await withTaskGroup(of: (String, UsageSnapshot?).self) { group in
+        let attempts = await withTaskGroup(of: (String, Result<UsageSnapshot, any Error>).self) { group in
             for (sectionId, probe) in probeEntries {
                 group.addTask {
-                    do {
-                        let snapshot = try await probe.probe()
-                        return (sectionId, snapshot)
-                    } catch {
-                        return (sectionId, nil)
-                    }
+                    do { return (sectionId, .success(try await probe.probe())) }
+                    catch { return (sectionId, .failure(error)) }
                 }
             }
-
-            var collected: [(String, UsageSnapshot)] = []
-            for await (sectionId, snapshot) in group {
-                if let snapshot {
-                    collected.append((sectionId, snapshot))
-                }
-            }
+            var collected: [(String, Result<UsageSnapshot, any Error>)] = []
+            for await result in group { collected.append(result) }
             return collected
         }
+        if requireAllSections {
+            for (_, result) in attempts {
+                if case .failure(let error) = result { lastError = error; throw error }
+            }
+        }
+        let results = attempts.compactMap { id, result -> (String, UsageSnapshot)? in
+            guard case .success(let snapshot) = result else { return nil }
+            return (id, snapshot)
+        }
 
-        guard !results.isEmpty else {
+        guard !results.isEmpty, !requireAllSections || results.count == probes.count else {
             let error = UsageError.noData
             lastError = error
             throw error

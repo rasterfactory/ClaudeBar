@@ -57,6 +57,36 @@ public final class Provider {
     public var id: String { definition.id }
     public var name: String { definition.profile.name }
 
+    /// Bridge existing source implementations into the same account lifecycle.
+    /// Construction fails rather than silently substituting the default login.
+    public convenience init(
+        profile: ProviderProfile,
+        sourceDefinition: ProviderDefinition? = nil,
+        makeDefaultDataSource: ((DataSourceDefinition) -> DataSource)? = nil,
+        cli: String? = nil,
+        enabledByDefault: Bool = true,
+        settings: any ProviderSettingsRepository,
+        accounts: [ProviderAccountConfig] = [],
+        makeAccountSource: @escaping (ProviderAccountConfig?) throws -> any AccountUsageSource
+    ) throws {
+        self.init(
+            definition: ProviderDefinition(profile: profile, cli: cli, enabledByDefault: enabledByDefault,
+                dataSources: sourceDefinition?.dataSources ?? [], defaultDataSource: sourceDefinition?.defaultDataSource ?? "source", accounts: .init(nameFromEmail: true)),
+            settings: settings,
+            makeDataSource: makeDefaultDataSource ?? { DataSources.make($0, providerId: profile.id) }
+        )
+        self.makeAccountSource = makeAccountSource
+        accountSources[id] = try makeAccountSource(nil)
+        for config in accounts { add(config) }
+    }
+
+    @ObservationIgnored private var makeAccountSource: ((ProviderAccountConfig?) throws -> any AccountUsageSource)?
+    @ObservationIgnored private var accountSources: [String: any AccountUsageSource] = [:]
+
+    public func dashboardURL(for account: Account) -> URL? { accountSources[account.id]?.dashboardURL ?? definition.profile.links.dashboard(for: account.snapshot?.accountTier) }
+
+    public var usesAccountSources: Bool { makeAccountSource != nil }
+
     // MARK: - Accounts
 
     /// *Add Account* — a login beside the default one. `nil` when the
@@ -69,7 +99,11 @@ public final class Provider {
             return nil
         }
         do {
-            bound[login.id] = try definition.dataSources(forAccount: config.probeConfig).map(makeDataSource)
+            if let makeAccountSource {
+                accountSources[login.id] = try makeAccountSource(config)
+            } else {
+                bound[login.id] = try definition.dataSources(forAccount: config.probeConfig).map(makeDataSource)
+            }
         } catch {
             AppLog.providers.error("\(definition.id): can't run account \(login.id): \(error.localizedDescription)")
             return nil
@@ -85,9 +119,8 @@ public final class Provider {
         guard accounts.contains(where: { $0 === account }) else { return false }
         let label = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if account.isDefault {
-            guard let naming = settings as? AccountNamingSettingsRepository,
-                  let email = account.accountEmail else { return false }
-            naming.setDefaultAccountLabel(label, forProvider: id, email: email)
+            guard let naming = settings as? AccountNamingSettingsRepository else { return false }
+            naming.setDefaultAccountLabel(label, forProvider: id, email: account.namingIdentity)
         } else {
             guard let multiple = settings as? MultiAccountSettingsRepository,
                   let config = multiple.accounts(forProvider: id).first(where: { $0.accountId == account.accountId }) else { return false }
@@ -103,6 +136,8 @@ public final class Provider {
         guard !account.isDefault else { return }
         accounts.removeAll { $0.id == account.id }
         bound[account.id] = nil
+        accountSources[account.id] = nil
+        refreshTasks[account.id]?.cancel()
         refreshTasks[account.id] = nil
     }
 
@@ -165,7 +200,11 @@ public final class Provider {
     /// A data source that serves cached usage sets how often the background
     /// may ask (Claude's API: 15 minutes, #204).
     public var backgroundRefreshFloor: Duration? {
-        definition.dataSource(activeKind)?.cache.map { .seconds($0.ttl) }
+        accountSources[id]?.backgroundRefreshFloor ?? definition.dataSource(activeKind)?.cache.map { .seconds($0.ttl) }
+    }
+
+    public func backgroundRefreshFloor(for account: Account) -> Duration? {
+        accountSources[account.id]?.backgroundRefreshFloor ?? backgroundRefreshFloor
     }
 
     // MARK: - Refresh — one login at a time
@@ -173,6 +212,7 @@ public final class Provider {
     /// Ready when the active data source is — or, failing that, the fallback
     /// it would hand over to.
     public func isAvailable(_ account: Account) async -> Bool {
+        if let source = accountSources[account.id] { return await source.isAvailable() }
         guard let active = dataSource(activeKind, for: account) else { return false }
         if await active.isReady() { return true }
         guard let fallback = enabledFallback(of: active, for: account) else { return false }
@@ -185,6 +225,27 @@ public final class Provider {
     /// and not a fallback's, which would send the person chasing the wrong problem.
     @discardableResult
     public func refresh(_ account: Account, _ kind: RefreshKind = .interactive) async throws -> UsageSnapshot {
+        if let source = accountSources[account.id] {
+            if let running = refreshTasks[account.id] { return try await running.value }
+            let task = Task { [self] in
+                account.isSyncing = true
+                defer { account.isSyncing = false }
+                do {
+                    let usage = try await source.refresh(kind)
+                    try Task.checkCancellation()
+                    if let expected = account.email, let actual = usage.accountEmail, expected != actual {
+                        throw UsageError.sessionExpired(hint: "This source now belongs to another account. Reconnect the original login or add the new one.")
+                    }
+                    return account.succeed(identified(usage, for: account), from: "source")
+                } catch {
+                    account.fail(error)
+                    throw error
+                }
+            }
+            refreshTasks[account.id] = task
+            defer { refreshTasks[account.id] = nil }
+            return try await task.value
+        }
         guard let active = dataSource(activeKind, for: account) else {
             throw UsageError.noData
         }
@@ -246,7 +307,7 @@ public final class Provider {
         while true {
             do {
                 let usage = try await current.fetchUsage()
-                return account.succeed(identified(await withDailyUsage(usage, kind), for: account), from: current.kind)
+                return account.succeed(identified(account.isDefault ? await withDailyUsage(usage, kind) : usage, for: account), from: current.kind)
             } catch {
                 let reason = Self.reason(of: error)
                 if case .rateLimited? = reason {

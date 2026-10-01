@@ -34,3 +34,8 @@ The key is looked up in this order, as the card's **API KEY LOOKUP ORDER** note 
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → MiniMax → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

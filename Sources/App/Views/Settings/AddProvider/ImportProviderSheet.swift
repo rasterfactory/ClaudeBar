@@ -146,7 +146,7 @@ struct ImportProviderSheet: View {
                 vault.save(value, name, provider: definition.id)
             }
             Providers.register(custom: definition)
-            let provider = Providers.make(definition, settings: JSONSettingsRepository.shared, secrets: vault)
+            let provider = try CustomAccountConnections.make(definition, settings: JSONSettingsRepository.shared, secrets: vault)
             monitor.addProvider(provider.defaultAccount)
             Task { await monitor.refresh(providerId: provider.defaultAccount.id) }
             onDone()

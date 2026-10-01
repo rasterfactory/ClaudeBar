@@ -98,28 +98,18 @@ public final class AWSBedrockCloudWatchClient: BedrockCloudWatchClient, @uncheck
     // MARK: - Private Helpers
 
     private func buildClient(region: String) async throws -> CloudWatchClient {
-        // If profile name is specified, set AWS_PROFILE environment variable
-        // This is needed because when running from Xcode, env vars aren't inherited
-        if let profile = profileName, !profile.isEmpty {
-            setenv("AWS_PROFILE", profile, 1)
-            // Also ensure HOME is set for the SDK to find ~/.aws/
-            if getenv("HOME") == nil {
-                setenv("HOME", NSHomeDirectory(), 1)
-            }
-            AppLog.probes.debug("Using AWS profile: \(profile)")
-        }
-
-        // Try to create client with SSO-aware credential chain
+        // Profile selection belongs to this client, never the process environment.
+        // Concurrent account refreshes must not mutate one another's AWS_PROFILE.
+        // Create a client with the selected profile credential chain
         do {
             // Create configuration - the SDK's default chain should respect AWS_PROFILE
             let config = try await CloudWatchClient.CloudWatchClientConfiguration(region: region)
 
-            // Use SSO credential resolver when a profile is specified
-            // The SSO resolver reads the profile's SSO configuration and uses cached tokens
+            // Explicit profile resolution supports SSO, static credentials and role/process profiles.
             if let profile = profileName, !profile.isEmpty {
-                AppLog.probes.debug("Creating SSOAWSCredentialIdentityResolver for profile: \(profile)")
-                let ssoResolver = try SSOAWSCredentialIdentityResolver(profileName: profile)
-                config.awsCredentialIdentityResolver = ssoResolver
+                AppLog.probes.debug("Creating profile credential resolver for profile: \(profile)")
+                let resolver = ProfileAWSCredentialIdentityResolver(profileName: profile)
+                config.awsCredentialIdentityResolver = resolver
             }
 
             return CloudWatchClient(config: config)

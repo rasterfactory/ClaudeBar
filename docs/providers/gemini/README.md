@@ -24,3 +24,8 @@ ClaudeBar doesn't run `gemini` on each refresh. It reads the CLI's saved sign-in
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [Antigravity](../antigravity/README.md)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Gemini → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

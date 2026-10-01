@@ -17,7 +17,7 @@ public struct BrowserAccountLogin: Sendable {
         public var errorDescription: String? {
             switch self {
             case .executableMissing:
-                "Codex wasn’t found. Install the Codex CLI or desktop app, then try again. You can also choose an existing signed-in folder."
+                "The sign-in tool wasn’t found. Install its CLI or desktop app, then try again. You can also choose an existing signed-in folder."
             case .loginFailed:
                 "Sign-in didn’t finish. Try again and complete the sign-in in your browser."
             case .timedOut:
@@ -29,15 +29,24 @@ public struct BrowserAccountLogin: Sendable {
     private let locate: @Sendable () -> String?
     private let makeProcess: @MainActor @Sendable () -> any BrowserLoginProcess
     private let timeout: TimeInterval
+    private let arguments: [String]
+    private let homeEnvironmentKey: String
+    private let environmentExclusions: [String]
 
     public init(
         locate: @escaping @Sendable () -> String?,
         makeProcess: @escaping @MainActor @Sendable () -> any BrowserLoginProcess = { FoundationBrowserLoginProcess() },
-        timeout: TimeInterval = 300
+        timeout: TimeInterval = 300,
+        arguments: [String] = ["-c", "cli_auth_credentials_store=\"file\"", "login"],
+        homeEnvironmentKey: String = "CODEX_HOME",
+        environmentExclusions: [String] = []
     ) {
         self.locate = locate
         self.makeProcess = makeProcess
         self.timeout = timeout
+        self.arguments = arguments
+        self.homeEnvironmentKey = homeEnvironmentKey
+        self.environmentExclusions = environmentExclusions
     }
 
     @MainActor public func signIn(home: URL) async throws {
@@ -53,7 +62,8 @@ public struct BrowserAccountLogin: Sendable {
         try fm.createDirectory(at: home, withIntermediateDirectories: false,
                                attributes: [.posixPermissions: 0o700])
         var environment = ProcessInfo.processInfo.environment
-        environment["CODEX_HOME"] = home.path
+        environment[homeEnvironmentKey] = home.path
+        for key in environmentExclusions { environment.removeValue(forKey: key) }
         // Inherited keys or tokens must not select another authentication mode.
         environment.removeValue(forKey: "OPENAI_API_KEY")
         environment.removeValue(forKey: "CODEX_API_KEY")
@@ -64,7 +74,7 @@ public struct BrowserAccountLogin: Sendable {
         let process = makeProcess()
         defer { if process.isRunning { process.terminate() } }
         try process.start(executable: executable,
-                          arguments: ["-c", "cli_auth_credentials_store=\"file\"", "login"],
+                          arguments: arguments,
                           environment: environment, directory: home)
         let deadline = Date().addingTimeInterval(timeout)
         while process.isRunning {

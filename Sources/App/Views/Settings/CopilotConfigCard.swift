@@ -26,7 +26,7 @@ struct CopilotConfigCard: View {
     @State private var copilotTestResult: String?
 
     private var copilotProvider: CopilotProvider? {
-        monitor.provider(for: "copilot") as? CopilotProvider
+        (LegacyAccountConnections.shared.original("copilot") ?? monitor.provider(for: "copilot")) as? CopilotProvider
     }
 
     private var copilotUsernameBinding: Binding<String> {

@@ -31,4 +31,12 @@ struct AccountMenuBarLabelTests {
         #expect(labels.values.allSatisfy { $0.count <= 8 })
         #expect(AccountMenuBarLabel.labels(for: ["codex": "a@example.com"]).isEmpty)
     }
+    @Test func generatedSuffixDoesNotCollideWithAnotherChosenName() {
+        let labels = AccountMenuBarLabel.labels(for: ["a": "a@example.com", "b": "b@example.com", "c": "c@example.com"],
+            customNames: ["a": "Work", "b": "Work", "c": "Work·1"])
+        #expect(Set(labels.values).count == 3)
+        #expect(labels["c"] == "Work·1")
+        #expect(labels.values.allSatisfy { $0.count <= 12 })
+    }
+
 }

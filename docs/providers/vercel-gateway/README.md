@@ -28,3 +28,8 @@ Shows your team's remaining Vercel AI Gateway credits as a dollar balance ("AI G
 ## See also
 
 [troubleshooting](../../troubleshooting.md) · [Vercel AI Gateway dashboard](https://vercel.com/dashboard/ai-gateway)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Accounts** to connect separate sources. See [Multiple accounts](../../features/multi-account/README.md) for the route and validation status. Your default connection keeps its existing configuration.

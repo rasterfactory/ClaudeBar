@@ -1,45 +1,39 @@
 ---
-description: Track separate Codex accounts by email, with independent usage cards and menu bar selections. Use when you have more than one ChatGPT login.
+description: Add Personal and Work accounts for any provider, with separate credentials, usage and menu bar selections.
 ---
 
 # Multiple accounts
 
-Codex supports separate ChatGPT accounts. A single account keeps the **Codex** name. After you add a second account, each appears with the Codex icon and its signed-in email, with independent quotas, refreshes, enable toggles and errors. Other providers retain their existing account behavior.
+Every provider has **Accounts** in Settings. A single account keeps the provider's name. After adding another, use optional names such as **Personal** and **Work**, or let ClaudeBar use the reported email, profile or source name. Each account has its own usage, errors, refresh and enable switch.
 
-## Add a Codex account
+## Add an account
 
-1. Open **Settings → Providers → Codex → Codex Accounts → Add Codex Account**. If Codex already shows an email, select that entry instead.
-2. Click **Sign In**. ClaudeBar finds your installed Codex CLI or the CLI bundled inside a desktop app and opens browser sign-in. Choose the ChatGPT account you want to add.
-3. Check the email shown after sign-in. Optionally enter an account name such as **Personal** or **Work**, then click **Add Account**. ClaudeBar creates and selects the separate login folder for you; no Terminal command, name, or token needs to be pasted.
+Open **Settings → Providers → the provider → Accounts → Add Account**.
 
-You can cancel while waiting for the browser, or retry if sign-in fails or times out. If Codex cannot be found, install the Codex CLI or desktop app and try again.
+- **Claude and Codex:** click **Sign In**, complete browser sign-in for the other account, check the email and click **Add Account**. ClaudeBar creates a separate private login folder. No Terminal command is required. Codex can use the CLI bundled with an installed desktop app; Claude requires Claude Code. **Choose Existing Folder** is also available.
+- **API and token providers:** enter that account's key or OAuth token. Region, billing mode and other options belong to this account. Keys are saved in a separate Keychain namespace; a missing key never uses the default account's key.
+- **CLI and file providers:** select an independently signed-in home or credential database. Use a separate login, rather than copying a refresh token. Folder selection does not create a login or install a tool.
+- **Bedrock:** select an independently authenticated AWS profile, regions and optional daily budget.
+- **Mistral:** select a separate Vibe session log folder. These are local cost/token metrics, not cloud quota.
+- **Custom providers:** select a separate home and supply this account's keys or separate Keychain service. Relative files resolve within that home. Shared absolute credential/usage paths must be adapted in the definition first.
+- **Extensions:** select a separate home and supply the extension's account-specific configuration. Scripts must support the [account contract](../extensions/README.md#multiple-accounts). Health-check sections require different account URLs.
 
-**Choose Existing Folder** links an existing independently authenticated Codex folder. Additional accounts require file credential storage (`cli_auth_credentials_store = "file"`); the default account still supports Keychain through RPC mode.
+ClaudeBar checks the connection before adding it. The default login and its existing configuration keep working. Added connections use the explicit source above; they do not discover arbitrary browser or desktop sessions.
 
-You can keep switching accounts in your desktop app and use the same repositories with both accounts. These folders separate ClaudeBar’s sign-ins, not your projects.
+Claude's guided sign-in is for Claude.ai subscriptions. Console keyless profiles are not isolated by `CLAUDE_CONFIG_DIR` and are not supported by this flow. Codex added folders use file credential storage; the default account still supports its existing Keychain/RPC behavior. Both accounts can access the same repositories: the login folders separate credentials, not projects.
 
-The default login remains the one used by your ordinary Codex CLI. Added accounts use their own folders. Do not copy an existing `auth.json` to make a second login: authenticate separately so token refreshes have independent sessions.
+## Names and menu bar
 
-## Name an account
+Use **Edit Name** on any account, including the default. Clear the name to restore the source identity. Names affect presentation only; they do not change credentials or menu bar selection IDs. Default names follow the reported identity when available, or the stable default connection when the source supplies no identity.
 
-Use **Edit Name** beside either account, including the default login, to set an optional name. Leave it blank to use the email. A single account keeps the **Codex** product name even if you save an account name; the name distinguishes it after another account is added.
-
-Names only change presentation. Credentials, account IDs, quota fetching and menu-bar selections stay the same. A default login’s saved name is associated with its email, so switching desktop logins does not apply the previous email’s name to the new login. Connect the default account first if its email is not yet available.
-
-## View both accounts
-
-- Select either email in the dropdown's provider tabs.
-- Enable **General → Overview Mode** to see all enabled accounts together.
-- In **Menu Bar** settings, select both accounts to pin both quotas. With multiple accounts, Codex icons use your optional account names (up to 12 characters in the menu bar), or shortened email names (up to eight characters). Collisions get a numbered suffix. Full names and addresses remain in tooltips and account details. A single account needs no menu-bar account label. Accounts count toward the existing three-selection limit.
-
-The Codex probe mode setting applies to all Codex accounts. Both RPC and API modes use each added account's own folder. Account-specific RPC failures never fall back to the default account's terminal session.
+In **Menu Bar** settings, pin accounts independently. With multiple accounts, chosen names use up to 12 characters and automatic labels up to eight. Collisions receive distinct numbered suffixes, including collisions with a name that already contains a suffix. Full names, emails and source details remain in tooltips and Settings. A single account needs no menu bar account label. The existing three-selection limit still applies.
 
 ## Remove or reconnect
 
-**Remove** only unlinks the account from ClaudeBar and its menu bar selections. It does not sign out of Codex or delete the folder.
+**Remove** unlinks the added account and its menu bar selections and forgets keys entered for that connection. It does not sign out of the upstream tool or delete its login files. Sign in again with the original account when a session expires. If the reported identity changes, remove and re-add the connection so its saved identity stays accurate.
 
-For an expired session, sign in again using the same folder and account. If you sign in to a different account in that folder, ClaudeBar asks you to remove and re-add it rather than displaying the new account under the old email.
+Claude's configuration mode applies to its added subscription accounts; Codex's mode applies to its added accounts. CLI fallbacks retain the selected folder. Claude's default local activity and guest passes remain attached to the default login. Other added connections use the supported route listed above; the default connection retains its original routes and settings.
 
-## See also
+## Validation status
 
-[Codex setup](../../providers/codex/README.md) · [Settings storage](../../settings.md)
+The implementation has independent fixture coverage for all 20 built-ins, plus custom definitions and extension subprocesses. These checks verify source selection and isolation in ClaudeBar. Live second-account sign-ins and upstream CLI handling of selected homes remain unverified; see the [acceptance matrix](universal-design.md). The upstream contribution remains a draft pending those checks.

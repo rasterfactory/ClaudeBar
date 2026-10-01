@@ -12,17 +12,20 @@ public struct CopilotInternalAPIProbe: UsageProbe {
     private let networkClient: any NetworkClient
     private let settingsRepository: any CopilotSettingsRepository
     private let timeout: TimeInterval
+    private let environment: [String: String]
 
     private static let apiBaseURL = "https://api.github.com"
 
     public init(
         networkClient: any NetworkClient = URLSession.shared,
         settingsRepository: any CopilotSettingsRepository,
-        timeout: TimeInterval = 30
+        timeout: TimeInterval = 30,
+        environment: [String: String] = ProcessInfo.processInfo.environment
     ) {
         self.networkClient = networkClient
         self.settingsRepository = settingsRepository
         self.timeout = timeout
+        self.environment = environment
     }
 
     // MARK: - Token Resolution
@@ -31,7 +34,7 @@ public struct CopilotInternalAPIProbe: UsageProbe {
         // First, check environment variable if configured
         let envVarName = settingsRepository.copilotAuthEnvVar()
         if !envVarName.isEmpty {
-            if let envValue = ProcessInfo.processInfo.environment[envVarName], !envValue.isEmpty {
+            if let envValue = environment[envVarName], !envValue.isEmpty {
                 AppLog.probes.debug("Copilot Internal API: Using token from env var '\(envVarName)'")
                 return envValue
             }

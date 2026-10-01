@@ -76,6 +76,11 @@ public struct DataSource: Sendable {
         return Self.withoutSecrets(found.credential.values)
     }
 
+    /// Explicitly selected, non-secret identity fields from context files.
+    public func contextFacts() -> [String: [String: String]] {
+        contextFiles.mapValues { Self.withoutSecrets($0.fields()) }
+    }
+
     /// Looks up the key and fetches. Nothing is mapped and nothing is saved.
     /// Throws a `DataSourceError` naming the step that failed.
     public func fetchResponse() async throws -> Response {
@@ -86,6 +91,7 @@ public struct DataSource: Sendable {
     /// the cache while it is fresh, and refused without a request while a
     /// rate limit lasts. Throws a `DataSourceError` naming the step that failed.
     public func fetchUsage() async throws -> UsageSnapshot {
+        if definition.identity != nil { try checkIdentity(try lookUp()?.credential) }
         if let ttl = cacheTTL, let cached = memory.snapshot(within: ttl, now: now()) {
             return cached
         }
@@ -150,6 +156,11 @@ public struct DataSource: Sendable {
 
     private func isExpectedAccount(_ credential: Credential) -> Bool {
         guard let identity = definition.identity else { return true }
+        if identity.field.hasPrefix("context.") {
+            let components = identity.field.split(separator: ".").map(String.init)
+            guard components.count == 3 else { return false }
+            return contextFiles[components[1]]?.fields()[components[2]] == identity.equals
+        }
         return credential[identity.field] == identity.equals
     }
 

@@ -24,3 +24,8 @@ ClaudeBar only needs the key; the `cmd` binary doesn't have to be on your PATH. 
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [commandcode.ai/usage](https://commandcode.ai/usage)
+
+
+## Multiple accounts
+
+Use **Settings → Providers → Command Code → Accounts** to connect, name, refresh, enable or remove separate accounts. See [Multiple accounts](../../features/multi-account/README.md) for the explicit connection route and validation status. Your default connection keeps its existing configuration.

@@ -41,7 +41,7 @@ struct CodexAccountPresentationTests {
 
     @Test func `setup fits its native sheet without terminal instructions`() throws {
         let monitor = QuotaMonitor(providers: AIProviders(providers: []), clock: SystemClock())
-        let renderer = ImageRenderer(content: CodexAccountSetupSheet(monitor: monitor)
+        let renderer = ImageRenderer(content: BrowserAccountSetupSheet(monitor: monitor)
             .environment(\.appTheme, DarkTheme()))
         renderer.scale = 2
         let image = try #require(renderer.nsImage)
@@ -77,6 +77,30 @@ struct CodexAccountPresentationTests {
         #expect(image.size.width == 420)
         #expect(image.size.height < 400)
         try capture(image, named: "account-name-editor")
+    }
+
+    @Test func `shared account card keeps long identities above its controls`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let settings = JSONSettingsRepository(store: .init(fileURL: directory.appendingPathComponent("settings.json")))
+        let config = ProviderAccountConfig(accountId: "work", label: "Work account with a longer chosen name", email: "very.similar.long.work.address@example.com", probeConfig: ["codexHome": "/work", "chatgptAccountId": "work"])
+        let provider = Provider(definition: try Providers.builtIn("codex"), settings: settings, accounts: [config], makeDataSource: { DataSources.make($0, providerId: "codex") })
+        let monitor = QuotaMonitor(providers: AIProviders(providers: provider.accounts), clock: SystemClock())
+        let view = NSHostingView(rootView: ProviderAccountsCard(provider: provider, monitor: monitor).environment(\.appTheme, DarkTheme()).frame(width: 580).padding(16).foregroundStyle(DarkTheme().textPrimary).background(DarkTheme().backgroundGradient))
+        let size = view.fittingSize
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: .borderless, backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: .darkAqua); window.contentView = view
+        view.frame = NSRect(origin: .zero, size: size)
+        window.orderFront(nil)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+        view.layoutSubtreeIfNeeded(); window.displayIfNeeded()
+        defer { window.orderOut(nil) }
+        let bitmap = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        let image = NSImage(size: size); image.addRepresentation(bitmap)
+        #expect(size.width == 612)
+        #expect(size.height < 450)
+        try capture(image, named: "universal-accounts")
     }
 
     private func capture(_ image: NSImage, named name: String) throws {

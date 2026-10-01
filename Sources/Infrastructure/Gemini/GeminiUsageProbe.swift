@@ -8,6 +8,7 @@ public struct GeminiUsageProbe: UsageProbe {
     private let timeout: TimeInterval
     private let networkClient: any NetworkClient
     private let maxRetries: Int
+    private let cliExecutor: any CLIExecutor
 
     private static let credentialsPath = "/.gemini/oauth_creds.json"
 
@@ -15,12 +16,14 @@ public struct GeminiUsageProbe: UsageProbe {
         homeDirectory: String = NSHomeDirectory(),
         timeout: TimeInterval = 10.0,
         networkClient: any NetworkClient = URLSession.shared,
-        maxRetries: Int = 3
+        maxRetries: Int = 3,
+        cliExecutor: any CLIExecutor = DefaultCLIExecutor()
     ) {
         self.homeDirectory = homeDirectory
         self.timeout = timeout
         self.networkClient = networkClient
         self.maxRetries = maxRetries
+        self.cliExecutor = cliExecutor
     }
 
     public func isAvailable() async -> Bool {
@@ -38,7 +41,8 @@ public struct GeminiUsageProbe: UsageProbe {
             homeDirectory: homeDirectory,
             timeout: timeout,
             networkClient: networkClient,
-            maxRetries: maxRetries
+            maxRetries: maxRetries,
+            cliExecutor: cliExecutor
         )
         return try await apiProbe.probe()
         

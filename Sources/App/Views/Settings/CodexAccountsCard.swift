@@ -153,7 +153,10 @@ struct CodexAccountSetupSheet: View {
         loginTask = Task { @MainActor in
             defer { loginTask = nil }
             do {
-                let login = BrowserAccountLogin(locate: { BinaryLocator.which("codex") })
+                let login = BrowserAccountLogin(locate: {
+                    BinaryLocator.invalidateCaches()
+                    return BinaryLocator.which("codex")
+                })
                 try await login.signIn(home: home)
                 try Task.checkCancellation()
                 pendingAccount = try configuration(folder: home.path)

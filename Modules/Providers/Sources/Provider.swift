@@ -79,6 +79,24 @@ public final class Provider {
         return account
     }
 
+    /// Update a display name without replacing the login or resetting its usage.
+    @discardableResult
+    public func rename(_ account: Account, to name: String) -> Bool {
+        guard accounts.contains(where: { $0 === account }) else { return false }
+        let label = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if account.isDefault {
+            guard let naming = settings as? AccountNamingSettingsRepository,
+                  let email = account.accountEmail else { return false }
+            naming.setDefaultAccountLabel(label, forProvider: id, email: email)
+        } else {
+            guard let multiple = settings as? MultiAccountSettingsRepository,
+                  let config = multiple.accounts(forProvider: id).first(where: { $0.accountId == account.accountId }) else { return false }
+            multiple.updateAccount(config.named(label), forProvider: id)
+        }
+        account.label = label
+        return true
+    }
+
     /// *Remove* — forgets the login here; its CLI's files are never touched.
     /// The default login can't be removed.
     public func remove(_ account: Account) {

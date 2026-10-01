@@ -5,11 +5,13 @@ import Infrastructure
 import Providers
 import DataSources
 
-/// Email identifies the login; users never need to invent an account name.
+/// Verified email identifies the login; an optional name helps people recognize it.
 struct CodexAccountsCard: View {
     let monitor: QuotaMonitor
     @Environment(\.appTheme) private var theme
     @State private var showingSetup = false
+    @State private var editingAccount: Account?
+    @State private var showingNameEditor = false
 
     /// The Codex product — one provider, its logins as accounts.
     private var codex: Provider? {
@@ -30,15 +32,27 @@ struct CodexAccountsCard: View {
                 HStack(alignment: .top, spacing: 10) {
                     ProviderIconView(providerId: provider.id, size: 24)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(provider.accountEmail ?? "Default Codex login")
+                        Text(provider.label.isEmpty ? (provider.accountEmail ?? "Default Codex login") : provider.label)
                             .font(.body)
                             .foregroundStyle(theme.textPrimary)
                             .textSelection(.enabled)
+                        if !provider.label.isEmpty, let email = provider.accountEmail {
+                            Text(email)
+                                .font(.callout)
+                                .foregroundStyle(theme.textSecondary)
+                                .textSelection(.enabled)
+                        }
                         Text(provider.isDefault ? "Uses your default Codex login" : "Separate Codex login")
                             .font(.caption)
                             .foregroundStyle(theme.textSecondary)
                     }
                     Spacer(minLength: 8)
+                    Button("Edit Name…") {
+                        editingAccount = provider
+                        showingNameEditor = true
+                    }
+                    .accessibilityLabel("Edit name for \(provider.accountEmail ?? provider.name)")
+                    .disabled(provider.isDefault && provider.accountEmail == nil)
                     if !provider.isDefault {
                         Button("Remove") { remove(provider) }
                             .accessibilityLabel("Remove \(provider.name) from ClaudeBar")
@@ -58,6 +72,12 @@ struct CodexAccountsCard: View {
         .sheet(isPresented: $showingSetup) {
             CodexAccountSetupSheet(monitor: monitor)
                 .environment(\.appTheme, theme)
+        }
+        .sheet(isPresented: $showingNameEditor) {
+            if let editingAccount {
+                AccountNameSheet(account: editingAccount)
+                    .environment(\.appTheme, theme)
+            }
         }
     }
 
@@ -79,6 +99,7 @@ struct CodexAccountSetupSheet: View {
     @State private var error: String?
     @State private var loginTask: Task<Void, Never>?
     @State private var pendingAccount: ProviderAccountConfig?
+    @State private var accountName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -95,6 +116,12 @@ struct CodexAccountSetupSheet: View {
                 Text(pendingAccount.email ?? "Codex account")
                     .font(.headline)
                     .textSelection(.enabled)
+                TextField("Account name (optional)", text: $accountName)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityLabel("Account name, optional")
+                Text("For example, Personal or Work. Leave blank to use the email.")
+                    .font(.callout)
+                    .foregroundStyle(theme.textSecondary)
                 Button("Use a Different Account", action: signIn)
             } else if loginTask != nil {
                 HStack(spacing: 10) {
@@ -177,7 +204,7 @@ struct CodexAccountSetupSheet: View {
     private func add(_ config: ProviderAccountConfig) {
         do {
             // Revalidate at save time in case the folder or default login changed.
-            let validated = try configuration(folder: config.probeConfig["codexHome"] ?? "")
+            let validated = try configuration(folder: config.probeConfig["codexHome"] ?? "").named(accountName)
             guard validated.probeConfig["chatgptAccountId"] == config.probeConfig["chatgptAccountId"] else {
                 error = "This folder’s account changed. Sign in again to confirm its email."
                 pendingAccount = nil
@@ -216,5 +243,47 @@ struct CodexAccountSetupSheet: View {
                 self.error = error.localizedDescription
             }
         }
+    }
+}
+
+/// Naming is display metadata; editing never changes the account's credentials.
+struct AccountNameSheet: View {
+    let account: Account
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.appTheme) private var theme
+    @State private var name: String
+    @State private var error: String?
+
+    init(account: Account) {
+        self.account = account
+        _name = State(initialValue: account.label)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Account Name").font(.title2.weight(.semibold))
+            Text(account.accountEmail ?? "Default login")
+                .textSelection(.enabled)
+            TextField("Personal, Work…", text: $name)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Account name, optional")
+            Text("Optional. Leave blank to use the email. A single account still displays \(account.provider.name); names distinguish multiple accounts.")
+                .font(.callout)
+                .foregroundStyle(theme.textSecondary)
+            if let error { Text(error).foregroundStyle(theme.statusWarning) }
+            HStack {
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("Save") {
+                    if account.provider.rename(account, to: name) { dismiss() }
+                    else { error = "Could not save the name. Close this window and try again." }
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 420)
+        .foregroundStyle(theme.textPrimary)
+        .background(theme.backgroundGradient)
     }
 }

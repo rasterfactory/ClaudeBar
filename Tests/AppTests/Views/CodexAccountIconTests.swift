@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 import Domain
 import Infrastructure
+import Providers
+import DataSources
 import Testing
 @testable import ClaudeBar
 
@@ -46,6 +48,23 @@ struct CodexAccountPresentationTests {
         #expect(image.size.width == 520)
         #expect(image.size.height < 450)
         try capture(image, named: "account-setup")
+    }
+
+    @Test func `optional name editor fits a native sheet`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: directory.appendingPathComponent("settings.json")))
+        let config = ProviderAccountConfig(accountId: "work", label: "Work", email: "work@example.com",
+                                           probeConfig: ["codexHome": "/work", "chatgptAccountId": "work"])
+        let provider = Provider(definition: try Providers.builtIn("codex"), settings: settings, accounts: [config],
+                                makeDataSource: { DataSources.make($0, providerId: "codex") })
+        let account = try #require(provider.accounts.last)
+        let renderer = ImageRenderer(content: AccountNameSheet(account: account).environment(\.appTheme, DarkTheme()))
+        renderer.scale = 2
+        let image = try #require(renderer.nsImage)
+        #expect(image.size.width == 420)
+        #expect(image.size.height < 400)
+        try capture(image, named: "account-name-editor")
     }
 
     private func capture(_ image: NSImage, named name: String) throws {

@@ -972,3 +972,19 @@ extension JSONSettingsRepository: MultiAccountSettingsRepository {
         return config
     }
 }
+
+extension JSONSettingsRepository: AccountNamingSettingsRepository {
+    public func defaultAccountLabel(forProvider id: String, email: String?) -> String? {
+        guard let email else { return nil }
+        let labels: [String: String] = store.read(key: "providers.\(id).defaultAccountLabels") ?? [:]
+        return labels[email]
+    }
+
+    public func setDefaultAccountLabel(_ label: String, forProvider id: String, email: String) {
+        let key = "providers.\(id).defaultAccountLabels"
+        var labels: [String: String] = store.read(key: key) ?? [:]
+        let name = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        labels[email] = name.isEmpty ? nil : name
+        store.write(value: labels, key: key)
+    }
+}

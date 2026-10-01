@@ -22,7 +22,15 @@ public final class Account: AIProvider {
     public let isDefault: Bool
     /// The login's own id within the provider — `default` for the default login.
     public let accountId: String
-    public let label: String
+    private var savedLabel: String
+    public internal(set) var label: String {
+        get {
+            let current = savedLabel // Observe edits as well as snapshot identity changes.
+            guard isDefault, let naming = provider.settings as? AccountNamingSettingsRepository else { return current }
+            return naming.defaultAccountLabel(forProvider: provider.id, email: accountEmail) ?? ""
+        }
+        set { savedLabel = newValue }
+    }
     /// What the person gave, or its login file holds.
     public let email: String?
     /// Its account settings — the Codex folder, the login's account id.
@@ -53,7 +61,7 @@ public final class Account: AIProvider {
         self.id = login.id
         self.isDefault = login.isDefault
         self.accountId = login.accountId
-        self.label = login.label
+        self.savedLabel = login.label
         self.email = login.email
         self.values = values
         self.isEnabled = provider.settings.isEnabled(forProvider: login.id, defaultValue: provider.definition.enabledByDefault)
@@ -67,14 +75,22 @@ public final class Account: AIProvider {
     public var accountEmail: String? { snapshot?.accountEmail ?? email }
 
     /// Whether this provider needs email labels to distinguish multiple logins.
-    public var isNamedByAccount: Bool { provider.definition.accounts?.nameFromEmail == true && provider.accounts.count > 1 }
+    public var isNamedByAccount: Bool { provider.accounts.count > 1 && (provider.definition.accounts?.nameFromEmail == true || provider.accounts.contains { !$0.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) }
 
     // MARK: - AIProvider (forwarded to the provider)
 
-    /// The login's email when the provider names logins by it, else the product.
-    public var name: String {
-        guard isNamedByAccount, let accountEmail else { return provider.name }
-        return accountEmail
+    /// The optional display name never changes the authenticated identity.
+    public var accountDisplayName: String {
+        let name = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? (accountEmail ?? provider.name) : name
+    }
+
+    /// One login keeps the product name; multiple logins need differentiation.
+    public var name: String { isNamedByAccount ? accountDisplayName : provider.name }
+
+    public var accountDescription: String {
+        guard let accountEmail, name != accountEmail else { return name }
+        return "\(name) (\(accountEmail))"
     }
 
     public var cliCommand: String { provider.definition.cli ?? "" }

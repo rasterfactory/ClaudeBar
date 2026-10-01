@@ -83,3 +83,18 @@ public struct ProviderAccountConfig: Sendable, Equatable, Codable {
         )
     }
 }
+
+/// Optional display metadata for a provider's implicit default login.
+/// Added logins already persist their name in `ProviderAccountConfig.label`.
+public protocol AccountNamingSettingsRepository: MultiAccountSettingsRepository {
+    func defaultAccountLabel(forProvider id: String, email: String?) -> String?
+    func setDefaultAccountLabel(_ label: String, forProvider id: String, email: String)
+}
+
+public extension ProviderAccountConfig {
+    /// Change display metadata while preserving the login's identity and settings.
+    func named(_ name: String) -> Self {
+        Self(accountId: accountId, label: name.trimmingCharacters(in: .whitespacesAndNewlines),
+             email: email, organization: organization, probeConfig: probeConfig)
+    }
+}

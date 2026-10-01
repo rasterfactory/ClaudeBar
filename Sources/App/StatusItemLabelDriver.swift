@@ -73,6 +73,8 @@ final class StatusItemLabelDriver {
     /// inside the sync's `read` registers observation for each of them.
     struct LabelContent: Equatable {
         var accountLabels: [String: String] = [:]
+        var accountDescriptions: [String: String] = [:]
+        var primaryAccountDescription: String? = nil
 
         var label: MenuBarLabel?
         var additionalLabels: [MenuBarProviderLabel] = []
@@ -218,11 +220,19 @@ final class StatusItemLabelDriver {
         let primaryProviderName = !showsQuota || (additionalLabels.isEmpty && (primaryProvider as? Account)?.isNamedByAccount != true)
             ? nil : primaryProvider?.name
 
-        let codexAccounts = (monitor.provider(for: "codex") as? Account)?.provider.accounts ?? []
-        let accountLabels = CodexAccountLabel.labels(for: Dictionary(uniqueKeysWithValues:
-            codexAccounts.map { ($0.id, $0.accountEmail ?? "Account") }))
+        var accountLabels: [String: String] = [:]
+        var accountDescriptions: [String: String] = [:]
+        for account in monitor.allProviders.compactMap({ $0 as? Account }) {
+            let siblings = account.provider.accounts
+            let names = Dictionary(uniqueKeysWithValues: siblings.map { ($0.id, $0.accountEmail ?? "Account") })
+            let custom = Dictionary(uniqueKeysWithValues: siblings.map { ($0.id, $0.label) })
+            accountLabels.merge(AccountMenuBarLabel.labels(for: names, customNames: custom)) { first, _ in first }
+            accountDescriptions[account.id] = account.accountDescription
+        }
         return LabelContent(
             accountLabels: accountLabels,
+            accountDescriptions: accountDescriptions,
+            primaryAccountDescription: showsQuota ? (primaryProvider as? Account)?.accountDescription : nil,
             label: label,
             additionalLabels: additionalLabels,
             primaryProviderId: primaryProviderName == nil ? nil : settings.menuBarPercentageProviderId,
@@ -286,8 +296,8 @@ final class StatusItemLabelDriver {
         lastImage = image
         button.image = image
         button.imagePosition = .imageOnly
-        let primaryText = [content.primaryProviderName, content.label?.text].compactMap { $0 }.joined(separator: " ")
-        let tooltip = ([primaryText].filter { !$0.isEmpty } + content.additionalLabels.map(\.text))
+        let primaryText = [content.primaryAccountDescription ?? content.primaryProviderName, content.label?.text].compactMap { $0 }.joined(separator: " ")
+        let tooltip = ([primaryText].filter { !$0.isEmpty } + content.additionalLabels.map { "\(content.accountDescriptions[$0.providerId] ?? $0.providerName) \($0.label.text)" })
             .joined(separator: " | ")
         button.toolTip = tooltip.isEmpty ? nil : tooltip
         button.setAccessibilityLabel(tooltip.isEmpty ? "ClaudeBar" : tooltip)

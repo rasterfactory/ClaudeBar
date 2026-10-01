@@ -250,3 +250,20 @@ and revalidates the identity on **Add Account**. Existing folders use the same c
 `BinaryLocator` tries the login-shell PATH and common installation paths first,
 then conventional CLI locations in system and user application bundles. This same
 lookup serves login and usage fetches, including desktop-only installations.
+
+### Optional account names
+
+The shared `Provider.rename` changes observable account display metadata without
+replacing the account or clearing its usage. Added logins persist names in the
+existing `ProviderAccountConfig.label`; identity, email, organization and probe
+configuration remain unchanged. The optional `AccountNamingSettingsRepository`
+stores default-login labels by email under `providers.<id>.defaultAccountLabels`.
+Default-login names are resolved against the current snapshot email, so a desktop
+login switch does not inherit a different email’s name.
+
+One login keeps the product name. Multiple logins prefer the optional name, then
+the email. `AccountMenuBarLabel` is shared across definition-driven providers: it
+uses up to 12 characters for a chosen name or eight for an automatic email label,
+with bounded collision suffixes. Full names and emails remain in tooltips. Codex
+settings exposes **Edit Name** for either login and an optional name at sign-in
+confirmation. Legacy providers retain their existing account behavior.

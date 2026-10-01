@@ -1,5 +1,7 @@
 import Testing
 import Foundation
+@testable import Providers
+import DataSources
 @testable import Infrastructure
 @testable import Domain
 
@@ -42,6 +44,41 @@ struct JSONSettingsRepositoryMultiAccountTests {
             organization: organization,
             probeConfig: probeConfig
         )
+    }
+
+    @Test @MainActor
+    func `account names persist without changing login identity or single-account naming`() throws {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let config = account("work", email: "work@example.com", organization: "Team",
+                             probeConfig: ["codexHome": "/work", "chatgptAccountId": "work-id"])
+        repo.addAccount(config, forProvider: "codex")
+        let definition = try Providers.builtIn("codex")
+        func make() -> Provider {
+            Provider(definition: definition, settings: repo, accounts: repo.accounts(forProvider: "codex"),
+                     makeDataSource: { DataSources.make($0, providerId: "codex") })
+        }
+        let provider = make()
+        provider.defaultAccount.snapshot = UsageSnapshot(providerId: "codex", quotas: [], capturedAt: Date(), accountEmail: "personal@example.com")
+        #expect(provider.rename(provider.defaultAccount, to: " Personal "))
+        let work = try #require(provider.accounts.last)
+        #expect(provider.rename(work, to: " Work "))
+        #expect(work.name == "Work")
+        #expect(work.accountEmail == "work@example.com")
+        let saved = try #require(repo.accounts(forProvider: "codex").first)
+        #expect(saved == config.named("Work"))
+        let reloaded = make()
+        reloaded.defaultAccount.snapshot = UsageSnapshot(providerId: "codex", quotas: [], capturedAt: Date(), accountEmail: "personal@example.com")
+        #expect(reloaded.defaultAccount.name == "Personal")
+        #expect(reloaded.accounts.last?.name == "Work")
+        #expect(reloaded.rename(reloaded.accounts.last!, to: "  "))
+        #expect(reloaded.accounts.last?.name == "work@example.com")
+        reloaded.remove(reloaded.accounts.last!)
+        #expect(reloaded.defaultAccount.name == "Codex")
+        #expect(reloaded.defaultAccount.label == "Personal")
+        reloaded.defaultAccount.snapshot = UsageSnapshot(providerId: "codex", quotas: [], capturedAt: Date(), accountEmail: "different@example.com")
+        #expect(reloaded.defaultAccount.label.isEmpty)
+        #expect(reloaded.defaultAccount.name == "Codex")
     }
 
     // MARK: - Backward Compatibility

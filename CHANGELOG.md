@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Notifications, provider pills, the Touch Bar, the status export and Notify! now follow the burn-rate warning setting like the menu bar does, so a quota that's on pace no longer sends a warning while the menu bar says healthy. ([#357](https://github.com/tddworks/ClaudeBar/issues/357))
 
 ### Changed
-- Add Codex accounts through browser sign-in without Terminal commands or folder picking. One account keeps the Codex name; multiple accounts get short menu-bar labels with full emails in tooltips. ([#358](https://github.com/tddworks/ClaudeBar/pull/358))
+- Add Codex accounts through browser sign-in without Terminal commands or folder picking. Optional names like Personal and Work distinguish accounts; one account keeps Codex, and menu-bar names stay short. ([#358](https://github.com/tddworks/ClaudeBar/pull/358))
 - Claude and Codex settings: one Data source section replaces Probe Mode. It shows where ClaudeBar looks for your key, says what happens if a source fails, and has a Test Connection button. Your choices carry over. ([#352](https://github.com/tddworks/ClaudeBar/issues/352))
 - Claude and Codex now run from built-in provider definitions instead of their own code: a first step toward adding providers from Settings. Usage, settings, accounts and the menu bar stay the same; please report anything that reads differently. ([#329](https://github.com/tddworks/ClaudeBar/pull/329))
 

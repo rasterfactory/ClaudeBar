@@ -277,57 +277,45 @@ private struct ProviderDetailView: View {
         .buttonStyle(.plain)
     }
 
-    /// The provider-specific config card, when one exists.
+    /// Shared account controls belong to every definition-driven provider.
     @ViewBuilder
     private var configCard: some View {
-        switch (provider as? Account)?.provider.id ?? provider.id {
-        case "claude":
-            if let claude = (provider as? Account)?.provider {
-                DataSourceSection(provider: claude, monitor: monitor)
-                ProviderAccountsCard(provider: claude, monitor: monitor)
+        if let account = provider as? Account {
+            let shared = account.provider
+            DataSourceSection(provider: shared, monitor: monitor)
+            if shared.definition.accounts != nil {
+                ProviderAccountsCard(provider: shared, monitor: monitor)
             }
-            ClaudeBudgetCard()
-        case "codex":
-            if let codex = (provider as? Account)?.provider {
-                DataSourceSection(provider: codex, monitor: monitor)
-                ProviderAccountsCard(provider: codex, monitor: monitor)
+            if shared.definition.profile.origin == .custom {
+                CustomProviderCard(provider: shared, monitor: monitor, onDeleted: onBack)
+            } else if account.isDefault {
+                defaultConfigCard
             }
-        case "kiro":
-            if let kiro = (provider as? Account)?.provider { ProviderAccountsCard(provider: kiro, monitor: monitor) }
-        case "kimi":
-            KimiConfigCard(monitor: monitor)
-        case "minimax":
-            MiniMaxConfigCard(monitor: monitor)
-        case "deepseek":
-            if let deepseek = (provider as? Account)?.provider {
-                ProviderAccountsCard(provider: deepseek, monitor: monitor)
-            }
-            DeepSeekConfigCard(monitor: monitor)
-        case "alibaba":
-            AlibabaConfigCard(monitor: monitor)
-        case "vercel-gateway":
-            VercelConfigCard(monitor: monitor)
-        case "copilot":
-            CopilotConfigCard(monitor: monitor)
-        case "zai":
-            ZaiConfigCard(monitor: monitor)
-        case "bedrock":
-            BedrockConfigCard(monitor: monitor)
-        default:
-            if let custom = (provider as? Account)?.provider, custom.definition.profile.origin == .custom {
-                DataSourceSection(provider: custom, monitor: monitor)
-                if custom.definition.accounts != nil {
-                    ProviderAccountsCard(provider: custom, monitor: monitor)
-                }
-                CustomProviderCard(provider: custom, monitor: monitor, onDeleted: onBack)
-            } else if let extProvider = provider as? ExtensionProvider, extProvider.manifest.hasConfig {
-                ExtensionConfigCard(
-                    provider: extProvider,
-                    configRepository: AppSettings.shared.extensionConfig
-                )
+        } else {
+            defaultConfigCard
+            if let extProvider = provider as? ExtensionProvider, extProvider.manifest.hasConfig {
+                ExtensionConfigCard(provider: extProvider, configRepository: AppSettings.shared.extensionConfig)
             }
         }
     }
+
+    /// These fields configure the existing default login, never an added account.
+    @ViewBuilder
+    private var defaultConfigCard: some View {
+        switch (provider as? Account)?.provider.id ?? provider.id {
+        case "claude": ClaudeBudgetCard()
+        case "kimi": KimiConfigCard(monitor: monitor)
+        case "minimax": MiniMaxConfigCard(monitor: monitor)
+        case "deepseek": DeepSeekConfigCard(monitor: monitor)
+        case "alibaba": AlibabaConfigCard(monitor: monitor)
+        case "vercel-gateway": VercelConfigCard(monitor: monitor)
+        case "copilot": CopilotConfigCard(monitor: monitor)
+        case "zai": ZaiConfigCard(monitor: monitor)
+        case "bedrock": BedrockConfigCard(monitor: monitor)
+        default: EmptyView()
+        }
+    }
+
 }
 
 // MARK: - Quotas (issue #140)

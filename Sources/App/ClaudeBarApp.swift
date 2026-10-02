@@ -136,6 +136,14 @@ struct ClaudeBarApp: App {
             return ProcessInfo.processInfo.environment[variable]
         })
 
+        let zai = Self.builtIn("zai", settings: settingsRepository,
+                               accounts: settingsRepository.accounts(forProvider: "zai"), secrets: vault,
+                               environment: { name in
+            if name == "ZAI_CONFIG_PATH" { return settingsRepository.zaiConfigPath() }
+            if name == "GLM_AUTH_NAME" { return settingsRepository.glmAuthEnvVar() }
+            return ProcessInfo.processInfo.environment[name]
+        })
+
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
@@ -144,10 +152,7 @@ struct ClaudeBarApp: App {
             codex.defaultAccount,
             GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
             AntigravityProvider(probe: AntigravityUsageProbe(), settingsRepository: settingsRepository),
-            ZaiProvider(
-                probe: ZaiUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
+            zai.defaultAccount,
             CopilotProvider(
                 billingProbe: CopilotUsageProbe(settingsRepository: settingsRepository),
                 internalProbe: CopilotInternalAPIProbe(settingsRepository: settingsRepository),
@@ -200,7 +205,7 @@ struct ClaudeBarApp: App {
             ),
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + deepseek.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + deepseek.accounts + zai.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

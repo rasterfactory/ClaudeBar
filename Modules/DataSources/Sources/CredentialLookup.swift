@@ -13,6 +13,8 @@ import Foundation
 public indirect enum CredentialLookup: Sendable, Equatable {
     /// An environment variable holds the token.
     case environment(String)
+    /// Pure selection over declared credential, file, CLI and environment inputs.
+    case script(ScriptCredentialLookup)
     /// A JSON file on this Mac holds the token and its companions.
     case jsonFile(JSONFileCredential)
     /// A generic-password Keychain item whose password is JSON (or the token
@@ -195,12 +197,14 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
 // MARK: - JSON
 
 extension CredentialLookup: Codable {
-    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf"]
+    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf", "script"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
         let base: CredentialLookup
         switch try container.singleTag(of: Self.tags, in: "credential") {
+        case "script":
+            base = .script(try container.decode(ScriptCredentialLookup.self, forKey: TagKey("script")))
         case "environment":
             base = .environment(try container.decode(String.self, forKey: TagKey("environment")))
         case "jsonFile":
@@ -227,6 +231,8 @@ extension CredentialLookup: Codable {
 
     private func encodeBase(into container: inout KeyedEncodingContainer<TagKey>) throws {
         switch self {
+        case .script(let script):
+            try container.encode(script, forKey: TagKey("script"))
         case .environment(let name):
             try container.encode(name, forKey: TagKey("environment"))
         case .jsonFile(let file):
@@ -250,6 +256,7 @@ extension CredentialLookup {
     /// would find it: a file path, a Keychain item, `$VARIABLE`. Never a value.
     public var lookupOrder: [String] {
         switch self {
+        case .script(let script): script.inputs.sorted { $0.key < $1.key }.flatMap { $0.value.lookupOrder } + script.files.values.sorted()
         case .environment(let name): ["$\(name)"]
         case .jsonFile(let file): [file.path]
         case .keychain(let item): ["Keychain “\(item.service)”"]
@@ -265,7 +272,28 @@ extension CredentialLookup {
         switch self {
         case .refreshing(let base, let refresh): refresh.hint ?? base.hint
         case .firstOf(let lookups): lookups.lazy.compactMap(\.hint).first
-        case .environment, .jsonFile, .keychain, .setting: nil
+        case .script, .environment, .jsonFile, .keychain, .setting: nil
         }
+    }
+}
+
+/// Credential scripts have no I/O API: each input is explicitly declared here.
+public struct ScriptCredentialLookup: Sendable, Equatable, Codable {
+    public let file: String
+    public let inputs: [String: CredentialLookup]
+    public let files: [String: String]
+    public let environment: [String: String]
+    public let constants: [String: String]
+    public let cli: [String: String]
+    public let timeout: TimeInterval
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        file = try c.decode(String.self, forKey: .file)
+        inputs = try c.decodeIfPresent([String: CredentialLookup].self, forKey: .inputs) ?? [:]
+        files = try c.decodeIfPresent([String: String].self, forKey: .files) ?? [:]
+        environment = try c.decodeIfPresent([String: String].self, forKey: .environment) ?? [:]
+        constants = try c.decodeIfPresent([String: String].self, forKey: .constants) ?? [:]
+        cli = try c.decodeIfPresent([String: String].self, forKey: .cli) ?? [:]
+        timeout = try c.decodeIfPresent(TimeInterval.self, forKey: .timeout) ?? 10
     }
 }

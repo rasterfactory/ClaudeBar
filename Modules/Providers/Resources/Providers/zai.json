@@ -1,0 +1,123 @@
+{
+  "profile": {
+    "id": "zai",
+    "name": "Z.ai",
+    "links": {
+      "dashboard": "https://z.ai/subscribe",
+      "status": "https://docs.z.ai/devpack/faq"
+    },
+    "look": {
+      "symbol": "z.square.fill",
+      "icon": "ZaiIcon",
+      "color": {
+        "light": [
+          0.23,
+          0.51,
+          0.96
+        ],
+        "dark": [
+          0.35,
+          0.6,
+          1
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.2,
+          0.35,
+          0.75
+        ],
+        "dark": [
+          0.3,
+          0.45,
+          0.85
+        ]
+      }
+    }
+  },
+  "cli": "claude",
+  "enabledByDefault": true,
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads GLM Coding Plan quotas from Z.ai or Zhipu.",
+      "credential": {
+        "script": {
+          "file": "zai-credentials.js",
+          "inputs": {
+            "apiKey": {
+              "setting": "apiKey"
+            }
+          },
+          "files": {
+            "config": "${ZAI_CONFIG_PATH:-~/.claude/settings.json}"
+          },
+          "environment": {
+            "auth": "${GLM_AUTH_NAME:-}"
+          },
+          "cli": {
+            "configured": "claude"
+          },
+          "timeout": 10
+        }
+      },
+      "fetch": {
+        "http": {
+          "url": "{{baseURL}}/api/monitor/usage/quota/limit",
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept-Language": "en-US,en",
+            "Content-Type": "application/json"
+          },
+          "timeout": 10,
+          "errors": {
+            "401": "authenticationRequired",
+            "403": "authenticationRequired",
+            "default": {
+              "executionFailed": "API returned HTTP {{status}}"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "zai-usage.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "form": [
+      {
+        "id": "apiKey",
+        "label": "API key",
+        "secret": true
+      },
+      {
+        "id": "platform",
+        "label": "Platform",
+        "choices": [
+          "api.z.ai",
+          "open.bigmodel.cn",
+          "dev.bigmodel.cn"
+        ]
+      }
+    ],
+    "patch": {
+      "api": {
+        "credential": {
+          "script": {
+            "files": null,
+            "environment": null,
+            "cli": null,
+            "constants": {
+              "platform": "{{account.platform}}"
+            }
+          }
+        }
+      }
+    }
+  }
+}

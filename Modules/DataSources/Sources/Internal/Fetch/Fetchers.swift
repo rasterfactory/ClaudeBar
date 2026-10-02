@@ -67,10 +67,15 @@ struct HTTPFetcher: Fetching {
             }
         }
 
+        let accepted = request.acceptedStatuses?.contains(http.statusCode) ?? (200..<300).contains(http.statusCode)
+        if accepted { return Response(status: http.statusCode, headers: headers, body: data) }
+        if let error = request.errors[String(http.statusCode)] ?? request.errors["default"] {
+            var reason = error.usageError
+            if case .executionFailed(let message) = reason { reason = .executionFailed(message.replacingOccurrences(of: "{{status}}", with: String(http.statusCode))) }
+            throw HTTPStatusError(status: http.statusCode, reason: reason)
+        }
         switch http.statusCode {
-        case 200..<300:
-            return Response(status: http.statusCode, headers: headers, body: data)
-        case 401, 403:
+                case 401, 403:
             throw HTTPStatusError(status: http.statusCode, reason: .authenticationRequired)
         case 429:
             let wait = Self.retryAfter(http.value(forHTTPHeaderField: "Retry-After"), now: now()) ?? Self.defaultRetryAfter

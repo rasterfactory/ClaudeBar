@@ -5,8 +5,8 @@ import Mockable
 @testable import Infrastructure
 @testable import Domain
 
-@Suite("ZaiUsageProbe Environment Variable Fallback Tests")
-struct ZaiUsageProbeEnvVarFallbackTests {
+@Suite("Zai definition environment fallback")
+struct ZaiDefinitionEnvironmentTests {
 
     static let sampleConfigWithKey = """
     {
@@ -107,7 +107,7 @@ struct ZaiUsageProbeEnvVarFallbackTests {
         let mockNetwork = MockNetworkClient()
         let settings = makeSettingsRepository(glmEnvVar: "GLM_TOKEN")
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
 
         let isAvailable = await probe.isAvailable()
 
@@ -131,7 +131,7 @@ struct ZaiUsageProbeEnvVarFallbackTests {
         let mockNetwork = MockNetworkClient()
         let settings = makeSettingsRepository(glmEnvVar: "GLM_TOKEN")
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
 
         let isAvailable = await probe.isAvailable()
 
@@ -155,7 +155,7 @@ struct ZaiUsageProbeEnvVarFallbackTests {
         let mockNetwork = MockNetworkClient()
         let settings = makeSettingsRepository(glmEnvVar: "")
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
 
         // isAvailable only checks if Claude is installed and z.ai is configured
         // It doesn't validate the API key (that's probe's job)
@@ -187,7 +187,7 @@ struct ZaiUsageProbeEnvVarFallbackTests {
 
         let uniqueVar = "CLAUDEBAR_TEST_GLM_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
         let settings = makeSettingsRepository(glmEnvVar: uniqueVar)
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
 
         let snapshot = try await probe.probe()
 
@@ -204,7 +204,7 @@ struct ZaiUsageProbeEnvVarFallbackTests {
 
         let mockNetwork = MockNetworkClient()
         let settings = makeSettingsRepository(glmEnvVar: "CLAUDEBAR_TEST_GLM_EMPTY")
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
 
         await #expect(throws: UsageError.authenticationRequired) {
             try await probe.probe()
@@ -220,7 +220,7 @@ struct ZaiUsageProbeEnvVarFallbackTests {
 
         let mockNetwork = MockNetworkClient()
         let settings = makeSettingsRepository(glmEnvVar: "GLM TOKEN;rm -rf /")
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
 
         await #expect(throws: UsageError.authenticationRequired) {
             try await probe.probe()
@@ -240,7 +240,7 @@ struct ZaiUsageProbeEnvVarFallbackTests {
         }).willReturn((Data(Self.sampleQuotaResponse.utf8), makeOKResponse()))
 
         let settings = makeSettingsRepository(glmEnvVar: "CLAUDEBAR_TEST_GLM_UNUSED")
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
 
         let snapshot = try await probe.probe()
 
@@ -269,7 +269,7 @@ struct ZaiUsageProbeEnvVarFallbackTests {
             glmEnvVar: ""
         )
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, networkClient: mockNetwork, settingsRepository: settings)
 
         _ = await probe.isAvailable()
 

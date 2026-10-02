@@ -114,7 +114,7 @@ public enum DataSources {
         }
 
         let readers = Readers(environment: environment, homeDirectory: homeDirectory, security: security,
-                              secrets: secrets, providerId: providerId)
+                              secrets: secrets, providerId: providerId, scripts: scripts, executor: makeCLIExecutor(CLICall(cli: "/bin/zsh")))
         return DataSource(
             definition: definition,
             providerId: providerId,
@@ -144,9 +144,13 @@ public enum DataSources {
         let security: KeychainReader.Security
         let secrets: (any SecretStore)?
         let providerId: String
+        let scripts: ScriptSource
+        let executor: any CLIExecutor
 
         func reader(for lookup: CredentialLookup) -> any CredentialFinding {
             switch lookup {
+            case .script(let script):
+                ScriptCredentialReader(definition: script, source: scripts(script.file), inputs: script.inputs.mapValues { reader(for: $0) }, environment: environment, homeDirectory: homeDirectory, executor: executor)
             case .environment(let name):
                 EnvironmentReader(name: name, environment: environment)
             case .jsonFile(let file):

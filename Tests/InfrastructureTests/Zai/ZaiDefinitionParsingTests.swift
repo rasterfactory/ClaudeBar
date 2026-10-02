@@ -1,10 +1,19 @@
 import Testing
+import Providers
+import DataSources
 import Foundation
 @testable import Infrastructure
 @testable import Domain
 
 @Suite
-struct ZaiUsageProbeParsingTests {
+struct ZaiDefinitionParsingTests {
+
+    private func read(_ data: Data, providerId: String) throws -> UsageSnapshot {
+        let definition = try Providers.builtIn("zai")
+        let source = DataSources.make(definition.dataSources[0], providerId: providerId, scripts: Providers.builtInScripts)
+        do { return try source.read(Response(body: data)) }
+        catch let error as DataSourceError { throw error.reason }
+    }
 
     // MARK: - Sample Data
 
@@ -83,7 +92,7 @@ struct ZaiUsageProbeParsingTests {
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
         // When
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         // Then
         #expect(snapshot.quotas.count == 2)
@@ -95,7 +104,7 @@ struct ZaiUsageProbeParsingTests {
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
         // When
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         // Then - percentage is "used", so remaining = 100 - used
         let tokenQuota = snapshot.quotas.first { $0.quotaType == .session }
@@ -109,7 +118,7 @@ struct ZaiUsageProbeParsingTests {
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
         // When
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         // Then
         let tokenQuota = snapshot.quotas.first { $0.quotaType == .session }
@@ -122,7 +131,7 @@ struct ZaiUsageProbeParsingTests {
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
         // When
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         // Then
         let timeQuota = snapshot.quotas.first { $0.quotaType == .timeLimit("MCP") }
@@ -136,7 +145,7 @@ struct ZaiUsageProbeParsingTests {
         let data = Data(Self.sampleQuotaLimitResponseOnlyTokens.utf8)
 
         // When
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         // Then
         #expect(snapshot.quotas.count == 1)
@@ -150,7 +159,7 @@ struct ZaiUsageProbeParsingTests {
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
         // When
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         // Then
         #expect(snapshot.providerId == "zai")
@@ -163,7 +172,7 @@ struct ZaiUsageProbeParsingTests {
         let data = Data(Self.sampleQuotaLimitResponseFullUsage.utf8)
 
         // When
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         // Then
         #expect(snapshot.quotas.first?.percentRemaining == 0.0)
@@ -175,7 +184,7 @@ struct ZaiUsageProbeParsingTests {
         let data = Data(Self.sampleQuotaLimitResponseNoUsage.utf8)
 
         // When
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         // Then
         #expect(snapshot.quotas.first?.percentRemaining == 100.0)
@@ -190,7 +199,7 @@ struct ZaiUsageProbeParsingTests {
 
         // When/Then
         #expect(throws: UsageError.self) {
-            try ZaiUsageProbe.parseQuotaLimitResponse(invalidData, providerId: "zai")
+            try read(invalidData, providerId: "zai")
         }
     }
 
@@ -201,7 +210,7 @@ struct ZaiUsageProbeParsingTests {
 
         // When/Then
         #expect(throws: UsageError.self) {
-            try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+            try read(data, providerId: "zai")
         }
     }
 
@@ -217,7 +226,7 @@ struct ZaiUsageProbeParsingTests {
 
         // When/Then
         #expect(throws: UsageError.self) {
-            try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+            try read(data, providerId: "zai")
         }
     }
 
@@ -249,7 +258,7 @@ struct ZaiUsageProbeParsingTests {
     @Test
     func `parses real z.ai response with all three quota tiers (session/weekly/MCP)`() throws {
         let data = Data(Self.sampleQuotaLimitResponseRealZai.utf8)
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         #expect(snapshot.quotas.count == 3)
         #expect(snapshot.quotas.contains { $0.quotaType == .session })
@@ -264,7 +273,7 @@ struct ZaiUsageProbeParsingTests {
           { "type": "TOKENS_LIMIT", "unit": 3, "percentage": 13 }
         ] } }
         """
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        let snapshot = try read(Data(json.utf8), providerId: "zai")
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas.first?.quotaType == .session)
         #expect(snapshot.quotas.first?.percentRemaining == 87.0)
@@ -277,7 +286,7 @@ struct ZaiUsageProbeParsingTests {
           { "type": "TOKENS_LIMIT", "unit": 6, "percentage": 46 }
         ] } }
         """
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        let snapshot = try read(Data(json.utf8), providerId: "zai")
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas.first?.quotaType == .weekly)
         #expect(snapshot.quotas.first?.percentRemaining == 54.0)
@@ -288,7 +297,7 @@ struct ZaiUsageProbeParsingTests {
         // Regression test: prior implementation mapped both TOKENS_LIMIT entries
         // to .session, so the second one (weekly) was effectively hidden.
         let data = Data(Self.sampleQuotaLimitResponseRealZai.utf8)
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         let sessionQuotas = snapshot.quotas.filter { $0.quotaType == .session }
         let weeklyQuotas = snapshot.quotas.filter { $0.quotaType == .weekly }
@@ -305,7 +314,7 @@ struct ZaiUsageProbeParsingTests {
           { "type": "TOKENS_LIMIT", "percentage": 65 }
         ] } }
         """
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        let snapshot = try read(Data(json.utf8), providerId: "zai")
         #expect(snapshot.quotas.first?.quotaType == .session)
     }
 
@@ -316,7 +325,7 @@ struct ZaiUsageProbeParsingTests {
           { "type": "TOKENS_LIMIT", "unit": 99, "percentage": 25 }
         ] } }
         """
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        let snapshot = try read(Data(json.utf8), providerId: "zai")
         #expect(snapshot.quotas.count == 1)
         if case .modelSpecific(let label) = snapshot.quotas.first?.quotaType {
             #expect(label.contains("99"))
@@ -347,7 +356,7 @@ struct ZaiUsageProbeParsingTests {
         let data = Data(responseWithInvalidPercentage.utf8)
 
         // When
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         // Then - should clamp to 0-100 range
         #expect(snapshot.quotas.count == 2)
@@ -381,7 +390,7 @@ struct ZaiUsageProbeParsingTests {
     @Test
     func `parses credit-based plan response instead of failing`() throws {
         let data = Data(Self.sampleQuotaLimitResponseCreditPlan.utf8)
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(data, providerId: "zai")
+        let snapshot = try read(data, providerId: "zai")
 
         #expect(snapshot.quotas.count == 2)
         #expect(snapshot.quotas.contains { $0.quotaType == .session })
@@ -395,7 +404,7 @@ struct ZaiUsageProbeParsingTests {
           { "type": "CREDIT_LIMIT", "unit": 3, "percentage": 13 }
         ] } }
         """
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        let snapshot = try read(Data(json.utf8), providerId: "zai")
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas.first?.quotaType == .session)
         #expect(snapshot.quotas.first?.percentRemaining == 87.0)
@@ -408,7 +417,7 @@ struct ZaiUsageProbeParsingTests {
           { "type": "CREDIT_LIMIT", "unit": 6, "percentage": 20 }
         ] } }
         """
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        let snapshot = try read(Data(json.utf8), providerId: "zai")
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas.first?.quotaType == .weekly)
         #expect(snapshot.quotas.first?.percentRemaining == 80.0)
@@ -421,7 +430,7 @@ struct ZaiUsageProbeParsingTests {
           { "type": "CREDIT_LIMIT", "unit": 99, "percentage": 5 }
         ] } }
         """
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        let snapshot = try read(Data(json.utf8), providerId: "zai")
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas.first?.quotaType == .modelSpecific("Credits (unit 99)"))
     }
@@ -435,7 +444,7 @@ struct ZaiUsageProbeParsingTests {
           { "type": "TIME_LIMIT", "unit": 5, "percentage": 1 }
         ] } }
         """
-        let snapshot = try ZaiUsageProbe.parseQuotaLimitResponse(Data(json.utf8), providerId: "zai")
+        let snapshot = try read(Data(json.utf8), providerId: "zai")
         #expect(snapshot.quotas.count == 3)
         #expect(snapshot.quotas.contains { $0.quotaType == .session })
         #expect(snapshot.quotas.contains { $0.quotaType == .weekly })

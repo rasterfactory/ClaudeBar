@@ -149,34 +149,6 @@ extension AntigravityProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - ZaiProvider Visual Identity
-
-extension ZaiProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "z.square.fill" }
-
-    public var iconAssetName: String { "ZaiIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Blue color matching Z.ai branding
-        scheme == .dark
-            ? Color(red: 0.35, green: 0.60, blue: 1.0)
-            : Color(red: 0.23, green: 0.51, blue: 0.96)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.30, green: 0.45, blue: 0.85)
-                    : Color(red: 0.20, green: 0.35, blue: 0.75)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - BedrockProvider Visual Identity
 
 extension BedrockProvider: ProviderVisualIdentity {

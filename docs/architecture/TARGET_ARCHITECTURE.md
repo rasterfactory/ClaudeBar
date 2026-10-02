@@ -383,6 +383,9 @@ vendor type:
 
 | Need | Generic piece |
 |---|---|
+| credential selection combines a saved key, a config file, platform detection and a login-shell fallback | `CredentialLookup.script` declares credential inputs, text files, environment names, constants and CLI checks. A pure `readCredential(input)` script returns fields/readiness/error and may request one declared environment lookup. Host I/O stays in the shared reader; scripts have no I/O API |
+| configuration is available before a token is resolved | asynchronous credential readiness and fetch lookup preserve the existing synchronous readers; readiness never starts a login shell |
+| an endpoint has provider-specific HTTP errors | `http.errors` and optional `acceptedStatuses`, with HTTP status retained for refresh |
 | a TUI screen and human reset dates no rule can say | `Mapping.script` — a JavaScript file in JavaScriptCore, no I/O, host `humanDate()`; the scripts ship beside the definition |
 | Claude Code's Keychain item | `CredentialLookup.keychain(service, fields)` via `security`, hex-decoded, written back as compact JSON |
 | expiry in milliseconds, a JSON refresh body with `scope` | `OAuth2Refresh.dueWhen`, `bodyFormat`, `scope`; values keep their JSON type on write-back; a failed refresh re-reads the store |

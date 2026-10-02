@@ -5,7 +5,7 @@ import Mockable
 @testable import Domain
 
 @Suite
-struct ZaiUsageProbeTests {
+struct ZaiDefinitionExecutionTests {
 
     // MARK: - Test Helpers
 
@@ -101,7 +101,7 @@ struct ZaiUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithZai, exitCode: 0))
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
 
         // When & Then
         #expect(await probe.isAvailable() == true)
@@ -123,7 +123,7 @@ struct ZaiUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithoutZai, exitCode: 0))
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
 
         // When & Then
         #expect(await probe.isAvailable() == false)
@@ -135,7 +135,7 @@ struct ZaiUsageProbeTests {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.any).willReturn(nil)
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
 
         // When & Then
         #expect(await probe.isAvailable() == false)
@@ -157,7 +157,7 @@ struct ZaiUsageProbeTests {
             autoResponses: .any
         ).willThrow(UsageError.executionFailed("File not found"))
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
 
         // When & Then
         #expect(await probe.isAvailable() == false)
@@ -190,7 +190,7 @@ struct ZaiUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: configWithZhipu, exitCode: 0))
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
 
         // When & Then
         #expect(await probe.isAvailable() == true)
@@ -199,24 +199,24 @@ struct ZaiUsageProbeTests {
     // MARK: - Configuration Parsing Tests
 
     @Test
-    func `extracts API key from Claude config`() {
+    func `extracts API key from Claude config`() async {
         // Given
         let config = Self.sampleClaudeConfigWithZai
 
         // When
-        let apiKey = ZaiUsageProbe.extractAPIKey(from: config)
+        let apiKey = await ZaiDefinitionHarness.extractedKey(from: config)
 
         // Then
         #expect(apiKey == "sk-zai-test-key-12345")
     }
 
     @Test
-    func `returns nil when API key not found`() {
+    func `returns nil when API key not found`() async {
         // Given
         let config = Self.sampleClaudeConfigEmpty
 
         // When
-        let apiKey = ZaiUsageProbe.extractAPIKey(from: config)
+        let apiKey = await ZaiDefinitionHarness.extractedKey(from: config)
 
         // Then
         #expect(apiKey == nil)
@@ -228,10 +228,10 @@ struct ZaiUsageProbeTests {
         let zaiConfig = Self.sampleClaudeConfigWithZai
 
         // When
-        let platform = ZaiUsageProbe.detectPlatform(from: zaiConfig)
+        let platform = ZaiDefinitionHarness.platformWithSavedKey(from: zaiConfig)
 
         // Then
-        #expect(platform == .zai)
+        #expect(platform == "https://api.z.ai")
     }
 
     @Test
@@ -248,10 +248,10 @@ struct ZaiUsageProbeTests {
         """
 
         // When
-        let platform = ZaiUsageProbe.detectPlatform(from: zhipuConfig)
+        let platform = ZaiDefinitionHarness.platformWithSavedKey(from: zhipuConfig)
 
         // Then
-        #expect(platform == .zhipu)
+        #expect(platform == "https://open.bigmodel.cn")
     }
 
     // MARK: - Probe Error Tests
@@ -262,7 +262,7 @@ struct ZaiUsageProbeTests {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.any).willReturn(nil)
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
 
         // When & Then
         await #expect(throws: UsageError.cliNotFound("Claude")) {
@@ -286,7 +286,7 @@ struct ZaiUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: Self.sampleClaudeConfigEmpty, exitCode: 0))
 
-        let probe = ZaiUsageProbe(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
+        let probe = ZaiDefinitionHarness(cliExecutor: mockExecutor, settingsRepository: makeSettingsRepository())
 
         // When & Then
         await #expect(throws: UsageError.authenticationRequired) {
@@ -324,7 +324,7 @@ struct ZaiUsageProbeTests {
         )!
         given(mockNetwork).request(.any).willReturn((apiResponseData, response))
 
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork,
             settingsRepository: makeSettingsRepository()
@@ -368,7 +368,7 @@ struct ZaiUsageProbeTests {
         )!
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork,
             settingsRepository: makeSettingsRepository()
@@ -406,7 +406,7 @@ struct ZaiUsageProbeTests {
         )!
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork,
             settingsRepository: makeSettingsRepository()
@@ -445,7 +445,7 @@ struct ZaiUsageProbeTests {
         )!
         given(mockNetwork).request(.any).willReturn((invalidData, response))
 
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork,
             settingsRepository: makeSettingsRepository()
@@ -462,21 +462,21 @@ struct ZaiUsageProbeTests {
     @Test
     func `parseResetDate handles ISO-8601 with fractional seconds`() {
         let text = "2025-12-31T20:00:00.123Z"
-        let date = ZaiUsageProbe.parseResetDate(.string(text))
+        let date = ZaiDefinitionHarness.resetDate(.string(text))
         #expect(date != nil)
     }
 
     @Test
     func `parseResetDate handles ISO-8601 without fractional seconds`() {
         let text = "2025-12-31T20:00:00Z"
-        let date = ZaiUsageProbe.parseResetDate(.string(text))
+        let date = ZaiDefinitionHarness.resetDate(.string(text))
         #expect(date != nil)
     }
 
     @Test
     func `parseResetDate handles numeric timestamp`() {
         let timestamp: Int64 = 1767195236777
-        let date = ZaiUsageProbe.parseResetDate(.timestamp(timestamp))
+        let date = ZaiDefinitionHarness.resetDate(.timestamp(timestamp))
         #expect(date != nil)
         let calendar = Calendar(identifier: .gregorian)
         #expect(calendar.component(.year, from: date!) == 2025 || calendar.component(.year, from: date!) == 2026)
@@ -485,7 +485,7 @@ struct ZaiUsageProbeTests {
     @Test
     func `parseResetDate returns nil for invalid format`() {
         let text = "invalid-date"
-        let date = ZaiUsageProbe.parseResetDate(.string(text))
+        let date = ZaiDefinitionHarness.resetDate(.string(text))
         #expect(date == nil)
     }
 
@@ -513,7 +513,7 @@ struct ZaiUsageProbeTests {
         }).willReturn((Data(Self.sampleQuotaLimitResponse.utf8), Self.makeOKResponse()))
 
         let settings = makeSettingsRepository(apiKey: "settings-api-key", glmEnvVar: "GLM_TOKEN")
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork,
             settingsRepository: settings
@@ -550,7 +550,7 @@ struct ZaiUsageProbeTests {
         }).willReturn((Data(Self.sampleQuotaLimitResponse.utf8), Self.makeOKResponse()))
 
         let settings = makeSettingsRepository(apiKey: "settings-api-key")
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork,
             settingsRepository: settings
@@ -579,7 +579,7 @@ struct ZaiUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithoutZai, exitCode: 0))
 
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: MockNetworkClient(),
             settingsRepository: makeSettingsRepository(apiKey: "settings-api-key")
@@ -604,7 +604,7 @@ struct ZaiUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithoutZai, exitCode: 0))
 
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: MockNetworkClient(),
             settingsRepository: makeSettingsRepository(apiKey: "settings-api-key")
@@ -635,7 +635,7 @@ struct ZaiUsageProbeTests {
             request.value(forHTTPHeaderField: "Authorization") == "Bearer settings-api-key"
         }).willReturn((Data(Self.sampleQuotaLimitResponse.utf8), Self.makeOKResponse()))
 
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork,
             settingsRepository: makeSettingsRepository(apiKey: "settings-api-key")
@@ -664,7 +664,7 @@ struct ZaiUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: Self.sampleClaudeConfigWithoutZai, exitCode: 0))
 
-        let probe = ZaiUsageProbe(
+        let probe = ZaiDefinitionHarness(
             cliExecutor: mockExecutor,
             networkClient: MockNetworkClient(),
             settingsRepository: makeSettingsRepository(apiKey: "   ")

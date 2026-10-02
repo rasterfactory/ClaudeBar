@@ -295,7 +295,14 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
     public func runningCLI(_ binary: String) throws -> ProviderDefinition {
         let binary = binary.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let cli, !binary.isEmpty, binary != cli else { return self }
-        let sources = try dataSources.map { source -> DataSourceDefinition in
+        let sources = try dataSources.map { original -> DataSourceDefinition in
+            var source = original
+            if case .script(let script)? = source.credential {
+                let changed = script.cli.filter { $0.value == cli }.mapValues { _ in JSONValue.string(binary) }
+                if !changed.isEmpty {
+                    source = try source.patched(with: .object(["credential": .object(["script": .object(["cli": .object(changed)])])]))
+                }
+            }
             let tag: String
             switch source.fetch {
             case .cli(let call) where call.cli == cli: tag = "cli"

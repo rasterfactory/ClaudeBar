@@ -31,13 +31,15 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
     }
 
     static func key(_ name: String, provider: String) -> String {
-        "provider.\(provider).\(name)"
+        if provider == "zai", name == "apiKey" { return CredentialKey.zaiApiKey }
+        return "provider.\(provider).\(name)"
     }
 
     private func migration(_ name: String, provider: String) -> SecureCredentialMigration? {
         // Compatibility lives at storage's boundary, never in the provider runtime.
         // Exact default-login keys only: an added login never inherits this entry.
-        let legacyKeys = ["provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key"]
+        let legacyKeys = [CredentialKey.zaiApiKey: "com.claudebar.credentials.zai-api-key",
+            "provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key"]
         let key = Self.key(name, provider: provider)
         guard let legacyKey = legacyKeys[key] else { return nil }
         return SecureCredentialMigration(secureStore: credentials, legacyStore: legacyStore, secureKey: key, legacyKey: legacyKey)

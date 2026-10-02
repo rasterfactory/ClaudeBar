@@ -66,3 +66,29 @@ History:
 
 - Before #181 (0.4.61) every `TOKENS_LIMIT` became the session quota, so the weekly entry, the cap GLM users care about most, overwrote or was overwritten by the 5-hour one.
 - Credit-based tiers report `CREDIT_LIMIT` with the same `unit` meanings. Before #240 (0.4.75) every entry fell through to "skip", and the probe failed on a valid HTTP 200.
+
+
+## Definition migration
+
+`Modules/Providers/Resources/Providers/zai.json` replaces the legacy provider and
+probe. `zai-credentials.js` selects the configured platform and credential over
+explicit inputs; `zai-usage.js` maps quotas. Both scripts are pure JavaScript.
+The generic credential worker performs declared file/vault/environment reads,
+CLI availability checks and at most one requested login-shell lookup.
+
+The default login keeps the existing config-path and environment-name settings.
+A saved key wins and works without Claude; otherwise Claude and a supported
+endpoint are required. Platform detection retains env/provider-array/raw-JSON
+precedence. Config credentials win over the configured process environment and
+login shell. Missing config and authentication errors retain their behavior.
+
+Added logins select a platform and store their own key securely. Their patched
+credential source has no default config files, shell variables or CLI inputs.
+They cannot inherit the default login. The existing `zai-glm-api-key` secure
+credential and verified UserDefaults migration are shared with the config card.
+
+All 56 original parser/config/request/environment fixtures now run through the
+real definition. Additional fixtures exercise migration, refused writes,
+independent platforms, labels, relaunch, removal and missing credentials.
+The quota mapping preserves legacy and credit-based limits, unit-specific
+windows, percentage clamps and millisecond/ISO/numeric-string reset dates.

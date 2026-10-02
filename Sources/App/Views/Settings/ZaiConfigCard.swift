@@ -268,6 +268,10 @@ struct ZaiConfigCard: View {
 
         AppLog.credentials.info("Saving Z.ai API key from settings")
         settings.zai.saveZaiApiKey(apiKey)
+        guard settings.zai.getZaiApiKey() == apiKey else {
+            zaiApiKeyMessage = "Could not save API key securely. Please try again."
+            return
+        }
         hasStoredZaiApiKey = true
         zaiApiKeyInput = ""
         zaiApiKeyMessage = "Saved: API key stored in ClaudeBar settings"

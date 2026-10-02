@@ -35,7 +35,9 @@ struct ProviderProfileTests {
     func `an added login's id finds its product's definition`() {
         #expect(Providers.builtInDefinition(forLineupId: "codex.4f2a")?.id == "codex")
         #expect(Providers.builtInDefinition(forLineupId: "claude")?.id == "claude")
-        #expect(Providers.builtInDefinition(forLineupId: "gemini") == nil)
+        #expect(Providers.builtInDefinition(forLineupId: "gemini")?.id == "gemini")
+        #expect(Providers.builtInDefinition(forLineupId: "gemini.work")?.id == "gemini")
+        #expect(Providers.builtInDefinition(forLineupId: "unknown-provider") == nil)
     }
 
     @Test

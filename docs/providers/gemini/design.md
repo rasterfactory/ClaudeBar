@@ -1,4 +1,4 @@
-# Gemini probe design
+# Gemini definition design
 
 Contributor notes for the Gemini provider. For setup, see the [README](README.md).
 
@@ -7,15 +7,19 @@ Contributor notes for the Gemini provider. For setup, see the [README](README.md
 | Step | Call | Notes |
 |---|---|---|
 | Credentials | `~/.gemini/oauth_creds.json` → `access_token` | Written by gemini-cli's "Login with Google". `isAvailable()` only checks that this file exists |
-| Project | `POST https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` → `cloudaicompanionProject` | Body `{"metadata":{"pluginType":"GEMINI"}}`, the same bootstrap call gemini-cli makes. Up to 3 attempts, 400 ms and then 600 ms apart, to ride out cold-start network delays. The "200ms, 500ms, 1000ms" in the code comment is stale. A 401/403 isn't retried |
+| Project | `POST https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` → `cloudaicompanionProject` | Body `{"metadata":{"pluginType":"GEMINI"}}`, the same bootstrap call gemini-cli makes. Up to 3 attempts, 400 ms and then 600 ms apart, to ride out cold-start network delays. A 401/403 isn't retried |
 | Quota | `POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` with the project ID | Returns `buckets[]`: `modelId`, `remainingFraction`, `resetTime` (ISO 8601) |
-| Token refresh | Run `gemini` with `/quit` as input (15 s timeout), wait 1.5 s, retry once | Only after an `authenticationRequired`. The CLI refreshes the token when it starts. ClaudeBar doesn't do an OAuth refresh itself |
+| Token refresh | Run `gemini` with `/quit` as input (15 s timeout), wait 1.5 s, retry once | Only after quota HTTP 401. The CLI refreshes the token when it starts. ClaudeBar doesn't do an OAuth refresh itself |
 
-`GeminiUsageProbe` goes straight to the API probe. `GeminiCLIProbe` (runs `gemini` with `/stats` and parses the model usage table) is still in the source, but the call to it has been commented out as "not working reliably". Its parser remains for tests.
+`Modules/Providers/Resources/Providers/gemini.json` declares the API flow and an explicit CLI source. The default remains API, with no automatic CLI quota fallback. `gemini-flow.js` plans fixed requests without I/O; `gemini-api.js` and `gemini-cli.js` map quota data.
+
+The shared flow worker permits at most eight requests, counts attempts, honours bounded cancellable delays, and continues only declared optional request failures. Error payloads never enter the planner. Credential `refresh.cli` runs the declared owner's command once after 401 and rereads the same file without rewriting it. A second 401 fails; 403 does not refresh. The selected custom CLI location reaches both stats and token refresh.
+
+Named accounts bind the OAuth file, required file and refresh CLI to their own `GEMINI_CLI_HOME`. API-key and Vertex environment overrides are removed for those CLI calls. Default file-existence readiness remains compatible; missing login files never start a CLI. Named accounts require one explicit successful refresh before background fetching.
 
 ## Why `loadCodeAssist` (#124, #122)
 
-Project discovery used to call `cloudresourcemanager.googleapis.com/v1/projects`. A personal Google sign-in has no GCP scope, so that call failed. `retrieveUserQuota` then went out without a project and came back with three dummy "100% remaining" buckets. It also hid `gemini-3-*-preview` for users eligible for that tier. An earlier workaround ("use any GCP project") helped only users who have a GCP project. `loadCodeAssist` returns the project gemini-cli itself uses, so it works for everyone. If discovery still fails, the quota call goes out without a project and the log warns that the numbers may not be accurate.
+Project discovery used to call `cloudresourcemanager.googleapis.com/v1/projects`. A personal Google sign-in has no GCP scope, so that call failed. `retrieveUserQuota` then went out without a project and came back with three dummy "100% remaining" buckets. It also hid `gemini-3-*-preview` for users eligible for that tier. An earlier workaround ("use any GCP project") helped only users who have a GCP project. `loadCodeAssist` returns the project gemini-cli itself uses, so it works for everyone. If discovery still fails, the quota call goes out without a project and the numbers may be less accurate.
 
 ## Mapping buckets
 

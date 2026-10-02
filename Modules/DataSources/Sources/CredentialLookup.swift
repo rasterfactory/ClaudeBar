@@ -25,7 +25,6 @@ public indirect enum CredentialLookup: Sendable, Equatable {
     case sqlite(SQLiteCredential)
     case claiming(CredentialLookup, CredentialClaims)
     case browserCookies(BrowserCookieCredential)
-    case browserCookies(BrowserCookieCredential)
     case bySetting(CredentialChoice)
     case tagged(CredentialLookup, [String: String])
     /// The first lookup that answers wins.
@@ -33,6 +32,7 @@ public indirect enum CredentialLookup: Sendable, Equatable {
     /// A lookup whose token is kept fresh by an OAuth 2 refresh.
     case refreshing(CredentialLookup, OAuth2Refresh)
     case accompanying(CredentialLookup, CompanionLookups)
+    case refreshingWithCLI(CredentialLookup, CLIRefresh)
 }
 
 /// What a lookup found: the token and the values that travel with it
@@ -88,13 +88,15 @@ public struct KeychainCredential: Sendable, Equatable, Codable {
 public struct JSONFileCredential: Sendable, Equatable, Codable {
     /// `~` expands to the home directory.
     public let path: String
+    public let strict: Bool
     /// Credential name → JSON path in the file. `token` is required.
     public let fields: [String: String]
     public let select: RecordSelection?
     public let defaults: [String: String]
 
-    public init(path: String, fields: [String: String], select: RecordSelection? = nil, defaults: [String: String] = [:]) {
+    public init(path: String, fields: [String: String], select: RecordSelection? = nil, defaults: [String: String] = [:], strict: Bool = false) {
         self.path = path
+        self.strict = strict
         self.fields = fields
         self.select = select
         self.defaults = defaults
@@ -105,8 +107,9 @@ public struct JSONFileCredential: Sendable, Equatable, Codable {
         path = try container.decode(String.self, forKey: TagKey("path"))
         select = try container.decodeIfPresent(RecordSelection.self, forKey: TagKey("select"))
         defaults = try container.decodeIfPresent([String: String].self, forKey: TagKey("defaults")) ?? [:]
+        strict = try container.decodeIfPresent(Bool.self, forKey: TagKey("strict")) ?? false
         var fields: [String: String] = [:]
-        for key in container.allKeys where !["path", "select", "defaults"].contains(key.stringValue) {
+        for key in container.allKeys where !["path", "strict", "select", "defaults"].contains(key.stringValue) {
             fields[key.stringValue] = try container.decode(String.self, forKey: key)
         }
         self.fields = fields
@@ -117,6 +120,7 @@ public struct JSONFileCredential: Sendable, Equatable, Codable {
         try container.encode(path, forKey: TagKey("path"))
         try container.encodeIfPresent(select, forKey: TagKey("select"))
         if !defaults.isEmpty { try container.encode(defaults, forKey: TagKey("defaults")) }
+        if strict { try container.encode(strict, forKey: TagKey("strict")) }
         for (name, path) in fields {
             try container.encode(path, forKey: TagKey(name))
         }
@@ -266,7 +270,11 @@ extension CredentialLookup: Codable {
         let tagged = facts.isEmpty ? base : .tagged(base, facts)
         if container.contains(TagKey("refresh")) {
             let refresh = try container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
-            self = .refreshing(tagged, try refresh.decode(OAuth2Refresh.self, forKey: TagKey("oauth2")))
+            if refresh.contains(TagKey("cli")) {
+                self = .refreshingWithCLI(tagged, try refresh.decode(CLIRefresh.self, forKey: TagKey("cli")))
+            } else {
+                self = .refreshing(tagged, try refresh.decode(OAuth2Refresh.self, forKey: TagKey("oauth2")))
+            }
         } else {
             self = tagged
         }
@@ -306,6 +314,10 @@ extension CredentialLookup: Codable {
         case .accompanying(let base, let companions):
             try base.encodeBase(into: &container)
             try container.encode(companions, forKey: TagKey("companions"))
+        case .refreshingWithCLI(let base, let refresh):
+            try base.encodeBase(into: &container)
+            var nested = container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
+            try nested.encode(refresh, forKey: TagKey("cli"))
         case .refreshing(let base, let refresh):
             try base.encodeBase(into: &container)
             var nested = container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
@@ -330,7 +342,7 @@ extension CredentialLookup {
         case .browserCookies: ["Signed-in browser cookies"]
         case .setting: ["API key saved in ClaudeBar"]
         case .firstOf(let lookups): lookups.flatMap(\.lookupOrder)
-        case .refreshing(let base, _), .accompanying(let base, _): base.lookupOrder
+        case .refreshing(let base, _), .accompanying(let base, _), .refreshingWithCLI(let base, _): base.lookupOrder
         }
     }
 
@@ -345,7 +357,7 @@ extension CredentialLookup {
         case .accompanying(let base, _): base.hint
         case .firstOf(let lookups): lookups.lazy.compactMap(\.hint).first
         case .browserCookies, .script, .environment, .jsonFile, .keychain, .setting, .sqlite: nil
-        case .environment, .jsonFile, .keychain, .setting, .browserCookies: nil
+        case .refreshingWithCLI(let base, _): base.hint
         }
     }
 }
@@ -421,4 +433,12 @@ public struct CredentialChoice: Codable, Sendable, Equatable {
     public let setting: String
     public let `default`: String
     public let values: [String: CredentialLookup]
+}
+
+/// Refresh through the CLI that owns a credential file, then reread that same lookup.
+public struct CLIRefresh: Sendable, Equatable, Codable {
+    public let call: CLICall
+    public let onStatus: [Int]
+    public let delaySeconds: TimeInterval?
+    public let missingError: ErrorRef?
 }

@@ -52,7 +52,7 @@ struct GeminiUsageProbeTests {
 
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("loadCodeAssist") {
                     return (projectsResponse, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -62,7 +62,7 @@ struct GeminiUsageProbeTests {
             }
         
         // Initialize probe with mock network client (maxRetries: 0 to skip retry delays in tests)
-        let probe = GeminiUsageProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,

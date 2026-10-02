@@ -274,7 +274,7 @@ struct AntigravityProviderTests {
         let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
         let claude = StubClaudeProvider(probe: mockProbe, settingsRepository: settings)
         let codex = StubCodexProvider(probe: mockProbe, settingsRepository: settings)
-        let gemini = GeminiProvider(probe: mockProbe, settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: mockProbe, settingsRepository: settings)
         let copilot = Providers.make(try! Providers.builtIn("copilot"), settings: JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")))).defaultAccount
 
         let ids = Set([antigravity.id, claude.id, codex.id, gemini.id, copilot.id])

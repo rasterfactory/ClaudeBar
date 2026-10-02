@@ -280,7 +280,7 @@ public struct DataSource: Sendable {
         } catch {
             throw DataSourceError.wrap(error, as: .lookup)
         }
-        renewed.save?(renewed.credential)
+        if !(refresher is CLIRefresher) { renewed.save?(renewed.credential) }
         return renewed
     }
 

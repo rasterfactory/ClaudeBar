@@ -1,0 +1,230 @@
+{
+  "profile": {
+    "id": "gemini",
+    "name": "Gemini",
+    "links": {
+      "dashboard": "https://aistudio.google.com",
+      "status": "https://status.cloud.google.com"
+    },
+    "look": {
+      "symbol": "sparkles",
+      "icon": "GeminiIcon",
+      "color": {
+        "light": [
+          0.92,
+          0.72,
+          0.28
+        ],
+        "dark": [
+          1,
+          0.8,
+          0.4
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.85,
+          0.45,
+          0.25
+        ],
+        "dark": [
+          0.95,
+          0.55,
+          0.35
+        ]
+      }
+    }
+  },
+  "cli": "gemini",
+  "enabledByDefault": true,
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads Code Assist quota using the Gemini CLI OAuth login.",
+      "credential": {
+        "jsonFile": {
+          "path": "~/.gemini/oauth_creds.json",
+          "token": "$.access_token",
+          "strict": true
+        },
+        "refresh": {
+          "cli": {
+            "call": {
+              "cli": "gemini",
+              "args": [],
+              "input": "/quit\n",
+              "timeout": 15
+            },
+            "onStatus": [
+              401
+            ],
+            "delaySeconds": 1.5,
+            "missingError": "authenticationRequired"
+          }
+        }
+      },
+      "requiresFiles": [
+        "~/.gemini/oauth_creds.json"
+      ],
+      "availability": "files",
+      "fetch": {
+        "httpFlow": {
+          "script": "gemini-flow.js",
+          "requests": {
+            "project": {
+              "url": "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+              "method": "POST",
+              "headers": {
+                "Authorization": "Bearer {{token}}",
+                "Content-Type": "application/json"
+              },
+              "body": "{\"metadata\":{\"pluginType\":\"GEMINI\"}}",
+              "timeout": 10,
+              "ignoreResponseStatus": true,
+              "propagateNetworkErrors": true
+            },
+            "quota": {
+              "url": "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota",
+              "method": "POST",
+              "headers": {
+                "Authorization": "Bearer {{token}}",
+                "Content-Type": "application/json"
+              },
+              "body": "{{quotaBody}}",
+              "timeout": 10,
+              "acceptedStatuses": [
+                200
+              ],
+              "errors": {
+                "401": "authenticationRequired",
+                "default": {
+                  "executionFailed": "HTTP {{status}}"
+                }
+              },
+              "propagateNetworkErrors": true,
+              "invalidResponseError": {
+                "executionFailed": "Invalid response"
+              }
+            }
+          },
+          "continueOnError": [
+            "project"
+          ],
+          "constants": {
+            "projectAttempts": 3
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "gemini-api.js"
+        }
+      }
+    },
+    {
+      "kind": "cli",
+      "label": "CLI",
+      "summary": "Reads Gemini CLI /stats. The API remains the default.",
+      "fetch": {
+        "cli": {
+          "cli": "gemini",
+          "args": [],
+          "input": "/stats\n",
+          "timeout": 10,
+          "checkAvailability": true,
+          "mapInteractiveErrors": true
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "gemini-cli.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "dataSourceField": "source",
+    "form": [
+      {
+        "id": "source",
+        "label": "Quota source",
+        "choices": [
+          "api",
+          "cli"
+        ],
+        "defaultValue": "api"
+      },
+      {
+        "id": "home",
+        "label": "Separate signed-in Gemini CLI home (contains .gemini)",
+        "absolutePath": true,
+        "existingDirectory": true,
+        "excludedPaths": [
+          "~",
+          "${GEMINI_CLI_HOME:-~}"
+        ]
+      }
+    ],
+    "patch": {
+      "api": {
+        "credential": {
+          "jsonFile": {
+            "path": "{{account.home}}/.gemini/oauth_creds.json"
+          },
+          "refresh": {
+            "cli": {
+              "call": {
+                "environment": {
+                  "unset": [
+                    "GEMINI_API_KEY",
+                    "GOOGLE_API_KEY",
+                    "GOOGLE_GENAI_USE_VERTEXAI",
+                    "GOOGLE_APPLICATION_CREDENTIALS",
+                    "GOOGLE_CLOUD_PROJECT",
+                    "GCLOUD_PROJECT"
+                  ],
+                  "set": {
+                    "GEMINI_CLI_HOME": "{{account.home}}"
+                  }
+                },
+                "workingDirectory": "dedicated"
+              }
+            }
+          }
+        },
+        "requiresFiles": [
+          "{{account.home}}/.gemini/oauth_creds.json"
+        ],
+        "verifyBeforeBackground": true,
+        "unverifiedMessage": "Refresh this Gemini account once to verify its separate login."
+      },
+      "cli": {
+        "requiresFiles": [
+          "{{account.home}}/.gemini/oauth_creds.json"
+        ],
+        "verifyBeforeBackground": true,
+        "unverifiedMessage": "Refresh this Gemini account once to verify its separate login.",
+        "fetch": {
+          "cli": {
+            "environment": {
+              "unset": [
+                "GEMINI_API_KEY",
+                "GOOGLE_API_KEY",
+                "GOOGLE_GENAI_USE_VERTEXAI",
+                "GOOGLE_APPLICATION_CREDENTIALS",
+                "GOOGLE_CLOUD_PROJECT",
+                "GCLOUD_PROJECT"
+              ],
+              "set": {
+                "GEMINI_CLI_HOME": "{{account.home}}"
+              }
+            },
+            "workingDirectory": "dedicated"
+          }
+        }
+      }
+    }
+  }
+}

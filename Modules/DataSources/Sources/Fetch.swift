@@ -308,6 +308,7 @@ public struct CLICall: Sendable, Equatable, Codable {
     public let inputDelay: TimeInterval?
     public let checkAvailability: Bool
     public let wrapExecutionErrors: Bool
+    public let mapInteractiveErrors: Bool
     public let workingDirectory: WorkingDirectory?
     /// Prompt text → what to type when it appears.
     public let autoResponses: [String: String]
@@ -336,6 +337,7 @@ public struct CLICall: Sendable, Equatable, Codable {
         inputDelay: TimeInterval? = nil,
         checkAvailability: Bool = false,
         wrapExecutionErrors: Bool = false,
+        mapInteractiveErrors: Bool = false,
         workingDirectory: WorkingDirectory? = nil,
         autoResponses: [String: String] = [:],
         environment: Environment = Environment(),
@@ -352,6 +354,7 @@ public struct CLICall: Sendable, Equatable, Codable {
         self.inputDelay = inputDelay
         self.checkAvailability = checkAvailability
         self.wrapExecutionErrors = wrapExecutionErrors
+        self.mapInteractiveErrors = mapInteractiveErrors
         self.workingDirectory = workingDirectory
         self.autoResponses = autoResponses
         self.environment = environment
@@ -371,6 +374,7 @@ public struct CLICall: Sendable, Equatable, Codable {
         inputDelay = try container.decodeIfPresent(TimeInterval.self, forKey: .inputDelay)
         checkAvailability = try container.decodeIfPresent(Bool.self, forKey: .checkAvailability) ?? false
         wrapExecutionErrors = try container.decodeIfPresent(Bool.self, forKey: .wrapExecutionErrors) ?? false
+        mapInteractiveErrors = try container.decodeIfPresent(Bool.self, forKey: .mapInteractiveErrors) ?? false
         workingDirectory = try container.decodeIfPresent(WorkingDirectory.self, forKey: .workingDirectory)
         autoResponses = try container.decodeIfPresent([String: String].self, forKey: .autoResponses) ?? [:]
         environment = try container.decodeIfPresent(Environment.self, forKey: .environment) ?? Environment()
@@ -382,7 +386,7 @@ public struct CLICall: Sendable, Equatable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case cli, args, inputDelay, checkAvailability, wrapExecutionErrors, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session, errors, mode
+        case cli, args, mapInteractiveErrors, inputDelay, checkAvailability, wrapExecutionErrors, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session, errors, mode
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -394,6 +398,7 @@ public struct CLICall: Sendable, Equatable, Codable {
         try container.encodeIfPresent(inputDelay, forKey: .inputDelay)
         try container.encode(checkAvailability, forKey: .checkAvailability)
         try container.encode(wrapExecutionErrors, forKey: .wrapExecutionErrors)
+        try container.encode(mapInteractiveErrors, forKey: .mapInteractiveErrors)
         try container.encodeIfPresent(workingDirectory, forKey: .workingDirectory)
         try container.encode(autoResponses, forKey: .autoResponses)
         try container.encode(environment, forKey: .environment)
@@ -494,4 +499,6 @@ public struct HTTPFlow: Codable, Sendable, Equatable {
     public let requests: [String: HTTPRequest]
     public let settings: [String: String]?
     public let constants: [String: JSONValue]?
+    /// A failed optional request becomes a status-less response for the planner.
+    public let continueOnError: [String]?
 }

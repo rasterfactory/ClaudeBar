@@ -10,11 +10,13 @@ struct HTTPFlowFetcher: Fetching {
     let script: String?
     let settingValue: @Sendable (String) -> String?
     let now: @Sendable () -> Date
+    let sleep: @Sendable (TimeInterval) async throws -> Void
     func isReady() -> Bool { !flow.requests.isEmpty && flow.requests.count <= 8 }
     func fetch(with original: Credential?) async throws -> Response {
         guard isReady(), let script else { throw UsageError.parseFailed("Missing or invalid HTTP flow") }
         let settings = (flow.settings ?? [:]).compactMapValues(settingValue)
         var responses: [String: Response] = [:]
+        var attempts: [String: Int] = [:]
         for step in 0...8 {
             guard let context = JSContext() else { throw UsageError.executionFailed("JavaScriptCore is unavailable") }
             var failed = false
@@ -25,7 +27,7 @@ struct HTTPFlowFetcher: Fetching {
             }
             let input: [String: Any] = ["responses": responseValues, "context": [
                 "credential": original?.values ?? [:], "now": now().timeIntervalSince1970,
-                "settings": settings, "constants": (flow.constants ?? [:]).mapValues(\.foundationObject)]]
+                "attempts": attempts, "settings": settings, "constants": (flow.constants ?? [:]).mapValues(\.foundationObject)]]
             let data = try JSONSerialization.data(withJSONObject: input)
             context.setObject(String(decoding: data, as: UTF8.self), forKeyedSubscript: "__input" as NSString)
             context.evaluateScript(script)
@@ -43,11 +45,25 @@ struct HTTPFlowFetcher: Fetching {
             var credential = original ?? Credential([:])
             // The planner cannot replace credentials found by the lookup.
             for (key, value) in action.values ?? [:] where credential.values[key] == nil { credential[key] = value }
-            responses[name] = try await HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue).fetch(with: credential)
+            try Task.checkCancellation()
+            if let delay = action.delaySeconds {
+                guard delay.isFinite, delay >= 0, delay <= 5 else { throw UsageError.executionFailed("Invalid HTTP flow delay") }
+                try await sleep(delay)
+            }
+            attempts[name, default: 0] += 1
+            do {
+                responses[name] = try await HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue).fetch(with: credential)
+            } catch is CancellationError { throw CancellationError() }
+            catch {
+                try Task.checkCancellation()
+                guard flow.continueOnError?.contains(name) == true else { throw error }
+                // No exception text crosses into a planner; it may contain a secret.
+                responses[name] = Response(text: "")
+            }
         }
         throw UsageError.executionFailed("HTTP request limit exceeded")
     }
-    private struct Action: Decodable { let request: String?; let values: [String: String]?; let done: String?; let error: ErrorRef? }
+    private struct Action: Decodable { let request: String?; let values: [String: String]?; let done: String?; let error: ErrorRef?; let delaySeconds: TimeInterval? }
     private static func redacted(_ error: ErrorRef, credential: Credential?) -> ErrorRef {
         func clean(_ text: String) -> String { (credential?.values.values ?? Dictionary<String,String>().values).filter { !$0.isEmpty }.reduce(text) { $0.replacingOccurrences(of: $1, with: "[redacted]") } }
         switch error {

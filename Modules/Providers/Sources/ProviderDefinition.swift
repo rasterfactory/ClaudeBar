@@ -126,6 +126,10 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 when?.allSatisfy { values[$0.key] == $0.value } ?? true
             }
 
+            public func isShown(values: [String: String]) -> Bool {
+                when?.allSatisfy { values[$0.key] == $0.value } ?? true
+            }
+
             public init(from decoder: Decoder) throws {
                 let container = try decoder.container(keyedBy: CodingKeys.self)
                 id = try container.decode(String.self, forKey: .id)
@@ -380,7 +384,10 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             case .jsonRpc(let call) where call.cli == cli: tag = "jsonRpc"
             default: return source
             }
-            return try source.patched(with: .object(["fetch": .object([tag: .object(["cli": .string(binary)])])]))
+            if case .refreshingWithCLI(_, let refresh)? = source.credential, refresh.call.cli == cli {
+                patch["credential"] = .object(["refresh": .object(["cli": .object(["call": .object(["cli": .string(binary)])])])])
+            }
+            return patch.isEmpty ? source : try source.patched(with: .object(patch))
         }
         var accounts = accounts
         if let signIn = accounts?.signIn, signIn.cli == cli {

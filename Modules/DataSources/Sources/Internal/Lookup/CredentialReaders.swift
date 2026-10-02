@@ -28,10 +28,20 @@ struct JSONFileReader: CredentialFinding {
     }
 
     func find() throws -> FoundCredential? {
-        guard let document = readDocument() else { return nil }
+        let document: [String: Any]
+        if file.strict {
+            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+            let decoded = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
+            guard let object = decoded as? [String: Any] else { throw UsageError.parseFailed("Invalid credentials file") }
+            document = object
+        } else {
+            guard let object = readDocument() else { return nil }
+            document = object
+        }
+        let fields = file.strict ? file.fields.filter { JSONScope(root: document).value($0.value) is String } : file.fields
         let selected = selectedRecord(in: document)
         guard let selected else { return nil }
-        var values = file.defaults.merging(CredentialDocument.values(file.fields, in: selected.document)) { _, value in value }
+        var values = file.defaults.merging(CredentialDocument.values(fields, in: selected.document)) { _, value in value }
         if let keyAs = file.select?.keyAs, let key = selected.key { values[keyAs] = key }
         guard values["token"] != nil else { return nil }
         let reader = self

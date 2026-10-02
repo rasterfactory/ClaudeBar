@@ -706,7 +706,7 @@ struct QuotaMonitorTests {
         let settings = makeSettingsRepository()
         let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
         let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let geminiProvider = GeminiProvider(probe: geminiProbe, settingsRepository: settings)
+        let geminiProvider = StubGeminiProvider(probe: geminiProbe, settingsRepository: settings)
         let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider, geminiProvider]))
 
         // When - refresh all except Claude
@@ -1388,7 +1388,7 @@ struct QuotaMonitorTests {
         // so the pills read: 1 Claude, 2 Codex
         let settings = makeSettingsRepository()
         let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
         gemini.isEnabled = false
         let monitor = makeMonitor(providers: AIProviders(providers: [claude, gemini, codex]))

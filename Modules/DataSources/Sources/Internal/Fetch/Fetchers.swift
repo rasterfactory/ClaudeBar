@@ -241,6 +241,12 @@ struct CLIFetcher: Fetching {
                     autoResponses: call.autoResponses
                 )
             }
+        } catch let error as InteractiveRunner.RunError where call.mapInteractiveErrors {
+            switch error {
+            case .binaryNotFound(let binary): throw UsageError.cliNotFound(binary)
+            case .timedOut: throw UsageError.timeout
+            case .launchFailed(let message): throw UsageError.executionFailed(message)
+            }
         } catch let error as UsageError {
             throw call.wrapExecutionErrors ? UsageError.executionFailed(error.localizedDescription) : error
         } catch {

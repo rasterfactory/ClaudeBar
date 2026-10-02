@@ -1,3 +1,5 @@
+// Test-only monitor double. Production Gemini uses the bundled definition and shared Provider.
+@testable import Domain
 import Quotas
 import DataSources
 import Providers
@@ -8,7 +10,7 @@ import Observation
 /// Observable class with its own state (isSyncing, snapshot, error).
 @MainActor
 @Observable
-public final class GeminiProvider: AIProvider {
+final class StubGeminiProvider: AIProvider {
     // MARK: - Identity
 
     public let id: String = "gemini"

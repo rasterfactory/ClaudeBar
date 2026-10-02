@@ -173,6 +173,7 @@ struct ClaudeBarApp: App {
             if name == "GLM_AUTH_NAME" { return settingsRepository.glmAuthEnvVar() }
             return ProcessInfo.processInfo.environment[name]
         })
+        let gemini = Self.builtIn("gemini", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "gemini"))
 
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
@@ -182,7 +183,7 @@ struct ClaudeBarApp: App {
         let repository = AIProviders(providers: [
             claude.defaultAccount,
             codex.defaultAccount,
-            GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
+            gemini.defaultAccount,
             AntigravityProvider(probe: AntigravityUsageProbe(), settingsRepository: settingsRepository),
             ZaiProvider(
                 probe: ZaiUsageProbe(settingsRepository: settingsRepository),
@@ -237,7 +238,7 @@ struct ClaudeBarApp: App {
                 probe: OmpUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts + gemini.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

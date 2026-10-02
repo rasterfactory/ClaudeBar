@@ -411,6 +411,10 @@ vendor type:
 | console security-token discovery and conditional HTTP stages | `Fetch.httpFlow`: a pure script selects only declared HTTP request templates, at most eight calls; earlier text/JSON responses can fill later request values |
 | saved-key priority and manual/browser selection | lazy `CredentialLookup.bySetting` and nonsecret `as` tags; browser headers preserve empty cookie values and stop at the first matching store |
 | the folder-trust prompt | `recover.patchJSONFile`, tried once |
+| Optional multi-request APIs | `fetch.httpFlow`: pure planner over fixed named HTTP templates, eight requests maximum, attempt counts, bounded cancellable delays and explicit `continueOnError` requests; no script I/O or exception payloads |
+| CLI-owned OAuth refresh | `credential.refresh.cli`: declared call, retry statuses, bounded delay and same-lookup reread; never writes the CLI's file; CLI location and import command review include refresh calls |
+| File-existence readiness and strict login JSON | `availability.files`, `requiresFiles`, `missingFilesError`; `jsonFile.strict` preserves invalid-object errors and string credential types without opening login flows |
+| Explicit terminal error conventions | `fetch.cli.mapInteractiveErrors` maps binary-not-found, timeout and launch failures while preserving existing default behavior |
 | Codex logins in their own folders (#326) | `accounts` (`folder`), `{{account.x}}`, `identity` (fail closed when a folder signs in to someone else), `requiresFiles` (#216), `verifyBeforeBackground`, JSON-RPC `then` + `environment`, `#jwt.claim` and `$credential.` paths |
 | the usage API's model limits, plan and money | JSON mapping rules, not a script: `each` + `where`, names by `firstWord`/`lowercase`, `unique` (first wins), `overLimit` (negative left), `countdown: "hours"`, `plan.plans` from `$credential.`, and a list of `cost` shapes with `when` and exact `{amount, decimals}` minor units |
 | today's usage and guest passes | `UsageHistory` beside the providers (read with the popover open, never in the background; keyed by the login whose logs it reads) and the `GuestPasses` capability |

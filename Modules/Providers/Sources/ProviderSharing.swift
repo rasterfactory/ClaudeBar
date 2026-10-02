@@ -39,7 +39,7 @@ extension ProviderDefinition {
 
     /// Every command it runs, as typed.
     public var commands: [String] {
-        dataSources.compactMap { source in
+        var commands = dataSources.compactMap { source -> String? in
             switch source.fetch {
             case .commandPlan(let plan): "\(plan.cli) (arguments from \(plan.script), up to 8 commands)"
             case .cli(let call): ([call.cli] + call.args).joined(separator: " ")
@@ -48,6 +48,12 @@ extension ProviderDefinition {
             case .http, .file, .httpFlow: nil
             }
         }
+        for source in dataSources {
+            if case .refreshingWithCLI(_, let refresh)? = source.credential {
+                commands.append(([refresh.call.cli] + refresh.call.args).joined(separator: " "))
+            }
+        }
+        return Array(Set(commands)).sorted()
     }
 
     private static func settings(in lookup: CredentialLookup) -> [String] {

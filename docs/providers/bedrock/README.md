@@ -23,9 +23,15 @@ These are AWS IAM permissions, not macOS ones:
 - `cloudwatch:ListMetrics` and `cloudwatch:GetMetricStatistics` in each configured region, **and in `us-east-1`**, where ClaudeBar checks your credentials.
 - `pricing:GetProducts` (optional). Without it, costs use prices bundled with ClaudeBar.
 
+## Multiple accounts
+
+Settings → Providers → AWS Bedrock → Add Account accepts an existing AWS profile, comma-separated regions and a daily budget (0 disables budget progress). Give the account a short name such as Work or Personal. Sign in to SSO profiles with `aws sso login --profile <name>` beforehand.
+
+Each added account uses only its selected profile and keeps its regions, budget and label after relaunch. It does not borrow ambient access keys or the default account's profile. Removing the account leaves AWS configuration and cached sign-in files in place. CloudWatch permissions and AWS usage charges are unchanged.
+
 ## Gotchas
 
-- **Changing the profile name needs a restart.** The profile is read once when ClaudeBar starts. Regions and budget changes apply on the next refresh.
+- Profile, region and budget changes apply on the next refresh. Each account uses an explicit profile resolver without changing the process-wide AWS environment.
 - **A named profile is resolved as an AWS SSO profile.** If your profile uses static access keys and nothing shows, clear the profile name and provide the keys through the default credential chain instead.
 - **Nothing shows at all** means the credential check failed: ClaudeBar couldn't list CloudWatch metrics in `us-east-1` with your credentials. Bedrock is then skipped silently, with no error. The usual causes are an expired SSO session (run `aws sso login` again), a wrong profile name, or missing `us-east-1` permissions. The log has the AWS error.
 - **"No AWS regions configured for Bedrock monitoring"** means the regions field is empty.

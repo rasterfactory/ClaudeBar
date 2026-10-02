@@ -72,6 +72,7 @@ public enum Providers {
         accounts: [ProviderAccountConfig] = [],
         secrets: (any SecretVault)? = nil,
         guestPasses: GuestPasses? = nil,
+        cloudWatch: (any CloudWatchClient)? = nil,
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> Provider {
         Provider(
@@ -79,7 +80,7 @@ public enum Providers {
             settings: settings,
             accounts: accounts,
             makeDataSource: { source, login in
-                DataSources.make(source, providerId: definition.id, scripts: builtInScripts, secrets: secrets?.scoped(to: login), environment: environment)
+                DataSources.make(source, providerId: definition.id, scripts: builtInScripts, settingValue: { settings.stringValue($0, forProvider: definition.id) }, cloudWatch: cloudWatch, secrets: secrets?.scoped(to: login), environment: environment)
             },
             guestPasses: guestPasses,
             vault: secrets
@@ -94,8 +95,9 @@ public enum Providers {
         accounts: [ProviderAccountConfig] = [],
         secrets: (any SecretVault)? = nil,
         guestPasses: GuestPasses? = nil,
+        cloudWatch: (any CloudWatchClient)? = nil,
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) throws -> Provider {
-        make(try builtIn(id), settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, environment: environment)
+        make(try builtIn(id), settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, cloudWatch: cloudWatch, environment: environment)
     }
 }

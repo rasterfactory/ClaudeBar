@@ -300,6 +300,18 @@ public final class JSONSettingsRepository:
         store.write(value: receive, key: "app.receiveBetaUpdates")
     }
 
+    public func stringValue(_ setting:String,forProvider id:String) -> String? {
+        if id == "bedrock" {
+            switch setting {
+            case "awsProfile": return awsProfileName()
+            case "regions": return String(decoding:(try? JSONEncoder().encode(bedrockRegions())) ?? Data(),as:UTF8.self)
+            case "dailyBudget": return bedrockDailyBudget().map{NSDecimalNumber(decimal:$0).stringValue}
+            default: break
+            }
+        }
+        return store.read(key:"\(id).\(setting)")
+    }
+
     // MARK: - ProviderSettingsRepository
 
     public func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool {

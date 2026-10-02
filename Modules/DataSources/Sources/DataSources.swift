@@ -25,6 +25,9 @@ public enum DataSources {
         _ definition: DataSourceDefinition,
         providerId: String,
         scripts: @escaping ScriptSource = { _ in nil },
+        settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
+        browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
+        cloudWatch: (any CloudWatchClient)? = nil,
         secrets: (any SecretStore)? = nil,
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> DataSource {
@@ -38,6 +41,9 @@ public enum DataSources {
             },
             security: KeychainReader.system,
             scripts: scripts,
+            settingValue: settingValue,
+            browserCookies: browserCookies,
+            cloudWatch: cloudWatch,
             secrets: secrets,
             environment: environment,
             homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
@@ -56,6 +62,9 @@ public enum DataSources {
         makeTransport: @escaping TransportFactory,
         security: @escaping @Sendable ([String]) -> (status: Int32, output: String) = { _ in (1, "") },
         scripts: @escaping ScriptSource = { _ in nil },
+        settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
+        browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
+        cloudWatch: (any CloudWatchClient)? = nil,
         secrets: (any SecretStore)? = nil,
         environment: @escaping @Sendable (String) -> String?,
         homeDirectory: URL,
@@ -69,6 +78,9 @@ public enum DataSources {
             makeTransport: makeTransport,
             security: security,
             scripts: scripts,
+            settingValue: settingValue,
+            browserCookies: browserCookies,
+            cloudWatch: cloudWatch,
             secrets: secrets,
             environment: environment,
             homeDirectory: homeDirectory,
@@ -84,14 +96,21 @@ public enum DataSources {
         makeTransport: @escaping TransportFactory,
         security: @escaping KeychainReader.Security,
         scripts: @escaping ScriptSource,
+        settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
+        browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
+        cloudWatch: (any CloudWatchClient)? = nil,
         secrets: (any SecretStore)?,
         environment: @escaping @Sendable (String) -> String?,
         homeDirectory: URL,
         now: @escaping @Sendable () -> Date
     ) -> DataSource {
         let fetcher: any Fetching = switch definition.fetch {
+        case .cloudWatch(let query):
+            CloudWatchFetcher(query:query,client:cloudWatch,settingValue:settingValue,calendar:.current,now:now)
+        case .httpFlow(let flow):
+            HTTPFlowFetcher(flow: flow, network: network, script: scripts(flow.script), settingValue: settingValue, now: now)
         case .http(let request):
-            HTTPFetcher(request: request, network: network, now: now)
+            HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue)
         case .jsonRpc(let call):
             JSONRPCFetcher(call: call, cliExecutor: makeCLIExecutor(CLICall(cli: call.cli)), makeTransport: makeTransport)
         case .cli(let call):
@@ -114,7 +133,7 @@ public enum DataSources {
         }
 
         let readers = Readers(environment: environment, homeDirectory: homeDirectory, security: security,
-                              secrets: secrets, providerId: providerId)
+                              secrets: secrets, providerId: providerId, browserCookies: browserCookies, settingValue: settingValue)
         return DataSource(
             definition: definition,
             providerId: providerId,
@@ -138,12 +157,14 @@ public enum DataSources {
         )
     }
 
-    private struct Readers {
+    private struct Readers: Sendable {
         let environment: @Sendable (String) -> String?
         let homeDirectory: URL
         let security: KeychainReader.Security
         let secrets: (any SecretStore)?
         let providerId: String
+        let browserCookies: any BrowserCookieReading
+        let settingValue: @Sendable (String) -> String?
 
         func reader(for lookup: CredentialLookup) -> any CredentialFinding {
             switch lookup {
@@ -153,6 +174,12 @@ public enum DataSources {
                 JSONFileReader(file: file, homeDirectory: homeDirectory, environment: environment)
             case .keychain(let item):
                 KeychainReader(item: item, security: security)
+            case .bySetting(let choice):
+                ChoiceReader(choice: choice, settingValue: settingValue, makeReader: reader(for:))
+            case .tagged(let lookup, let facts):
+                TaggedReader(base: reader(for: lookup), facts: facts)
+            case .browserCookies(let query):
+                BrowserCookieReader(query: query, cookies: browserCookies, settingValue: settingValue)
             case .setting(let name):
                 SettingReader(name: name, providerId: providerId, secrets: secrets)
             case .firstOf(let lookups):

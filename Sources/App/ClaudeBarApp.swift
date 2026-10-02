@@ -1,3 +1,4 @@
+import AWSClients
 import SwiftUI
 import Domain
 import Infrastructure
@@ -30,7 +31,7 @@ struct ClaudeBarApp: App {
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> Provider {
         do {
-            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, environment: environment)
+            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, cloudWatch: SDKCloudWatchClient(), environment: environment)
         } catch {
             preconditionFailure("Built-in provider '\(id)' failed to load: \(error.localizedDescription)")
         }
@@ -136,6 +137,8 @@ struct ClaudeBarApp: App {
             return ProcessInfo.processInfo.environment[variable]
         })
 
+        let bedrock = Self.builtIn("bedrock", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "bedrock"))
+
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
@@ -153,10 +156,7 @@ struct ClaudeBarApp: App {
                 internalProbe: CopilotInternalAPIProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
-            BedrockProvider(
-                probe: BedrockUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
+            bedrock.defaultAccount,
             AmpCodeProvider(probe: AmpCodeUsageProbe(), settingsRepository: settingsRepository),
             KimiProvider(
                 cliProbe: KimiCLIUsageProbe(),
@@ -200,7 +200,7 @@ struct ClaudeBarApp: App {
             ),
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + deepseek.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + deepseek.accounts + bedrock.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

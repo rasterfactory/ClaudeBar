@@ -177,34 +177,6 @@ extension ZaiProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - BedrockProvider Visual Identity
-
-extension BedrockProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "cloud.fill" }
-
-    public var iconAssetName: String { "BedrockIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // AWS orange color
-        scheme == .dark
-            ? Color(red: 1.0, green: 0.6, blue: 0.2)
-            : Color(red: 0.92, green: 0.5, blue: 0.15)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.85, green: 0.45, blue: 0.15)
-                    : Color(red: 0.75, green: 0.35, blue: 0.1)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - AmpCodeProvider Visual Identity
 
 extension AmpCodeProvider: ProviderVisualIdentity {

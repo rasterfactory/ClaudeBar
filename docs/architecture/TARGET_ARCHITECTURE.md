@@ -383,6 +383,7 @@ vendor type:
 
 | Need | Generic piece |
 |---|---|
+| signed multi-region statistics with independently selected AWS profiles and per-model prices | `Fetch.cloudWatch`, injectable `CloudWatchClient`, and `AWSClients`; namespace, dimension, metric names and bundled price data are declared; the native worker returns priced lines and budget progress without process environment mutation |
 | a TUI screen and human reset dates no rule can say | `Mapping.script` — a JavaScript file in JavaScriptCore, no I/O, host `humanDate()`; the scripts ship beside the definition |
 | Claude Code's Keychain item | `CredentialLookup.keychain(service, fields)` via `security`, hex-decoded, written back as compact JSON |
 | expiry in milliseconds, a JSON refresh body with `scope` | `OAuth2Refresh.dueWhen`, `bodyFormat`, `scope`; values keep their JSON type on write-back; a failed refresh re-reads the store |

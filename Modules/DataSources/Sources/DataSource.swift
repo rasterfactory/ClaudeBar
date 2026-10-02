@@ -69,6 +69,7 @@ public struct DataSource: Sendable {
             credential = found.credential
         }
         guard isExpectedLogin(credential) else { return false }
+        if let checker=fetcher as? any ReadinessChecking {return await checker.checkReadiness()}
         return fetcher.isReady()
     }
 

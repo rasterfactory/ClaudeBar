@@ -24,7 +24,7 @@ struct AntigravityProviderTests {
     func `antigravity provider has correct id`() {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.id == "antigravity")
     }
@@ -33,7 +33,7 @@ struct AntigravityProviderTests {
     func `antigravity provider has correct name`() {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.name == "Antigravity")
     }
@@ -42,7 +42,7 @@ struct AntigravityProviderTests {
     func `antigravity provider has correct cliCommand`() {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.cliCommand == "antigravity")
     }
@@ -51,7 +51,7 @@ struct AntigravityProviderTests {
     func `antigravity provider has no dashboard URL because it is local only`() {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.dashboardURL == nil)
     }
@@ -60,7 +60,7 @@ struct AntigravityProviderTests {
     func `antigravity provider has no status page URL because it is local only`() {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.statusPageURL == nil)
     }
@@ -69,7 +69,7 @@ struct AntigravityProviderTests {
     func `antigravity provider is enabled by default`() {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.isEnabled == true)
     }
@@ -80,7 +80,7 @@ struct AntigravityProviderTests {
     func `antigravity provider starts with no snapshot`() {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.snapshot == nil)
     }
@@ -89,7 +89,7 @@ struct AntigravityProviderTests {
     func `antigravity provider starts not syncing`() {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.isSyncing == false)
     }
@@ -98,7 +98,7 @@ struct AntigravityProviderTests {
     func `antigravity provider starts with no error`() {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.lastError == nil)
     }
@@ -110,7 +110,7 @@ struct AntigravityProviderTests {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
         given(mockProbe).isAvailable().willReturn(true)
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         let isAvailable = await antigravity.isAvailable()
 
@@ -122,7 +122,7 @@ struct AntigravityProviderTests {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
         given(mockProbe).isAvailable().willReturn(false)
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         let isAvailable = await antigravity.isAvailable()
 
@@ -139,7 +139,7 @@ struct AntigravityProviderTests {
         )
         let mockProbe = MockUsageProbe()
         given(mockProbe).probe().willReturn(expectedSnapshot)
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         let snapshot = try await antigravity.refresh()
 
@@ -160,7 +160,7 @@ struct AntigravityProviderTests {
         )
         let mockProbe = MockUsageProbe()
         given(mockProbe).probe().willReturn(expectedSnapshot)
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.snapshot == nil)
 
@@ -176,7 +176,7 @@ struct AntigravityProviderTests {
         // Use two separate probes to simulate the behavior
         let failingProbe = MockUsageProbe()
         given(failingProbe).probe().willThrow(UsageError.timeout)
-        let antigravityWithFailingProbe = AntigravityProvider(probe: failingProbe, settingsRepository: settings)
+        let antigravityWithFailingProbe = StubAntigravityProvider(probe: failingProbe, settingsRepository: settings)
 
         do {
             _ = try await antigravityWithFailingProbe.refresh()
@@ -189,7 +189,7 @@ struct AntigravityProviderTests {
         let succeedingProbe = MockUsageProbe()
         let snapshot = UsageSnapshot(providerId: "antigravity", quotas: [], capturedAt: Date())
         given(succeedingProbe).probe().willReturn(snapshot)
-        let antigravityWithSucceedingProbe = AntigravityProvider(probe: succeedingProbe, settingsRepository: settings)
+        let antigravityWithSucceedingProbe = StubAntigravityProvider(probe: succeedingProbe, settingsRepository: settings)
 
         _ = try await antigravityWithSucceedingProbe.refresh()
 
@@ -203,7 +203,7 @@ struct AntigravityProviderTests {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
         given(mockProbe).probe().willThrow(UsageError.executionFailed("Server not found"))
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.lastError == nil)
 
@@ -221,7 +221,7 @@ struct AntigravityProviderTests {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
         given(mockProbe).probe().willThrow(UsageError.executionFailed("Server not found"))
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         await #expect(throws: UsageError.executionFailed("Server not found")) {
             try await antigravity.refresh()
@@ -239,7 +239,7 @@ struct AntigravityProviderTests {
             quotas: [],
             capturedAt: Date()
         ))
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         #expect(antigravity.isSyncing == false)
 
@@ -253,7 +253,7 @@ struct AntigravityProviderTests {
         let settings = makeSettingsRepository()
         let mockProbe = MockUsageProbe()
         given(mockProbe).probe().willThrow(UsageError.timeout)
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
 
         do {
             _ = try await antigravity.refresh()
@@ -271,7 +271,7 @@ struct AntigravityProviderTests {
         let settings = makeSettingsRepository()
         let copilotSettings = MockRepositoryFactory.makeCopilotSettingsRepository()
         let mockProbe = MockUsageProbe()
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
+        let antigravity = StubAntigravityProvider(probe: mockProbe, settingsRepository: settings)
         let claude = StubClaudeProvider(probe: mockProbe, settingsRepository: settings)
         let codex = StubCodexProvider(probe: mockProbe, settingsRepository: settings)
         let gemini = GeminiProvider(probe: mockProbe, settingsRepository: settings)

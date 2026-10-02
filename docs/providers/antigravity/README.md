@@ -9,7 +9,7 @@ Shows Google Antigravity's two shared quota pools: **Gemini**, and **Claude & ot
 ## Setup
 
 1. Install [Antigravity](https://antigravity.google) (the desktop app or the `agy` CLI) and sign in.
-2. Settings → Providers → Antigravity: turn it on (it is on by default). There are no other settings.
+2. Settings → Providers → Antigravity: turn it on (it is on by default). The default account keeps its automatic source selection.
 
 ## How it reads your quota
 
@@ -19,6 +19,12 @@ ClaudeBar picks a source automatically on each refresh:
 |---|---|---|
 | Local language server | The Antigravity app or `agy` is running | Nothing. ClaudeBar finds the process and calls its local API on `127.0.0.1` |
 | Google Cloud Code | Nothing is running | The sign-in Antigravity / `agy` saved in your Keychain, while it's still valid |
+
+## Separate accounts
+
+Settings → Providers → Antigravity → Accounts → **Add Account** accepts another account's OAuth access token. Name it Personal or Work. ClaudeBar keeps the token in that account's secure vault and reads its Google quota directly. It never falls back to the default desktop process or Keychain login for an added account.
+
+Tokens are used as-is; ClaudeBar does not perform Antigravity's OAuth refresh grant. When an added token expires, sign in to its owning account again and add the renewed token. Removing an account deletes its saved token and leaves Antigravity's own sign-in unchanged.
 
 ## Permissions
 

@@ -21,7 +21,14 @@ public struct InsecureLocalhostNetworkClient: NetworkClient {
 }
 
 /// URLSession delegate that accepts self-signed certificates for localhost.
-private final class InsecureLocalhostDelegate: NSObject, URLSessionDelegate {
+private final class InsecureLocalhostDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        guard ["127.0.0.1", "localhost", "::1"].contains(request.url?.host?.lowercased() ?? "") else {
+            completionHandler(nil); return
+        }
+        completionHandler(request)
+    }
     func urlSession(
         _ session: URLSession,
         didReceive challenge: URLAuthenticationChallenge,

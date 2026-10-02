@@ -121,34 +121,6 @@ extension CopilotProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - AntigravityProvider Visual Identity
-
-extension AntigravityProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "wand.and.stars" }
-
-    public var iconAssetName: String { "AntigravityIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Purple/magenta color matching Antigravity branding
-        scheme == .dark
-            ? Color(red: 0.72, green: 0.35, blue: 0.85)
-            : Color(red: 0.58, green: 0.22, blue: 0.72)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.45, green: 0.25, blue: 0.75)
-                    : Color(red: 0.35, green: 0.15, blue: 0.65)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - ZaiProvider Visual Identity
 
 extension ZaiProvider: ProviderVisualIdentity {

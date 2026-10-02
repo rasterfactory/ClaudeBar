@@ -99,9 +99,12 @@ struct ScriptOutput: Decodable {
         let resetsAt: Double?
         let resetText: String?
         let windowSeconds: Double?
+        let group: String?
+        let compactTitle: String?
+        let menuBarTitle: String?
 
         private enum CodingKeys: String, CodingKey {
-            case type, name, percentRemaining, left, resetsAt, resetText, windowSeconds
+            case type, name, percentRemaining, left, resetsAt, resetText, windowSeconds, group, compactTitle, menuBarTitle
         }
 
         private struct MoneyLeft: Decodable {
@@ -132,6 +135,9 @@ struct ScriptOutput: Decodable {
             resetsAt = try container.decodeIfPresent(Double.self, forKey: .resetsAt)
             resetText = try container.decodeIfPresent(String.self, forKey: .resetText)
             windowSeconds = try container.decodeIfPresent(Double.self, forKey: .windowSeconds)
+            group = try container.decodeIfPresent(String.self, forKey: .group)
+            compactTitle = try container.decodeIfPresent(String.self, forKey: .compactTitle)
+            menuBarTitle = try container.decodeIfPresent(String.self, forKey: .menuBarTitle)
         }
     }
 
@@ -187,7 +193,8 @@ struct ScriptOutput: Decodable {
                 providerId: providerId,
                 resetsAt: quota.resetsAt.map { Date(timeIntervalSince1970: $0) },
                 resetText: quota.resetText,
-                windowDuration: quota.windowSeconds
+                windowDuration: quota.windowSeconds,
+                group: quota.group, compactTitle: quota.compactTitle, menuBarTitle: quota.menuBarTitle
             )
         }
         let costUsage = cost.map { cost in

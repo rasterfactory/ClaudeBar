@@ -34,7 +34,7 @@ struct AntigravityQuotaSummaryParserTests {
 
     @Test
     func `maps the four known buckets to quotas in fixed order`() throws {
-        let quotas = try #require(AntigravityQuotaSummaryParser.parse(Data(Self.remoteSummary.utf8), providerId: "antigravity"))
+        let quotas = try #require(AntigravityDefinitionFixtures.summary(Data(Self.remoteSummary.utf8), providerId: "antigravity"))
 
         #expect(quotas.count == 4)
         #expect(quotas[0].quotaType == .session)
@@ -51,7 +51,7 @@ struct AntigravityQuotaSummaryParserTests {
 
     @Test
     func `assigns consistent menu bar titles so Gemini mirrors Claude format`() throws {
-        let quotas = try #require(AntigravityQuotaSummaryParser.parse(Data(Self.remoteSummary.utf8), providerId: "antigravity"))
+        let quotas = try #require(AntigravityDefinitionFixtures.summary(Data(Self.remoteSummary.utf8), providerId: "antigravity"))
 
         // Gemini pool: should show "Gemini" / "Gemini Weekly" — not the generic "5h" / "7d"
         #expect(quotas[0].menuBarTitle == "Gemini",        "gemini-5h should use 'Gemini' as menu bar prefix")
@@ -64,14 +64,14 @@ struct AntigravityQuotaSummaryParserTests {
 
     @Test
     func `accepts the language server response envelope`() throws {
-        let quotas = try #require(AntigravityQuotaSummaryParser.parse(Data(Self.languageServerSummary.utf8), providerId: "antigravity"))
+        let quotas = try #require(AntigravityDefinitionFixtures.summary(Data(Self.languageServerSummary.utf8), providerId: "antigravity"))
 
         #expect(quotas.count == 4)
     }
 
     @Test
     func `ignores unknown buckets`() throws {
-        let quotas = try #require(AntigravityQuotaSummaryParser.parse(Data(Self.remoteSummary.utf8), providerId: "antigravity"))
+        let quotas = try #require(AntigravityDefinitionFixtures.summary(Data(Self.remoteSummary.utf8), providerId: "antigravity"))
 
         #expect(!quotas.contains { $0.quotaType == .modelSpecific("gemini-image-5h") })
     }
@@ -82,7 +82,7 @@ struct AntigravityQuotaSummaryParserTests {
         {"groups":[{"buckets":[{"bucketId":"gemini-5h"},{"bucketId":"gemini-weekly","remainingFraction":0.5}]}]}
         """
 
-        let quotas = try #require(AntigravityQuotaSummaryParser.parse(Data(json.utf8), providerId: "antigravity"))
+        let quotas = try #require(AntigravityDefinitionFixtures.summary(Data(json.utf8), providerId: "antigravity"))
 
         #expect(quotas.count == 1)
         #expect(quotas[0].quotaType == .weekly)
@@ -90,13 +90,13 @@ struct AntigravityQuotaSummaryParserTests {
 
     @Test
     func `returns nil when the payload is not a quota summary`() {
-        #expect(AntigravityQuotaSummaryParser.parse(Data("not json".utf8), providerId: "antigravity") == nil)
-        #expect(AntigravityQuotaSummaryParser.parse(Data(#"{"userStatus":{}}"#.utf8), providerId: "antigravity") == nil)
+        #expect(AntigravityDefinitionFixtures.summary(Data("not json".utf8), providerId: "antigravity") == nil)
+        #expect(AntigravityDefinitionFixtures.summary(Data(#"{"userStatus":{}}"#.utf8), providerId: "antigravity") == nil)
     }
 
     @Test
     func `returns empty array when summary has no known buckets`() {
-        let quotas = AntigravityQuotaSummaryParser.parse(Data(#"{"groups":[]}"#.utf8), providerId: "antigravity")
+        let quotas = AntigravityDefinitionFixtures.summary(Data(#"{"groups":[]}"#.utf8), providerId: "antigravity")
 
         #expect(quotas?.isEmpty == true)
     }

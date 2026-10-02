@@ -1,0 +1,255 @@
+{
+  "profile": {
+    "id": "antigravity",
+    "name": "Antigravity",
+    "links": {},
+    "look": {
+      "symbol": "wand.and.stars",
+      "icon": "AntigravityIcon",
+      "color": {
+        "light": [
+          0.58,
+          0.22,
+          0.72
+        ],
+        "dark": [
+          0.72,
+          0.35,
+          0.85
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.35,
+          0.15,
+          0.65
+        ],
+        "dark": [
+          0.45,
+          0.25,
+          0.75
+        ]
+      }
+    }
+  },
+  "cli": "antigravity",
+  "enabledByDefault": true,
+  "defaultDataSource": "auto",
+  "dataSources": [
+    {
+      "kind": "auto",
+      "label": "Automatic",
+      "summary": "Reads the running local language server, then stored OAuth credentials if the app is closed.",
+      "fetch": {
+        "workflow": {
+          "script": "antigravity.js",
+          "commands": {
+            "process": {
+              "cli": "/usr/bin/pgrep",
+              "args": [
+                "-lf",
+                "language_server"
+              ],
+              "timeout": 8
+            },
+            "ports": {
+              "cli": "/usr/sbin/lsof",
+              "args": [
+                "-nP",
+                "-iTCP",
+                "-sTCP:LISTEN",
+                "-a",
+                "-p",
+                "{{pid}}"
+              ],
+              "timeout": 8
+            },
+            "keychain": {
+              "cli": "/usr/bin/security",
+              "args": [
+                "find-generic-password",
+                "-s",
+                "gemini",
+                "-a",
+                "antigravity",
+                "-w"
+              ],
+              "timeout": 8
+            }
+          },
+          "requests": {
+            "local": {
+              "url": "{{scheme}}://127.0.0.1:{{port}}{{path}}",
+              "method": "POST",
+              "headers": {
+                "Content-Type": "application/json",
+                "X-Codeium-Csrf-Token": "{{csrf}}",
+                "Connect-Protocol-Version": "1"
+              },
+              "body": "{\"metadata\":{\"ideName\":\"antigravity\",\"extensionName\":\"antigravity\",\"ideVersion\":\"unknown\",\"locale\":\"en\"}}",
+              "timeout": 8,
+              "ignoreResponseStatus": true
+            },
+            "summaryDaily": {
+              "url": "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
+              "method": "POST",
+              "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": "Bearer {{token}}",
+                "User-Agent": "antigravity"
+              },
+              "body": "{}",
+              "timeout": 15,
+              "ignoreResponseStatus": true
+            },
+            "summaryStandard": {
+              "url": "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
+              "method": "POST",
+              "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": "Bearer {{token}}",
+                "User-Agent": "antigravity"
+              },
+              "body": "{}",
+              "timeout": 15,
+              "ignoreResponseStatus": true
+            },
+            "modelsDaily": {
+              "url": "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+              "method": "POST",
+              "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": "Bearer {{token}}",
+                "User-Agent": "antigravity"
+              },
+              "body": "{}",
+              "timeout": 15,
+              "ignoreResponseStatus": true
+            },
+            "modelsStandard": {
+              "url": "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+              "method": "POST",
+              "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": "Bearer {{token}}",
+                "User-Agent": "antigravity"
+              },
+              "body": "{}",
+              "timeout": 15,
+              "ignoreResponseStatus": true
+            },
+            "planDaily": {
+              "url": "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+              "method": "POST",
+              "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": "Bearer {{token}}",
+                "User-Agent": "antigravity"
+              },
+              "body": "{}",
+              "timeout": 15,
+              "ignoreResponseStatus": true
+            },
+            "planStandard": {
+              "url": "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+              "method": "POST",
+              "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": "Bearer {{token}}",
+                "User-Agent": "antigravity"
+              },
+              "body": "{}",
+              "timeout": 15,
+              "ignoreResponseStatus": true
+            }
+          },
+          "loopbackRequests": [
+            "local"
+          ],
+          "continueOnError": {
+            "local": [
+              "*"
+            ],
+            "summaryDaily": [
+              "*"
+            ],
+            "summaryStandard": [
+              "*"
+            ],
+            "modelsDaily": [
+              "*"
+            ],
+            "modelsStandard": [
+              "*"
+            ],
+            "planDaily": [
+              "*"
+            ],
+            "planStandard": [
+              "*"
+            ],
+            "process": [
+              "timeout"
+            ],
+            "keychain": [
+              "*"
+            ]
+          },
+          "maxSteps": 128,
+          "constants": {
+            "apiOnly": false,
+            "localPaths": [
+              "/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary",
+              "/exa.language_server_pb.LanguageServerService/GetUserStatus",
+              "/exa.language_server_pb.LanguageServerService/GetCommandModelConfigs"
+            ]
+          },
+          "alternateExecutables": {
+            "ports": [
+              "/usr/bin/lsof"
+            ]
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "antigravity.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "form": [
+      {
+        "id": "apiKey",
+        "label": "OAuth access token",
+        "secret": true
+      }
+    ],
+    "patch": {
+      "auto": {
+        "credential": {
+          "setting": "apiKey"
+        },
+        "fetch": {
+          "workflow": {
+            "commands": {
+              "process": null,
+              "ports": null,
+              "keychain": null
+            },
+            "constants": {
+              "apiOnly": true
+            }
+          }
+        }
+      }
+    }
+  }
+}

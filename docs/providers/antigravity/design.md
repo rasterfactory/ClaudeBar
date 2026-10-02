@@ -1,4 +1,4 @@
-# Antigravity probe design
+# Antigravity definition design
 
 Contributor notes for the Antigravity provider. For setup, see the [README](README.md). The endpoints were reverse-engineered from the Antigravity app and can change without notice. The approach follows robinebers/openusage's Antigravity provider.
 
@@ -7,7 +7,15 @@ Contributor notes for the Antigravity provider. For setup, see the [README](READ
 1. **Local language server** of the running app or `agy`.
 2. **Google Cloud Code** with the OAuth token Antigravity / `agy` saved in the Keychain, used when no process is found (#201).
 
-`isAvailable()` is true if either source is usable. `probe()` goes to Cloud Code **only** when process detection throws `ProbeError.cliNotFound`. Any other detection error (e.g. a process with no CSRF token → `authenticationRequired`) is reported as it is.
+Readiness is true when either a process with CSRF or stored credentials are found, including stored credentials whose token needs renewal. Fetching goes to Cloud Code **only** when no process is found. Any other detection error (e.g. a process with no CSRF token → `authenticationRequired`) is reported as it is.
+
+## Shared runtime
+
+`antigravity.json` declares fixed command and HTTP templates; `antigravity.js` contains the pure process, credential and quota parsers and the request planner. The shared `fetch.workflow` worker performs I/O, permits at most 128 steps, keeps executables fixed, fills argument strings without a shell and passes only failure categories to the planner. Availability can discover processes and credentials but cannot request quota HTTP. Cancellation stops the workflow.
+
+Only explicitly declared loopback templates use the separate local network client. Their URL must be loopback with a valid port, and local redirects cannot leave loopback. Google requests use the normal TLS-validating client. Import review lists every endpoint and declared executable, including alternative paths.
+
+Added accounts patch out all process and Keychain commands and bind the workflow to their own secure `apiKey` (OAuth access token). They use the same quota and plan endpoints and retain independent names, pins and state. Account tokens never appear in settings metadata or exported definitions.
 
 ## Local language server
 
@@ -29,7 +37,7 @@ Contributor notes for the Antigravity provider. For setup, see the [README](READ
   - `/v1internal:retrieveUserQuotaSummary`: the pooled summary.
   - `/v1internal:fetchAvailableModels`: legacy per-model quotas. Models with `isInternal` are dropped.
   - `/v1internal:loadCodeAssist`: plan name (`paidTier.name`, else `currentTier.name`), shown as the account tier.
-- A 401/403 on any base URL means the token is bad, and the probe stops. Any other failure moves on to the next base URL or endpoint. If every attempt fails: "Could not reach the Antigravity quota API".
+- A 401/403 on a quota endpoint means the token is bad and fetching stops. A failed optional plan request leaves the already fetched quota intact. Any other failure moves on to the next base URL or endpoint. If every attempt fails: "Could not reach the Antigravity quota API".
 
 ## Quota summary
 
@@ -43,7 +51,7 @@ Contributor notes for the Antigravity provider. For setup, see the [README](READ
 | `3p-weekly` | model "Claude Weekly" | Claude & others | 7d | Claude Weekly |
 
 - Buckets without a usable `remainingFraction` are dropped rather than reported as 0%. The legacy per-model parsers do the opposite: a missing `remainingFraction` there means the quota is used up.
-- If the result isn't a summary at all, fall back to the legacy endpoints. A parsed summary, even an empty one, is final.
+- If the result isn't a summary at all, fall back to the legacy endpoints. A usable nonempty summary wins; an empty one falls back to the legacy model path, matching the existing coordinator.
 - `menuBarTitle` was added so the Gemini pool reads "Gemini / Gemini Weekly" in the menu bar like the Claude pool, instead of `5h` / `7d` (#278). The quota types and saved keys didn't change.
 
 ## Known limits

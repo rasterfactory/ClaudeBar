@@ -45,7 +45,7 @@ struct AntigravityCloudCodeFallbackTests {
         let mock = MockCLIExecutor()
         given(mock)
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
-            .willProduce { binary, _, _, _, _, _ in
+            .willProduce { @Sendable binary, _, _, _, _, _ in
                 if binary.hasSuffix("security") { return keychain }
                 return CLIResult(output: process, exitCode: 0)
             }
@@ -60,13 +60,13 @@ struct AntigravityCloudCodeFallbackTests {
 
     @Test
     func `detects the agy CLI language server process`() {
-        #expect(AntigravityUsageProbe.isAntigravityProcess(Self.agyProcessOutput))
+        #expect(AntigravityDefinitionFixtures.isAntigravityProcess(Self.agyProcessOutput))
     }
 
     @Test
     func `isAvailable returns true when only the agy process is running`() async {
         let executor = makeExecutor(process: Self.agyProcessOutput, keychain: CLIResult(output: "", exitCode: 44))
-        let probe = AntigravityUsageProbe(cliExecutor: executor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor)
 
         #expect(await probe.isAvailable() == true)
     }
@@ -76,7 +76,7 @@ struct AntigravityCloudCodeFallbackTests {
     @Test
     func `isAvailable returns true when no process but keychain credentials exist`() async {
         let executor = makeExecutor(process: Self.noProcessOutput, keychain: CLIResult(output: Self.keychainBlob(), exitCode: 0))
-        let probe = AntigravityUsageProbe(cliExecutor: executor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor)
 
         #expect(await probe.isAvailable() == true)
     }
@@ -84,7 +84,7 @@ struct AntigravityCloudCodeFallbackTests {
     @Test
     func `isAvailable returns false when no process and no keychain credentials`() async {
         let executor = makeExecutor(process: Self.noProcessOutput, keychain: CLIResult(output: "not found", exitCode: 44))
-        let probe = AntigravityUsageProbe(cliExecutor: executor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor)
 
         #expect(await probe.isAvailable() == false)
     }
@@ -95,9 +95,9 @@ struct AntigravityCloudCodeFallbackTests {
     func `probe returns pooled quotas from Cloud Code when app is closed`() async throws {
         let executor = makeExecutor(process: Self.noProcessOutput, keychain: CLIResult(output: Self.keychainBlob(), exitCode: 0))
         let remote = MockNetworkClient()
-        var authHeaders: [String] = []
-        given(remote).request(.any).willProduce { request in
-            authHeaders.append(request.value(forHTTPHeaderField: "Authorization") ?? "")
+        let authHeaders = AntigravityHeaderRecorder()
+        given(remote).request(.any).willProduce { @Sendable request in
+            authHeaders.add(request.value(forHTTPHeaderField: "Authorization") ?? "")
             let url = request.url!
             if url.path.hasSuffix("retrieveUserQuotaSummary") {
                 return self.http(200, Self.summaryJSON, url: url)
@@ -105,7 +105,7 @@ struct AntigravityCloudCodeFallbackTests {
             return self.http(404, "", url: url)
         }
 
-        let probe = AntigravityUsageProbe(cliExecutor: executor, remoteNetworkClient: remote)
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor, remoteNetworkClient: remote)
         let snapshot = try await probe.probe()
 
         #expect(snapshot.providerId == "antigravity")
@@ -114,7 +114,7 @@ struct AntigravityCloudCodeFallbackTests {
         #expect(snapshot.quotas[0].percentRemaining == 90.0)
         #expect(snapshot.quotas[3].quotaType == .modelSpecific("Claude Weekly"))
         #expect(snapshot.quotas[3].percentRemaining == 30.0)
-        #expect(authHeaders.allSatisfy { $0 == "Bearer ya29.valid" })
+        #expect(authHeaders.read().allSatisfy { $0 == "Bearer ya29.valid" })
     }
 
     /// `pgrep` matching nothing exits with empty output, which the PTY runner reports as
@@ -124,12 +124,12 @@ struct AntigravityCloudCodeFallbackTests {
         let executor = MockCLIExecutor()
         given(executor)
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
-            .willProduce { binary, _, _, _, _, _ in
+            .willProduce { @Sendable binary, _, _, _, _, _ in
                 if binary.hasSuffix("security") { return CLIResult(output: Self.keychainBlob(), exitCode: 0) }
                 throw InteractiveRunner.RunError.timedOut
             }
         let remote = MockNetworkClient()
-        given(remote).request(.any).willProduce { request in
+        given(remote).request(.any).willProduce { @Sendable request in
             let url = request.url!
             if url.path.hasSuffix("retrieveUserQuotaSummary") {
                 return self.http(200, Self.summaryJSON, url: url)
@@ -137,7 +137,7 @@ struct AntigravityCloudCodeFallbackTests {
             return self.http(404, "", url: url)
         }
 
-        let probe = AntigravityUsageProbe(cliExecutor: executor, remoteNetworkClient: remote)
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor, remoteNetworkClient: remote)
         let snapshot = try await probe.probe()
 
         #expect(snapshot.quotas.count == 4)
@@ -148,7 +148,7 @@ struct AntigravityCloudCodeFallbackTests {
     func `probe falls back to fetchAvailableModels when summary endpoint is missing`() async throws {
         let executor = makeExecutor(process: Self.noProcessOutput, keychain: CLIResult(output: Self.keychainBlob(), exitCode: 0))
         let remote = MockNetworkClient()
-        given(remote).request(.any).willProduce { request in
+        given(remote).request(.any).willProduce { @Sendable request in
             let url = request.url!
             if url.path.hasSuffix("fetchAvailableModels") {
                 return self.http(200, Self.modelsJSON, url: url)
@@ -156,7 +156,7 @@ struct AntigravityCloudCodeFallbackTests {
             return self.http(404, "", url: url)
         }
 
-        let probe = AntigravityUsageProbe(cliExecutor: executor, remoteNetworkClient: remote)
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor, remoteNetworkClient: remote)
         let snapshot = try await probe.probe()
 
         #expect(snapshot.quotas.count == 2)
@@ -169,7 +169,7 @@ struct AntigravityCloudCodeFallbackTests {
     @Test
     func `probe throws cliNotFound when no process and no credentials`() async {
         let executor = makeExecutor(process: Self.noProcessOutput, keychain: CLIResult(output: "not found", exitCode: 44))
-        let probe = AntigravityUsageProbe(cliExecutor: executor, remoteNetworkClient: MockNetworkClient())
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor, remoteNetworkClient: MockNetworkClient())
 
         await #expect(throws: UsageError.cliNotFound("Antigravity")) {
             try await probe.probe()
@@ -182,7 +182,7 @@ struct AntigravityCloudCodeFallbackTests {
             process: Self.noProcessOutput,
             keychain: CLIResult(output: Self.keychainBlob(access: "ya29.stale", expiry: "2020-01-01T00:00:00Z"), exitCode: 0)
         )
-        let probe = AntigravityUsageProbe(cliExecutor: executor, remoteNetworkClient: MockNetworkClient())
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor, remoteNetworkClient: MockNetworkClient())
 
         await #expect(throws: UsageError.sessionExpired(hint: "Sign in to Antigravity or run `agy` again.")) {
             try await probe.probe()
@@ -193,11 +193,11 @@ struct AntigravityCloudCodeFallbackTests {
     func `probe throws sessionExpired when Cloud Code rejects the stored token`() async {
         let executor = makeExecutor(process: Self.noProcessOutput, keychain: CLIResult(output: Self.keychainBlob(), exitCode: 0))
         let remote = MockNetworkClient()
-        given(remote).request(.any).willProduce { request in
+        given(remote).request(.any).willProduce { @Sendable request in
             self.http(401, "", url: request.url!)
         }
 
-        let probe = AntigravityUsageProbe(cliExecutor: executor, remoteNetworkClient: remote)
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor, remoteNetworkClient: remote)
 
         await #expect(throws: UsageError.sessionExpired(hint: "Sign in to Antigravity or run `agy` again.")) {
             try await probe.probe()
@@ -208,11 +208,11 @@ struct AntigravityCloudCodeFallbackTests {
     func `probe throws executionFailed when Cloud Code is unreachable`() async {
         let executor = makeExecutor(process: Self.noProcessOutput, keychain: CLIResult(output: Self.keychainBlob(), exitCode: 0))
         let remote = MockNetworkClient()
-        given(remote).request(.any).willProduce { request in
+        given(remote).request(.any).willProduce { @Sendable request in
             self.http(503, "", url: request.url!)
         }
 
-        let probe = AntigravityUsageProbe(cliExecutor: executor, remoteNetworkClient: remote)
+        let probe = AntigravityDefinitionProbe(cliExecutor: executor, remoteNetworkClient: remote)
 
         await #expect(throws: UsageError.executionFailed("Could not reach the Antigravity quota API")) {
             try await probe.probe()

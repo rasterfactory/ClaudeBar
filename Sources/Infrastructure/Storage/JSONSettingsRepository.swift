@@ -314,6 +314,7 @@ public final class JSONSettingsRepository:
               let raw = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) else { return }
         store.write(value: raw, key: "\(id).\(setting)")
     }
+    public func stringValue(_ setting: String, forProvider id: String) -> String? { store.read(key: "\(id).\(setting)") }
 
     // MARK: - ProviderSettingsRepository
 

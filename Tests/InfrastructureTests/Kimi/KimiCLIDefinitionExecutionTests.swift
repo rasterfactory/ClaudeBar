@@ -1,3 +1,5 @@
+import Providers
+import DataSources
 import Testing
 import Foundation
 import Mockable
@@ -5,7 +7,25 @@ import Mockable
 @testable import Domain
 
 @Suite("KimiCLIUsageProbe Tests")
-struct KimiCLIUsageProbeTests {
+struct KimiCLIDefinitionExecutionTests {
+
+    private var completionRule: CLICompletionRule {
+        let definition = try! Providers.builtIn("kimi")
+        guard case .cli(let call) = definition.dataSource("cli")!.fetch else { fatalError() }
+        return CLICompletionRule(readyMarkers: call.readyWhen.map { .init($0.text, endsRow: $0.endsRow) })
+    }
+    private func cli(cliExecutor: any CLIExecutor) -> Fixture {
+        let definition = try! Providers.builtIn("kimi")
+        return Fixture(source: DataSources.make(definition.dataSource("cli")!, providerId: "kimi", cliExecutor: cliExecutor, network: MockNetworkClient(), makeTransport: { _, _, _, _ in MockRPCTransport() }, scripts: Providers.builtInScripts, environment: { _ in nil }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() }))
+    }
+    private struct Fixture {
+        let source: DataSource
+        func isAvailable() async -> Bool { await source.isReady() }
+        func probe() async throws -> UsageSnapshot {
+            do { return try await source.fetchUsage() }
+            catch let error as DataSourceError { throw error.reason }
+        }
+    }
 
     // MARK: - Sample Output
 
@@ -22,7 +42,7 @@ struct KimiCLIUsageProbeTests {
     func `isAvailable returns true when kimi binary is found`() async {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.any).willReturn("/usr/local/bin/kimi")
-        let probe = KimiCLIUsageProbe(cliExecutor: mockExecutor)
+        let probe = cli(cliExecutor: mockExecutor)
 
         #expect(await probe.isAvailable() == true)
     }
@@ -31,7 +51,7 @@ struct KimiCLIUsageProbeTests {
     func `isAvailable returns false when kimi binary is not found`() async {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.any).willReturn(nil)
-        let probe = KimiCLIUsageProbe(cliExecutor: mockExecutor)
+        let probe = cli(cliExecutor: mockExecutor)
 
         #expect(await probe.isAvailable() == false)
     }
@@ -52,7 +72,7 @@ struct KimiCLIUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: Self.validCLIOutput, exitCode: 0))
 
-        let probe = KimiCLIUsageProbe(cliExecutor: mockExecutor)
+        let probe = cli(cliExecutor: mockExecutor)
         let snapshot = try await probe.probe()
 
         #expect(snapshot.providerId == "kimi")
@@ -68,7 +88,7 @@ struct KimiCLIUsageProbeTests {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.any).willReturn(nil)
 
-        let probe = KimiCLIUsageProbe(cliExecutor: mockExecutor)
+        let probe = cli(cliExecutor: mockExecutor)
 
         await #expect(throws: UsageError.cliNotFound("kimi")) {
             try await probe.probe()
@@ -89,7 +109,7 @@ struct KimiCLIUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: "Unexpected output with no usage data", exitCode: 0))
 
-        let probe = KimiCLIUsageProbe(cliExecutor: mockExecutor)
+        let probe = cli(cliExecutor: mockExecutor)
 
         await #expect(throws: UsageError.self) {
             try await probe.probe()
@@ -110,7 +130,7 @@ struct KimiCLIUsageProbeTests {
             autoResponses: .any
         ).willThrow(NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Process timed out"]))
 
-        let probe = KimiCLIUsageProbe(cliExecutor: mockExecutor)
+        let probe = cli(cliExecutor: mockExecutor)
 
         await #expect(throws: UsageError.self) {
             try await probe.probe()
@@ -151,14 +171,14 @@ struct KimiCLIUsageProbeTests {
         ) async throws -> CLIResult {
             let invocation = Invocation(input: input, workingDirectory: workingDirectory, autoResponses: autoResponses)
             withLock { storage.append(invocation) }
-            return CLIResult(output: KimiCLIUsageProbeTests.validCLIOutput, exitCode: 0)
+            return CLIResult(output: KimiCLIDefinitionExecutionTests.validCLIOutput, exitCode: 0)
         }
     }
 
     @Test
     func `probe types /usage as delayed input and keeps prompt markers as backup`() async throws {
         let executor = CapturingCLIExecutor()
-        let probe = KimiCLIUsageProbe(cliExecutor: executor)
+        let probe = cli(cliExecutor: executor)
 
         let snapshot = try await probe.probe()
 
@@ -175,7 +195,7 @@ struct KimiCLIUsageProbeTests {
     @Test
     func `probe runs in a dedicated directory so the folder trust prompt never blocks`() async throws {
         let executor = CapturingCLIExecutor()
-        let probe = KimiCLIUsageProbe(cliExecutor: executor)
+        let probe = cli(cliExecutor: executor)
 
         _ = try await probe.probe()
 
@@ -196,25 +216,25 @@ struct KimiCLIUsageProbeTests {
     func `completion rule stays pending while the usage panel is still fetching`() {
         let startupScreen = "K2.8 Preview\nNo session yet\ncontext: 0% (0/1M)"
 
-        #expect(KimiCLIUsageProbe.usageCompletionRule.isPending(startupScreen) == true)
+        #expect(completionRule.isPending(startupScreen) == true)
     }
 
     @Test
     func `completion rule settles once a quota line appears`() {
         let withPanel = "context: 0% (0/1M)\n│   5h limit  ░░  0% used  resets in 2h 41m │"
 
-        #expect(KimiCLIUsageProbe.usageCompletionRule.isPending(withPanel) == false)
+        #expect(completionRule.isPending(withPanel) == false)
     }
 
     @Test
     func `completion rule also settles on old format and error screens`() {
-        #expect(KimiCLIUsageProbe.usageCompletionRule.isPending("context: 1%\nWeekly limit  100% left") == false)
-        #expect(KimiCLIUsageProbe.usageCompletionRule.isPending("context: 1%\nError: not logged in") == false)
+        #expect(completionRule.isPending("context: 1%\nWeekly limit  100% left") == false)
+        #expect(completionRule.isPending("context: 1%\nError: not logged in") == false)
     }
 
     @Test
     func `completion rule settles on a pre-0.36 screen without the status footer`() {
         // Pre-0.36 CLIs have no "context:" footer; their quota line still ends the wait.
-        #expect(KimiCLIUsageProbe.usageCompletionRule.isPending("💫 > /usage\nWeekly limit  100% left") == false)
+        #expect(completionRule.isPending("💫 > /usage\nWeekly limit  100% left") == false)
     }
 }

@@ -26,6 +26,7 @@ public enum DataSources {
         providerId: String,
         scripts: @escaping ScriptSource = { _ in nil },
         settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
+        browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
         secrets: (any SecretStore)? = nil,
         settings: (any SettingStore)? = nil,
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
@@ -41,6 +42,7 @@ public enum DataSources {
             security: KeychainReader.system,
             scripts: scripts,
             settingValue: settingValue,
+            browserCookies: browserCookies,
             secrets: secrets,
             settings: settings,
             environment: environment,
@@ -61,6 +63,7 @@ public enum DataSources {
         security: @escaping @Sendable ([String]) -> (status: Int32, output: String) = { _ in (1, "") },
         scripts: @escaping ScriptSource = { _ in nil },
         settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
+        browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
         secrets: (any SecretStore)? = nil,
         settings: (any SettingStore)? = nil,
         environment: @escaping @Sendable (String) -> String?,
@@ -76,6 +79,7 @@ public enum DataSources {
             security: security,
             scripts: scripts,
             settingValue: settingValue,
+            browserCookies: browserCookies,
             secrets: secrets,
             settings: settings,
             environment: environment,
@@ -93,6 +97,7 @@ public enum DataSources {
         security: @escaping KeychainReader.Security,
         scripts: @escaping ScriptSource,
         settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
+        browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
         secrets: (any SecretStore)?,
         settings: (any SettingStore)? = nil,
         environment: @escaping @Sendable (String) -> String?,
@@ -129,6 +134,7 @@ public enum DataSources {
 
         let readers = Readers(environment: environment, homeDirectory: homeDirectory, security: security,
                               secrets: secrets, providerId: providerId, scripts: scripts, executor: makeCLIExecutor(CLICall(cli: "/bin/zsh")))
+                              secrets: secrets, providerId: providerId, browserCookies: browserCookies, settingValue: settingValue)
         return DataSource(
             definition: definition,
             providerId: providerId,
@@ -161,6 +167,8 @@ public enum DataSources {
         let providerId: String
         let scripts: ScriptSource
         let executor: any CLIExecutor
+        let browserCookies: any BrowserCookieReading
+        let settingValue: @Sendable (String) -> String?
 
         func reader(for lookup: CredentialLookup) -> any CredentialFinding {
             switch lookup {
@@ -176,6 +184,8 @@ public enum DataSources {
                 SQLiteReader(file: file, homeDirectory: homeDirectory, environment: environment)
             case .claiming(let base, let claims):
                 ClaimsReader(base: reader(for: base), claims: claims)
+            case .browserCookies(let query):
+                BrowserCookieReader(query: query, cookies: browserCookies, settingValue: settingValue)
             case .setting(let name):
                 SettingReader(name: name, providerId: providerId, secrets: secrets)
             case .firstOf(let lookups):

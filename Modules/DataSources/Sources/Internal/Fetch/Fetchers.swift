@@ -41,7 +41,8 @@ struct HTTPFetcher: Fetching {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = request.method
         urlRequest.timeoutInterval = request.timeout
-        for (name, value) in request.headers {
+        let selectedHeaders = request.headersBySetting?.resolve(selected: request.headersBySetting?.setting.flatMap(settingValue)) ?? [:]
+        for (name, value) in request.headers.merging(selectedHeaders, uniquingKeysWith: { _, selected in selected }) {
             if let filled = Template.fill(value, with: credential) {
                 urlRequest.setValue(filled, forHTTPHeaderField: name)
             }
@@ -55,11 +56,11 @@ struct HTTPFetcher: Fetching {
         do {
             (data, response) = try await network.request(urlRequest)
         } catch {
-            AppLog.probes.error("HTTP fetch failed: \(error.localizedDescription)")
-            throw UsageError.executionFailed("Network error: \(error.localizedDescription)")
+            AppLog.probes.error("HTTP fetch failed")
+            throw UsageError.executionFailed((request.networkErrorPrefix ?? "Network error: ") + Self.redacted(error.localizedDescription, credential: original))
         }
         guard let http = response as? HTTPURLResponse else {
-            throw UsageError.executionFailed("Invalid response")
+            throw request.invalidResponseError?.usageError ?? UsageError.executionFailed("Invalid response")
         }
 
         var headers: [String: String] = [:]
@@ -85,6 +86,12 @@ struct HTTPFetcher: Fetching {
         default:
             AppLog.probes.error("HTTP fetch: status \(http.statusCode)")
             throw HTTPStatusError(status: http.statusCode, reason: .executionFailed("HTTP error: \(http.statusCode)"))
+        }
+    }
+
+    private static func redacted(_ text: String, credential: Credential?) -> String {
+        (credential?.values.values ?? Dictionary<String, String>().values).filter { !$0.isEmpty }.sorted { $0.count > $1.count }.reduce(text) { result, secret in
+            result.replacingOccurrences(of: secret, with: "[redacted]")
         }
     }
 
@@ -237,6 +244,8 @@ struct CLIFetcher: Fetching {
                     autoResponses: call.autoResponses
                 )
             }
+        } catch let error as UsageError {
+            throw call.wrapExecutionErrors ? UsageError.executionFailed(error.localizedDescription) : error
         } catch {
             if let template = call.errors?.failed {
                 let message: String
@@ -265,7 +274,8 @@ struct CLIFetcher: Fetching {
             environmentAdditions: call.environment.set,
             completionRule: call.readyWhen.isEmpty
                 ? nil
-                : CLICompletionRule(readyMarkers: call.readyWhen.map { CLICompletionRule.Marker($0.text, endsRow: $0.endsRow) })
+                : CLICompletionRule(readyMarkers: call.readyWhen.map { CLICompletionRule.Marker($0.text, endsRow: $0.endsRow) }),
+            inputDelay: call.inputDelay ?? 0
         )
     }
 }

@@ -95,6 +95,9 @@ public struct SettingURL: Sendable, Equatable, Codable {
 public struct HTTPRequest: Sendable, Equatable, Codable {
     public let url: String
     public let urlBySetting: SettingURL?
+    public let headersBySetting: SettingValues<[String: String]>?
+    public let networkErrorPrefix: String?
+    public let invalidResponseError: ErrorRef?
     public let method: String
     public let headers: [String: String]
     public let body: String?
@@ -117,6 +120,9 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         url = try container.decode(String.self, forKey: .url)
         urlBySetting = try container.decodeIfPresent(SettingURL.self, forKey: .urlBySetting)
+        headersBySetting = try container.decodeIfPresent(SettingValues<[String: String]>.self, forKey: .headersBySetting)
+        networkErrorPrefix = try container.decodeIfPresent(String.self, forKey: .networkErrorPrefix)
+        invalidResponseError = try container.decodeIfPresent(ErrorRef.self, forKey: .invalidResponseError)
         method = try container.decodeIfPresent(String.self, forKey: .method) ?? "GET"
         headers = try container.decodeIfPresent([String: String].self, forKey: .headers) ?? [:]
         body = try container.decodeIfPresent(String.self, forKey: .body)
@@ -289,6 +295,9 @@ public struct CLICall: Sendable, Equatable, Codable {
     public let args: [String]
     public let input: String?
     public let timeout: TimeInterval
+    public let inputDelay: TimeInterval?
+    public let checkAvailability: Bool
+    public let wrapExecutionErrors: Bool
     public let workingDirectory: WorkingDirectory?
     /// Prompt text → what to type when it appears.
     public let autoResponses: [String: String]
@@ -314,6 +323,9 @@ public struct CLICall: Sendable, Equatable, Codable {
         args: [String] = [],
         input: String? = nil,
         timeout: TimeInterval = 20,
+        inputDelay: TimeInterval? = nil,
+        checkAvailability: Bool = false,
+        wrapExecutionErrors: Bool = false,
         workingDirectory: WorkingDirectory? = nil,
         autoResponses: [String: String] = [:],
         environment: Environment = Environment(),
@@ -327,6 +339,9 @@ public struct CLICall: Sendable, Equatable, Codable {
         self.args = args
         self.input = input
         self.timeout = timeout
+        self.inputDelay = inputDelay
+        self.checkAvailability = checkAvailability
+        self.wrapExecutionErrors = wrapExecutionErrors
         self.workingDirectory = workingDirectory
         self.autoResponses = autoResponses
         self.environment = environment
@@ -343,6 +358,9 @@ public struct CLICall: Sendable, Equatable, Codable {
         args = try container.decodeIfPresent([String].self, forKey: .args) ?? []
         input = try container.decodeIfPresent(String.self, forKey: .input)
         timeout = try container.decodeIfPresent(TimeInterval.self, forKey: .timeout) ?? 20
+        inputDelay = try container.decodeIfPresent(TimeInterval.self, forKey: .inputDelay)
+        checkAvailability = try container.decodeIfPresent(Bool.self, forKey: .checkAvailability) ?? false
+        wrapExecutionErrors = try container.decodeIfPresent(Bool.self, forKey: .wrapExecutionErrors) ?? false
         workingDirectory = try container.decodeIfPresent(WorkingDirectory.self, forKey: .workingDirectory)
         autoResponses = try container.decodeIfPresent([String: String].self, forKey: .autoResponses) ?? [:]
         environment = try container.decodeIfPresent(Environment.self, forKey: .environment) ?? Environment()
@@ -363,6 +381,9 @@ public struct CLICall: Sendable, Equatable, Codable {
         try container.encode(args, forKey: .args)
         try container.encodeIfPresent(input, forKey: .input)
         try container.encode(timeout, forKey: .timeout)
+        try container.encodeIfPresent(inputDelay, forKey: .inputDelay)
+        try container.encode(checkAvailability, forKey: .checkAvailability)
+        try container.encode(wrapExecutionErrors, forKey: .wrapExecutionErrors)
         try container.encodeIfPresent(workingDirectory, forKey: .workingDirectory)
         try container.encode(autoResponses, forKey: .autoResponses)
         try container.encode(environment, forKey: .environment)
@@ -445,4 +466,12 @@ extension Fetch: Codable {
         case .file(let call): try container.encode(call, forKey: TagKey("file"))
         }
     }
+}
+
+/// A named choice controls a typed request or credential value.
+public struct SettingValues<Value: Codable & Sendable & Equatable>: Codable, Sendable, Equatable {
+    public let setting: String?
+    public let value: String?
+    public let values: [String: Value]
+    public func resolve(selected: String?) -> Value? { (value ?? selected).flatMap { values[$0] } }
 }

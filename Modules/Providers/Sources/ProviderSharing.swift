@@ -51,7 +51,7 @@ extension ProviderDefinition {
         case .refreshing(let base, _), .claiming(let base, _): settings(in: base)
         
         case .accompanying(let base, let rule): settings(in: base) + rule.fields.values.flatMap { settings(in: $0) }
-        case .environment, .jsonFile, .keychain, .sqlite: []
+        case .environment, .jsonFile, .keychain, .sqlite, .browserCookies: []
         }
     }
 }

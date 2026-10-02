@@ -1,6 +1,6 @@
 # Kimi probe research
 
-Contributor notes for the two Kimi probes. User-facing setup is in [README.md](README.md).
+Contributor notes for the two Kimi data sources. User-facing setup is in [README.md](README.md).
 
 ## CLI mode: interactive `kimi` + `/usage`
 
@@ -127,3 +127,7 @@ If neither resolves, the probe reports itself unavailable, so the provider is sk
 - The plan isn't in the response. It's inferred from the weekly `limit`: 1024 → Andante, 2048 → Moderato, 7168 → Allegretto. Other limits show no tier.
 
 HTTP 401/403 → authentication required.
+
+## Definition runtime
+
+`Modules/Providers/Resources/Providers/kimi.json` declares both data sources and account inputs. `kimi-cli.js` and `kimi-api.js` preserve the legacy fixtures through the shared engine. The root keeps its existing `kimi.probeMode` and `kimi.region` settings; an added login selects its own source and region. Its API session comes only from its scoped vault key, and its CLI uses only its selected data folder.

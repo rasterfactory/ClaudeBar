@@ -513,7 +513,7 @@ struct AddProviderSheet: View {
         case .refreshing(let base, _), .claiming(let base, _): usesSavedKey(base)
         
         case .accompanying(let base, let rule): usesSavedKey(base) || rule.fields.values.contains(where: usesSavedKey)
-        case .environment, .jsonFile, .keychain, .sqlite: false
+        case .environment, .jsonFile, .keychain, .sqlite, .browserCookies: false
         }
     }
 

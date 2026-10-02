@@ -93,12 +93,13 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             public let pattern: String?
             /// Only ask for this field when these form choices match.
             public let when: [String: String]?
+            public let absolutePath: Bool
+            public let existingDirectory: Bool
+            public let excludedPaths: [String]
             /// The only values it takes, when it is a choice.
             public let choices: [String]?
-            /// An account profile root must be an absolute filesystem path.
-            public let absolutePath: Bool
 
-            public init(id: String, label: String, secret: Bool = false, vault: Bool = false, defaultValue: String? = nil, pattern: String? = nil, when: [String: String]? = nil, choices: [String]? = nil, absolutePath: Bool = false) {
+            public init(id: String, label: String, secret: Bool = false, vault: Bool = false, defaultValue: String? = nil, pattern: String? = nil, when: [String: String]? = nil, absolutePath: Bool = false, existingDirectory: Bool = false, excludedPaths: [String] = [], choices: [String]? = nil) {
                 self.id = id
                 self.label = label
                 self.secret = secret
@@ -106,8 +107,15 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 self.defaultValue = defaultValue
                 self.pattern = pattern
                 self.when = when
+                self.absolutePath = absolutePath
+                self.existingDirectory = existingDirectory
+                self.excludedPaths = excludedPaths
                 self.choices = choices
                 self.absolutePath = absolutePath
+            }
+
+            public func isShown(values: [String: String]) -> Bool {
+                when?.allSatisfy { values[$0.key] == $0.value } ?? true
             }
 
             public func isShown(values: [String: String]) -> Bool {
@@ -123,6 +131,8 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 defaultValue = try container.decodeIfPresent(String.self, forKey: .defaultValue)
                 pattern = try container.decodeIfPresent(String.self, forKey: .pattern)
                 when = try container.decodeIfPresent([String: String].self, forKey: .when)
+                existingDirectory = try container.decodeIfPresent(Bool.self, forKey: .existingDirectory) ?? false
+                excludedPaths = try container.decodeIfPresent([String].self, forKey: .excludedPaths) ?? []
                 if secret, defaultValue != nil {
                     throw DecodingError.dataCorruptedError(forKey: .defaultValue, in: container, debugDescription: "Secret account fields cannot embed a default value")
                 }
@@ -293,7 +303,20 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
     /// Throws when a value the definition needs is missing.
     public func dataSources(forAccount values: [String: String]) throws -> [DataSourceDefinition] {
         let patch = accounts?.patch ?? [:]
+        var selected: Set<String>?
+        if let field = accounts?.dataSourceField, let kind = values[field] {
+            guard dataSource(kind) != nil else { throw DefinitionError.unknownDataSource(id, kind) }
+            var included = Set<String>(), pending = [kind]
+            while let current = pending.popLast() {
+                guard included.insert(current).inserted else { continue }
+                if let source = dataSource(current) {
+                    pending += [source.fallback?.to].compactMap { $0 } + Array(source.fallbackOn.values)
+                }
+            }
+            selected = included
+        }
         return try dataSources.compactMap { source -> DataSourceDefinition? in
+            guard selected?.contains(source.kind) ?? true else { return nil }
             var adapted = source
             if let change = patch[source.kind] {
                 if case .null = change { return nil }

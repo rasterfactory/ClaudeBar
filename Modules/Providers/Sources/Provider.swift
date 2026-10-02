@@ -194,7 +194,7 @@ public final class Provider {
         guard !fields.isEmpty else { throw UsageError.executionFailed("\(name) has no account form.") }
         var values: [String: String] = [:]
         var secrets: [String: String] = [:]
-        let defaults = Dictionary(uniqueKeysWithValues: fields.compactMap { field in field.defaultValue.map { (field.id, $0) } })
+        let defaults = Dictionary(fields.compactMap { field in field.defaultValue.map { (field.id, $0) } }, uniquingKeysWith: { _, last in last })
         let formValues = defaults.merging(entered) { _, supplied in supplied }
         for field in fields where field.isShown(values: formValues) {
             let value = (entered[field.id] ?? field.defaultValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -202,11 +202,21 @@ public final class Provider {
             if let choices = field.choices, !choices.contains(value) {
                 throw UsageError.executionFailed("Choose a \(field.label) from the list.")
             }
+            if let pattern = field.pattern, value.range(of: pattern, options: .regularExpression) == nil {
+                throw UsageError.executionFailed("Enter a valid value for \(field.label).")
+            }
             if field.absolutePath && !value.hasPrefix("/") {
                 throw UsageError.executionFailed("Enter an absolute path for \(field.label).")
             }
-            if let pattern = field.pattern, value.range(of: pattern, options: .regularExpression) == nil {
-                throw UsageError.executionFailed("Enter a valid value for \(field.label).")
+            if field.existingDirectory {
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: value, isDirectory: &isDirectory), isDirectory.boolValue else {
+                    throw UsageError.executionFailed("Choose an existing folder for \(field.label).")
+                }
+            }
+            let selectedPath = URL(fileURLWithPath: value).resolvingSymlinksInPath().path
+            if field.excludedPaths.contains(where: { URL(fileURLWithPath: DataSources.expandPath($0)).resolvingSymlinksInPath().path == selectedPath }) {
+                throw UsageError.executionFailed("Choose a separate folder for \(field.label), not the default login's folder.")
             }
             if field.secret || field.vault { secrets[field.id] = value } else { values[field.id] = value }
         }

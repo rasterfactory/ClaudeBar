@@ -3,7 +3,7 @@ import DataSources
 import Providers
 import Foundation
 
-/// The mode used by KimiProvider to fetch usage data.
+/// The persisted CLI/API choice used by the Kimi definition.
 /// Users can switch between CLI (default) and API modes in Settings.
 public enum KimiProbeMode: String, Sendable, Equatable, CaseIterable {
     /// Use the Kimi CLI (`kimi` with `/usage` command) to fetch usage data.

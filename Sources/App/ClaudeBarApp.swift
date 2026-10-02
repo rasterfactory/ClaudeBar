@@ -176,6 +176,7 @@ struct ClaudeBarApp: App {
 
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
+        let kimi = Self.builtIn("kimi", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "kimi"), secrets: vault)
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
         let repository = AIProviders(providers: [
             claude.defaultAccount,
@@ -204,6 +205,9 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             kiro.defaultAccount,
+            AmpCodeProvider(probe: AmpCodeUsageProbe(), settingsRepository: settingsRepository),
+            kimi.defaultAccount,
+            KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
             minimax.defaultAccount,
             KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
@@ -227,7 +231,7 @@ struct ClaudeBarApp: App {
                 probe: OmpUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

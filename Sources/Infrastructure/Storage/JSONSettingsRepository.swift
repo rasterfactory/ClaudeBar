@@ -906,18 +906,21 @@ extension JSONSettingsRepository: DeepSeekSettingsRepository {
         store.write(value: envVar, key: "deepseek.authEnvVar")
     }
 
-    // DeepSeek Credentials (UserDefaults for now)
+    // The configuration card and definition-driven lookup use the same vault.
+    private var deepseekVault: ProviderVault {
+        ProviderVault(credentials: secureCredentials, legacyStore: credentials)
+    }
 
     public func saveDeepSeekApiKey(_ key: String) {
-        credentials.set(key, forKey: "com.claudebar.credentials.deepseek-api-key")
+        deepseekVault.save(key, "apiKey", provider: "deepseek")
     }
 
     public func getDeepSeekApiKey() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.deepseek-api-key")
+        deepseekVault.secret("apiKey", provider: "deepseek")
     }
 
     public func deleteDeepSeekApiKey() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.deepseek-api-key")
+        deepseekVault.delete("apiKey", provider: "deepseek")
     }
 
     public func hasDeepSeekApiKey() -> Bool {

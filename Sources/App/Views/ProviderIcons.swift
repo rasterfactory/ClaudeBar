@@ -93,7 +93,6 @@ struct ProviderIconView: View {
         case "zai": return "z.square.fill"
         case "copilot": return "chevron.left.forwardslash.chevron.right"
         case "minimax": return "waveform"
-        case "deepseek": return "d.square.fill"
         case "opencode-go": return "square.stack.3d.up.fill"
         case "omp": return "terminal.fill"
         case "grok": return "line.diagonal"

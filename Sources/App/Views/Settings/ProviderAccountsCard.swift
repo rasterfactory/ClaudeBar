@@ -139,7 +139,7 @@ private struct AccountRow: View {
                 if let email = account.accountEmail, email != account.displayName {
                     Text(email).font(.caption).foregroundStyle(theme.textSecondary).textSelection(.enabled)
                 } else if account.isDefault {
-                    Text("Your \(account.provider.name) CLI's own login").font(.caption).foregroundStyle(theme.textSecondary)
+                    Text(text.defaultLoginDescription).font(.caption).foregroundStyle(theme.textSecondary)
                 }
             }
             Spacer(minLength: 8)

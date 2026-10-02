@@ -26,10 +26,11 @@ struct ClaudeBarApp: App {
         settings: any MultiAccountSettingsRepository,
         accounts: [ProviderAccountConfig] = [],
         secrets: (any SecretVault)? = nil,
-        guestPasses: GuestPasses? = nil
+        guestPasses: GuestPasses? = nil,
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> Provider {
         do {
-            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses)
+            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, environment: environment)
         } catch {
             preconditionFailure("Built-in provider '\(id)' failed to load: \(error.localizedDescription)")
         }
@@ -126,6 +127,14 @@ struct ClaudeBarApp: App {
         let amp = Self.builtIn("ampcode", settings: settingsRepository,
             accounts: settingsRepository.accounts(forProvider: "ampcode"), secrets: ProviderVault())
 
+        let deepseek = Self.builtIn("deepseek", settings: settingsRepository,
+                                   accounts: settingsRepository.accounts(forProvider: "deepseek"), secrets: ProviderVault(),
+                                   environment: { name in
+            let configured = settingsRepository.deepseekAuthEnvVar()
+            let variable = name == "DEEPSEEK_API_KEY" && !configured.isEmpty ? configured : name
+            return ProcessInfo.processInfo.environment[variable]
+        })
+
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
@@ -159,10 +168,7 @@ struct ClaudeBarApp: App {
                 probe: MiniMaxUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
-            DeepSeekProvider(
-                probe: DeepSeekUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
+            deepseek.defaultAccount,
             VercelProvider(
                 probe: VercelUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
@@ -193,12 +199,11 @@ struct ClaudeBarApp: App {
             ),
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + amp.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + amp.accounts + deepseek.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after
         // the built-ins; their keys come from ClaudeBar's vault.
-        let vault = ProviderVault()
         for definition in ProviderCatalog().custom() {
             Providers.register(custom: definition)
             let custom = Providers.make(definition, settings: settingsRepository,

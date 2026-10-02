@@ -67,7 +67,8 @@ Deleting the file resets every setting to its default. Secrets stay where they a
 | Vercel AI Gateway API key | Keychain |
 | Notify! device token | Keychain, or the app credential store on builds the Keychain refuses (see below) |
 | GitHub token and username (Copilot) | App credential store |
-| MiniMax, DeepSeek and Alibaba API keys, Alibaba manual cookie | App credential store |
+| DeepSeek API keys (default and added accounts) | Keychain-backed provider vault; existing default keys migrate from UserDefaults after a verified write |
+| MiniMax and Alibaba API keys, Alibaba manual cookie | App credential store |
 | Secret fields of user extensions | App credential store |
 | Your provider sign-ins (Claude Code, Codex, Gemini, Grok, Cursor…) | Where that provider's own CLI or app keeps them. ClaudeBar reads them there; see each [provider doc](providers/) |
 

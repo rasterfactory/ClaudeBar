@@ -1,16 +1,19 @@
 import Domain
 import Foundation
 
-/// The vault custom providers read their keys from — ClaudeBar's credential
+/// The vault definition-driven providers read their keys from — ClaudeBar's credential
 /// store, under `provider.<id>.<name>`. A definition names the key; the value
 /// lives only here.
 public struct ProviderVault: SecretVault, @unchecked Sendable {
     private let legacyStore: UserDefaults
     private let credentials: any CredentialRepository
+    /// UserDefaults is thread-safe. Only the default login can read a legacy key.
+    private let legacyStore: UserDefaults
 
     public init(credentials: any CredentialRepository = KeychainCredentialRepository.shared, legacyStore: UserDefaults = .standard) {
         self.legacyStore = legacyStore
         self.credentials = credentials
+        self.legacyStore = legacyStore
     }
 
     public func secret(_ name: String, provider: String) -> String? {
@@ -37,5 +40,14 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
 
     static func key(_ name: String, provider: String) -> String {
         "provider.\(provider).\(name)"
+    }
+
+    private func migration(_ name: String, provider: String) -> SecureCredentialMigration? {
+        // Compatibility lives at storage's boundary, never in the provider runtime.
+        // Exact default-login keys only: an added login never inherits this entry.
+        let legacyKeys = ["provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key"]
+        let key = Self.key(name, provider: provider)
+        guard let legacyKey = legacyKeys[key] else { return nil }
+        return SecureCredentialMigration(secureStore: credentials, legacyStore: legacyStore, secureKey: key, legacyKey: legacyKey)
     }
 }

@@ -80,11 +80,11 @@ struct DeepSeekConfigCard: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("DeepSeek Configuration")
+                Text("Default Account")
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
 
-                Text("Balance tracking")
+                Text("DeepSeek key and environment variable")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }
@@ -248,9 +248,9 @@ struct DeepSeekConfigCard: View {
             if hasStoredDeepSeekApiKey {
                 Button {
                     settings.deepseek.deleteDeepSeekApiKey()
-                    hasStoredDeepSeekApiKey = false
+                    hasStoredDeepSeekApiKey = settings.deepseek.hasDeepSeekApiKey()
                     deepSeekApiKeyInput = ""
-                    deepSeekTestResult = nil
+                    deepSeekTestResult = hasStoredDeepSeekApiKey ? "Failed: ClaudeBar could not remove the API key securely." : nil
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "trash.fill")
@@ -277,6 +277,10 @@ struct DeepSeekConfigCard: View {
         if !apiKey.isEmpty {
             AppLog.credentials.info("Saving DeepSeek API key for connection test")
             settings.deepseek.saveDeepSeekApiKey(apiKey)
+            guard settings.deepseek.getDeepSeekApiKey() == apiKey else {
+                deepSeekTestResult = "Failed: ClaudeBar could not save the API key securely."
+                return
+            }
             hasStoredDeepSeekApiKey = true
             deepSeekApiKeyInput = ""
         }

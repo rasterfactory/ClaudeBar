@@ -1,10 +1,12 @@
 import Testing
+import Providers
+import DataSources
 import Foundation
 @testable import Infrastructure
 @testable import Domain
 
 @Suite("KimiUsageProbe Parsing Tests")
-struct KimiUsageProbeParsingTests {
+struct KimiAPIDefinitionParsingTests {
 
     // MARK: - Full Response Parsing
 
@@ -33,7 +35,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         #expect(snapshot.providerId == "kimi")
         #expect(snapshot.quotas.count == 2)
@@ -70,7 +72,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         #expect(snapshot.accountTier == .custom("Moderato"))
     }
@@ -91,7 +93,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         #expect(snapshot.accountTier == .custom("Andante"))
     }
@@ -112,7 +114,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         #expect(snapshot.accountTier == .custom("Allegretto"))
     }
@@ -133,7 +135,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         #expect(snapshot.accountTier == nil)
     }
@@ -156,7 +158,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quota(for: .weekly) != nil)
@@ -180,7 +182,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         let weekly = snapshot.quota(for: .weekly)!
         #expect(weekly.percentRemaining == 75.0)
@@ -202,7 +204,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         let weekly = snapshot.quota(for: .weekly)!
         #expect(weekly.percentRemaining == 70.0)
@@ -223,7 +225,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         let weekly = snapshot.quota(for: .weekly)!
         #expect(weekly.percentRemaining == 100.0)
@@ -248,7 +250,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         let weekly = snapshot.quota(for: .weekly)!
         #expect(weekly.resetsAt != nil)
@@ -275,7 +277,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         let weekly = snapshot.quota(for: .weekly)!
         #expect(weekly.resetsAt != nil)
@@ -288,7 +290,7 @@ struct KimiUsageProbeParsingTests {
         let json = "not json".data(using: .utf8)!
 
         #expect(throws: UsageError.self) {
-            try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+            try KimiDefinitionFixtures.api(json, providerId: "kimi")
         }
     }
 
@@ -309,7 +311,7 @@ struct KimiUsageProbeParsingTests {
         """.data(using: .utf8)!
 
         #expect(throws: UsageError.self) {
-            try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+            try KimiDefinitionFixtures.api(json, providerId: "kimi")
         }
     }
 
@@ -322,7 +324,7 @@ struct KimiUsageProbeParsingTests {
         """.data(using: .utf8)!
 
         #expect(throws: UsageError.self) {
-            try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+            try KimiDefinitionFixtures.api(json, providerId: "kimi")
         }
     }
 
@@ -344,7 +346,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         let weekly = snapshot.quota(for: .weekly)!
         #expect(weekly.percentRemaining == 100.0)
@@ -386,7 +388,7 @@ struct KimiUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try KimiUsageProbe.parseResponse(json, providerId: "kimi")
+        let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         let session = snapshot.quota(for: .session)!
         #expect(session.percentRemaining == 60.0)

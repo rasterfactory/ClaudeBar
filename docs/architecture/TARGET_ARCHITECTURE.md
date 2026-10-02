@@ -390,6 +390,8 @@ vendor type:
 | `/cost` only for API-billed accounts; API→CLI only while a setting allows | `fallbackOn` (hand-off by failure) and `fallback.enabledBySetting`; the provider follows the chain and reports the first real failure |
 | 15-minute cache, a remembered 429 | `cache.ttl` (also the background floor) and rate-limit memory on `DataSource` |
 | the account's email and billing type | `context` files handed to the mapping |
+| browser sign-in sessions, regional requests and conditional account sources | `CredentialLookup.browserCookies`, `urlBySetting`/`headersBySetting`, reserved timezone, conditional/vault/path-validated account fields and `dataSourceField`; see Shared browser credentials below |
+| delayed CLI input and an explicit missing-binary check | `CLICall.inputDelay` and `checkAvailability` |
 | the folder-trust prompt | `recover.patchJSONFile`, tried once |
 | Codex logins in their own folders (#326) | `accounts` (`folder`), `{{account.x}}`, `identity` (fail closed when a folder signs in to someone else), `requiresFiles` (#216), `verifyBeforeBackground`, JSON-RPC `then` + `environment`, `#jwt.claim` and `$credential.` paths |
 | the usage API's model limits, plan and money | JSON mapping rules, not a script: `each` + `where`, names by `firstWord`/`lowercase`, `unique` (first wins), `overLimit` (negative left), `countdown: "hours"`, `plan.plans` from `$credential.`, and a list of `cost` shapes with `when` and exact `{amount, decimals}` minor units |
@@ -413,3 +415,11 @@ vendor type:
   one `Provider` owning its `Account`s. The rest is designed in
   [features/multi-account/design.md](../features/multi-account/design.md).
 - **A `command` fetch from the UI** — see [CANONICAL_MODEL §9](CANONICAL_MODEL.md#9--open).
+
+### Shared browser credentials and conditional account inputs
+
+`credential.browserCookies` declares suffix-matched domains, cookie names and `format` (`value` or `header`). Optional `domainsBySetting` chooses domains by a named setting. The injected cookie connection reads nonexpired browser stores in native order and stops at the first matching store. Cookie values never enter logs or account metadata. Added accounts replace this lookup with their scoped vault key.
+
+`http.urlBySetting` and `headersBySetting` select request values by a named setting or an explicit account value. Headers can use reserved `{{system.timeZone}}`. `acceptedStatuses`, status `errors`, `networkErrorPrefix`, `invalidResponseError` and error placeholders `{{status}}`/`{{body}}` preserve the transport contract. Credential values are redacted from error messages.
+
+Account fields support `defaultValue`, `when`, `pattern`, `vault`, `absolutePath`, `existingDirectory` and `excludedPaths`. Paths are compared after resolving symlinks. `accounts.dataSourceField` selects the account's source and reachable fallbacks before filling account placeholders. Irrelevant fields and sources are omitted; secret fields cannot embed defaults. `cli.inputDelay` preserves startup timing and `checkAvailability` requests an explicit missing-binary check before execution; `wrapExecutionErrors` preserves the execution error contract.

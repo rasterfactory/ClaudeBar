@@ -40,3 +40,9 @@ Kimi runs two separate platforms: **kimi.com** (China) and **kimi.ai** (internat
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+## Multiple accounts
+
+Use **Add Account** to save another account's `kimi-auth` session token and region, or choose **cli** and an absolute path to a separate, already signed-in CLI data folder. A billing API key is not a browser session token. Give accounts short names such as Personal and Work; a single account retains the provider name.
+
+CLI accounts set both `KIMI_SHARE_DIR` (older Kimi CLI) and `KIMI_CODE_HOME` (Kimi Code) to the selected folder and clear inherited API overrides. Choose a folder distinct from the default login. Removing an account leaves CLI files in place and deletes its saved session token. See the official [data locations](https://moonshotai.github.io/kimi-cli/en/configuration/data-locations.html) and [Kimi Code environment variables](https://github.com/MoonshotAI/kimi-code/blob/main/docs/en/configuration/env-vars.md).

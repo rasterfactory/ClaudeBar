@@ -233,34 +233,6 @@ extension AmpCodeProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - KimiProvider Visual Identity
-
-extension KimiProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "k.square.fill" }
-
-    public var iconAssetName: String { "KimiIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Blue/cyan color matching Kimi branding
-        scheme == .dark
-            ? Color(red: 0.30, green: 0.65, blue: 0.95)
-            : Color(red: 0.20, green: 0.55, blue: 0.85)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.20, green: 0.50, blue: 0.80)
-                    : Color(red: 0.10, green: 0.40, blue: 0.70)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - KiroProvider Visual Identity
 
 extension KiroProvider: ProviderVisualIdentity {

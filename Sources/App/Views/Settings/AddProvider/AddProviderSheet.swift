@@ -510,7 +510,7 @@ struct AddProviderSheet: View {
         case .setting: true
         case .firstOf(let lookups): lookups.contains(where: usesSavedKey)
         case .refreshing(let base, _): usesSavedKey(base)
-        case .environment, .jsonFile, .keychain: false
+        case .environment, .jsonFile, .keychain, .browserCookies: false
         }
     }
 

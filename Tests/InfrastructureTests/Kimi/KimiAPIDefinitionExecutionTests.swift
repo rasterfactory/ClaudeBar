@@ -1,3 +1,5 @@
+import Providers
+import DataSources
 import Testing
 import Foundation
 import Mockable
@@ -5,12 +7,12 @@ import Mockable
 @testable import Domain
 
 @Suite("KimiUsageProbe Tests")
-struct KimiUsageProbeTests {
+struct KimiAPIDefinitionExecutionTests {
 
     // MARK: - Test Helpers
 
     /// A mock token provider for testing
-    private struct MockTokenProvider: KimiTokenProviding {
+    private struct MockTokenProvider {
         let token: String?
 
         func resolveToken() throws -> String {
@@ -18,6 +20,23 @@ struct KimiUsageProbeTests {
                 throw UsageError.authenticationRequired
             }
             return token
+        }
+    }
+
+    private func api(networkClient: any NetworkClient, tokenProvider: MockTokenProvider, settingsRepository: (any KimiSettingsRepository)? = nil) -> Fixture {
+        let definition = try! Providers.builtIn("kimi")
+        let region = settingsRepository?.kimiRegion() ?? .china
+        let source = DataSources.make(definition.dataSource("api")!, providerId: "kimi", cliExecutor: MockCLIExecutor(), network: networkClient, makeTransport: { _, _, _, _ in MockRPCTransport() }, scripts: Providers.builtInScripts, settingValue: { _ in region.rawValue }, browserCookies: NoCookies(), environment: { $0 == "KIMI_AUTH_TOKEN" ? tokenProvider.token : nil }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
+        return Fixture(source: source, region: region)
+    }
+    private struct NoCookies: BrowserCookieReading { func stores(domains: [String], names: [String]) -> [[BrowserCookie]] { [] } }
+    private struct Fixture {
+        let source: DataSource
+        let region: KimiRegion
+        func isAvailable() async -> Bool { await source.isReady() }
+        func probe() async throws -> UsageSnapshot {
+            do { return try await source.fetchUsage() }
+            catch let error as DataSourceError { throw error.reason }
         }
     }
 
@@ -71,7 +90,7 @@ struct KimiUsageProbeTests {
     @Test
     func `isAvailable returns true when token is available`() async {
         let mockNetwork = MockNetworkClient()
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: mockNetwork,
             tokenProvider: MockTokenProvider(token: "valid-token")
         )
@@ -82,7 +101,7 @@ struct KimiUsageProbeTests {
     @Test
     func `isAvailable returns false when token is unavailable`() async {
         let mockNetwork = MockNetworkClient()
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: mockNetwork,
             tokenProvider: MockTokenProvider(token: nil)
         )
@@ -100,7 +119,7 @@ struct KimiUsageProbeTests {
             makeSuccessResponse(json: Self.validResponseJSON)
         )
 
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: mockNetwork,
             tokenProvider: MockTokenProvider(token: "valid-token")
         )
@@ -126,7 +145,7 @@ struct KimiUsageProbeTests {
     @Test
     func `probe throws authenticationRequired when token is unavailable`() async {
         let mockNetwork = MockNetworkClient()
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: mockNetwork,
             tokenProvider: MockTokenProvider(token: nil)
         )
@@ -144,7 +163,7 @@ struct KimiUsageProbeTests {
             makeErrorResponse(statusCode: 401)
         )
 
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: mockNetwork,
             tokenProvider: MockTokenProvider(token: "valid-token")
         )
@@ -162,7 +181,7 @@ struct KimiUsageProbeTests {
             makeErrorResponse(statusCode: 403)
         )
 
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: mockNetwork,
             tokenProvider: MockTokenProvider(token: "valid-token")
         )
@@ -180,7 +199,7 @@ struct KimiUsageProbeTests {
             makeErrorResponse(statusCode: 500)
         )
 
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: mockNetwork,
             tokenProvider: MockTokenProvider(token: "valid-token")
         )
@@ -198,7 +217,7 @@ struct KimiUsageProbeTests {
             makeSuccessResponse(json: "{ invalid json }")
         )
 
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: mockNetwork,
             tokenProvider: MockTokenProvider(token: "valid-token")
         )
@@ -229,7 +248,7 @@ struct KimiUsageProbeTests {
             makeSuccessResponse(json: json)
         )
 
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: mockNetwork,
             tokenProvider: MockTokenProvider(token: "valid-token")
         )
@@ -275,7 +294,7 @@ struct KimiUsageProbeTests {
 
     @Test
     func `region defaults to china when no settings repository`() {
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: MockNetworkClient(),
             tokenProvider: MockTokenProvider(token: "valid-token")
         )
@@ -285,7 +304,7 @@ struct KimiUsageProbeTests {
 
     @Test
     func `region follows the settings repository`() {
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: MockNetworkClient(),
             tokenProvider: MockTokenProvider(token: "valid-token"),
             settingsRepository: makeSettingsRepository(region: .international)
@@ -297,7 +316,7 @@ struct KimiUsageProbeTests {
     @Test
     func `probe hits the kimi.com endpoint for the china region`() async throws {
         let network = CapturingNetworkClient(result: makeSuccessResponse(json: Self.validResponseJSON))
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: network,
             tokenProvider: MockTokenProvider(token: "valid-token"),
             settingsRepository: makeSettingsRepository(region: .china)
@@ -314,7 +333,7 @@ struct KimiUsageProbeTests {
     @Test
     func `probe hits the kimi.ai endpoint for the international region`() async throws {
         let network = CapturingNetworkClient(result: makeSuccessResponse(json: Self.validResponseJSON))
-        let probe = KimiUsageProbe(
+        let probe = api(
             networkClient: network,
             tokenProvider: MockTokenProvider(token: "valid-token"),
             settingsRepository: makeSettingsRepository(region: .international)
@@ -327,4 +346,16 @@ struct KimiUsageProbeTests {
         #expect(request.value(forHTTPHeaderField: "Origin") == "https://www.kimi.ai")
         #expect(request.value(forHTTPHeaderField: "Referer") == "https://www.kimi.ai/code/console")
     }
+    @Test func `default API requests retain China origin headers body and timezone`() async throws {
+        let network = CapturingNetworkClient(result: makeSuccessResponse(json: Self.validResponseJSON))
+        _ = try await api(networkClient: network, tokenProvider: MockTokenProvider(token: "valid-token")).probe()
+        let request = try #require(network.capturedRequest)
+        #expect(request.value(forHTTPHeaderField: "Origin") == "https://www.kimi.com")
+        #expect(request.value(forHTTPHeaderField: "Referer") == "https://www.kimi.com/code/console")
+        #expect(request.value(forHTTPHeaderField: "Cookie") == "kimi-auth=valid-token")
+        #expect(request.value(forHTTPHeaderField: "r-timezone") == TimeZone.current.identifier)
+        let body = try JSONSerialization.jsonObject(with: #require(request.httpBody)) as? [String: [String]]
+        #expect(body?["scope"] == ["FEATURE_CODING"])
+    }
+
 }

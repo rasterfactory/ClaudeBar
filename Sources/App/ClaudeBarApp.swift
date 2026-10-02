@@ -138,6 +138,7 @@ struct ClaudeBarApp: App {
 
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
+        let kimi = Self.builtIn("kimi", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "kimi"), secrets: vault)
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
         let repository = AIProviders(providers: [
             claude.defaultAccount,
@@ -158,11 +159,7 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             AmpCodeProvider(probe: AmpCodeUsageProbe(), settingsRepository: settingsRepository),
-            KimiProvider(
-                cliProbe: KimiCLIUsageProbe(),
-                apiProbe: KimiUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
+            kimi.defaultAccount,
             KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
             MiniMaxProvider(
@@ -200,7 +197,7 @@ struct ClaudeBarApp: App {
             ),
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + deepseek.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + deepseek.accounts + kimi.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

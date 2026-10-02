@@ -25,6 +25,8 @@ public enum DataSources {
         _ definition: DataSourceDefinition,
         providerId: String,
         scripts: @escaping ScriptSource = { _ in nil },
+        settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
+        browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
         secrets: (any SecretStore)? = nil,
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> DataSource {
@@ -38,6 +40,8 @@ public enum DataSources {
             },
             security: KeychainReader.system,
             scripts: scripts,
+            settingValue: settingValue,
+            browserCookies: browserCookies,
             secrets: secrets,
             environment: environment,
             homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
@@ -56,6 +60,8 @@ public enum DataSources {
         makeTransport: @escaping TransportFactory,
         security: @escaping @Sendable ([String]) -> (status: Int32, output: String) = { _ in (1, "") },
         scripts: @escaping ScriptSource = { _ in nil },
+        settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
+        browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
         secrets: (any SecretStore)? = nil,
         environment: @escaping @Sendable (String) -> String?,
         homeDirectory: URL,
@@ -69,6 +75,8 @@ public enum DataSources {
             makeTransport: makeTransport,
             security: security,
             scripts: scripts,
+            settingValue: settingValue,
+            browserCookies: browserCookies,
             secrets: secrets,
             environment: environment,
             homeDirectory: homeDirectory,
@@ -84,6 +92,8 @@ public enum DataSources {
         makeTransport: @escaping TransportFactory,
         security: @escaping KeychainReader.Security,
         scripts: @escaping ScriptSource,
+        settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
+        browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
         secrets: (any SecretStore)?,
         environment: @escaping @Sendable (String) -> String?,
         homeDirectory: URL,
@@ -91,7 +101,7 @@ public enum DataSources {
     ) -> DataSource {
         let fetcher: any Fetching = switch definition.fetch {
         case .http(let request):
-            HTTPFetcher(request: request, network: network, now: now)
+            HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue)
         case .jsonRpc(let call):
             JSONRPCFetcher(call: call, cliExecutor: makeCLIExecutor(CLICall(cli: call.cli)), makeTransport: makeTransport)
         case .cli(let call):
@@ -114,7 +124,7 @@ public enum DataSources {
         }
 
         let readers = Readers(environment: environment, homeDirectory: homeDirectory, security: security,
-                              secrets: secrets, providerId: providerId)
+                              secrets: secrets, providerId: providerId, browserCookies: browserCookies, settingValue: settingValue)
         return DataSource(
             definition: definition,
             providerId: providerId,
@@ -144,6 +154,8 @@ public enum DataSources {
         let security: KeychainReader.Security
         let secrets: (any SecretStore)?
         let providerId: String
+        let browserCookies: any BrowserCookieReading
+        let settingValue: @Sendable (String) -> String?
 
         func reader(for lookup: CredentialLookup) -> any CredentialFinding {
             switch lookup {
@@ -153,6 +165,8 @@ public enum DataSources {
                 JSONFileReader(file: file, homeDirectory: homeDirectory, environment: environment)
             case .keychain(let item):
                 KeychainReader(item: item, security: security)
+            case .browserCookies(let query):
+                BrowserCookieReader(query: query, cookies: browserCookies, settingValue: settingValue)
             case .setting(let name):
                 SettingReader(name: name, providerId: providerId, secrets: secrets)
             case .firstOf(let lookups):

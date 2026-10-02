@@ -20,6 +20,7 @@ public indirect enum CredentialLookup: Sendable, Equatable {
     case keychain(KeychainCredential)
     /// A key the person gave ClaudeBar (*API KEY*), kept in its vault.
     case setting(String)
+    case browserCookies(BrowserCookieCredential)
     /// The first lookup that answers wins.
     case firstOf([CredentialLookup])
     /// A lookup whose token is kept fresh by an OAuth 2 refresh.
@@ -195,7 +196,7 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
 // MARK: - JSON
 
 extension CredentialLookup: Codable {
-    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf"]
+    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf", "browserCookies"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
@@ -207,6 +208,8 @@ extension CredentialLookup: Codable {
             base = .jsonFile(try container.decode(JSONFileCredential.self, forKey: TagKey("jsonFile")))
         case "keychain":
             base = .keychain(try container.decode(KeychainCredential.self, forKey: TagKey("keychain")))
+        case "browserCookies":
+            base = .browserCookies(try container.decode(BrowserCookieCredential.self, forKey: TagKey("browserCookies")))
         case "setting":
             base = .setting(try container.decode(String.self, forKey: TagKey("setting")))
         default:
@@ -233,6 +236,8 @@ extension CredentialLookup: Codable {
             try container.encode(file, forKey: TagKey("jsonFile"))
         case .keychain(let item):
             try container.encode(item, forKey: TagKey("keychain"))
+        case .browserCookies(let query):
+            try container.encode(query, forKey: TagKey("browserCookies"))
         case .setting(let name):
             try container.encode(name, forKey: TagKey("setting"))
         case .firstOf(let lookups):
@@ -253,6 +258,7 @@ extension CredentialLookup {
         case .environment(let name): ["$\(name)"]
         case .jsonFile(let file): [file.path]
         case .keychain(let item): ["Keychain “\(item.service)”"]
+        case .browserCookies: ["Signed-in browser cookies"]
         case .setting: ["API key saved in ClaudeBar"]
         case .firstOf(let lookups): lookups.flatMap(\.lookupOrder)
         case .refreshing(let base, _): base.lookupOrder
@@ -265,7 +271,15 @@ extension CredentialLookup {
         switch self {
         case .refreshing(let base, let refresh): refresh.hint ?? base.hint
         case .firstOf(let lookups): lookups.lazy.compactMap(\.hint).first
-        case .environment, .jsonFile, .keychain, .setting: nil
+        case .environment, .jsonFile, .keychain, .setting, .browserCookies: nil
         }
     }
+}
+
+public struct BrowserCookieCredential: Codable, Sendable, Equatable {
+    public let domains: [String]
+    public let domainsBySetting: SettingValues<[String]>?
+    public let names: [String]
+    public let format: Format
+    public enum Format: String, Codable, Sendable { case value, header }
 }

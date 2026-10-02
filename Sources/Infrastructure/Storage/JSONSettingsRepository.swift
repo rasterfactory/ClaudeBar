@@ -300,6 +300,8 @@ public final class JSONSettingsRepository:
         store.write(value: receive, key: "app.receiveBetaUpdates")
     }
 
+    public func stringValue(_ setting: String, forProvider id: String) -> String? { store.read(key: "\(id).\(setting)") }
+
     // MARK: - ProviderSettingsRepository
 
     public func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool {

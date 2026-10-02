@@ -1,0 +1,130 @@
+{
+  "profile": {
+    "id": "ampcode",
+    "name": "Amp",
+    "links": {
+      "dashboard": "https://ampcode.com/settings"
+    },
+    "look": {
+      "symbol": "bolt.fill",
+      "icon": "AmpCodeIcon",
+      "color": {
+        "light": [
+          0.9,
+          0.25,
+          0.2
+        ],
+        "dark": [
+          0.95,
+          0.3,
+          0.25
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.8,
+          0.15,
+          0.1
+        ],
+        "dark": [
+          0.85,
+          0.2,
+          0.15
+        ]
+      }
+    }
+  },
+  "cli": "amp",
+  "enabledByDefault": true,
+  "defaultDataSource": "cli",
+  "dataSources": [
+    {
+      "kind": "cli",
+      "label": "CLI",
+      "credential": {
+        "firstOf": [
+          {
+            "environment": "AMP_API_KEY"
+          },
+          {
+            "setting": "apiKey"
+          }
+        ]
+      },
+      "fetch": {
+        "cli": {
+          "cli": "amp",
+          "args": [
+            "usage",
+            "--no-color"
+          ],
+          "timeout": 8,
+          "errors": {
+            "missing": "AmpCode",
+            "nonzero": "amp usage exited with code {{exitCode}}",
+            "failed": "amp usage failed: {{error}}"
+          },
+          "environment": {
+            "unset": [
+              "AMP_API_KEY"
+            ],
+            "set": {
+              "AMP_API_KEY": "{{token}}"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "amp-usage.js"
+        }
+      },
+      "fallbackOn": {
+        "authenticationRequired": "login"
+      }
+    },
+    {
+      "kind": "login",
+      "hidden": true,
+      "fetch": {
+        "cli": {
+          "cli": "amp",
+          "args": [
+            "usage",
+            "--no-color"
+          ],
+          "timeout": 8,
+          "errors": {
+            "missing": "AmpCode",
+            "nonzero": "amp usage exited with code {{exitCode}}",
+            "failed": "amp usage failed: {{error}}"
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "amp-usage.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "form": [
+      {
+        "id": "apiKey",
+        "label": "Access Token",
+        "secret": true
+      }
+    ],
+    "patch": {
+      "cli": {
+        "credential": {
+          "firstOf": null,
+          "setting": "apiKey"
+        },
+        "fallbackOn": null
+      },
+      "login": null
+    }
+  }
+}

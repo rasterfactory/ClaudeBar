@@ -141,6 +141,8 @@ struct ClaudeBarApp: App {
             accounts: settingsRepository.accounts(forProvider: "opencode-go"), secrets: ProviderVault())
         let commandcode = Self.builtIn("commandcode", settings: settingsRepository,
             accounts: settingsRepository.accounts(forProvider: "commandcode"), secrets: ProviderVault())
+        let amp = Self.builtIn("ampcode", settings: settingsRepository,
+            accounts: settingsRepository.accounts(forProvider: "ampcode"), secrets: ProviderVault())
 
         let deepseek = Self.builtIn("deepseek", settings: settingsRepository,
                                    accounts: settingsRepository.accounts(forProvider: "deepseek"), secrets: ProviderVault(),
@@ -171,7 +173,7 @@ struct ClaudeBarApp: App {
                 probe: BedrockUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
-            AmpCodeProvider(probe: AmpCodeUsageProbe(), settingsRepository: settingsRepository),
+            amp.defaultAccount,
             KimiProvider(
                 cliProbe: KimiCLIUsageProbe(),
                 apiProbe: KimiUsageProbe(settingsRepository: settingsRepository),
@@ -202,7 +204,7 @@ struct ClaudeBarApp: App {
             commandcode.defaultAccount,
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

@@ -62,3 +62,7 @@ The payload is wrapped in varying envelopes, so the parser is deliberately loose
 | Monthly | `perBillMonthUsedQuota` / `perBillMonthTotalQuota` (also `perMonth…`) | `perBillMonthQuotaNextRefreshTime` |
 
 Reset times are accepted as ISO 8601 with offset (`2026-03-12T19:17:15+08:00`), with or without fractional seconds, or as epoch seconds (number or string). Plan name comes from `planName`, `instanceName` or `packageName`. A window with total 0 is skipped; no windows at all → "No quota windows found in payload".
+
+## Definition runtime
+
+`Modules/Providers/Resources/Providers/alibaba.json` replaces the legacy provider/probe/browser loader. `alibaba-flow.js` selects the API-key request or the cookie flow: use `sec_token` from the cookie when present, otherwise read the regional dashboard's HTML before the console RPC. The bounded shared HTTP worker performs the requests; `alibaba-quota.js` preserves the legacy payload traversal, plan selection, reset dates and three quota windows. Region URLs, commodity codes and request templates are definition data. The root's `alibaba.region`, `alibaba.cookieSource` and legacy credential keys remain compatible. Added API/cookie accounts select their own source and region and have no default credential fallback.

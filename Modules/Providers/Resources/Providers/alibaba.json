@@ -1,0 +1,486 @@
+{
+  "profile": {
+    "id": "alibaba",
+    "name": "Alibaba",
+    "links": {
+      "dashboard": "https://modelstudio.console.alibabacloud.com",
+      "dashboardBySetting": {
+        "setting": "accountRegion",
+        "values": {
+          "intl": "https://modelstudio.console.alibabacloud.com/ap-southeast-1/?tab=coding-plan#/efm/detail",
+          "cn": "https://bailian.console.aliyun.com/cn-beijing/?tab=model#/efm/coding_plan"
+        }
+      }
+    },
+    "look": {
+      "symbol": "questionmark.circle.fill",
+      "icon": "QuestionIcon"
+    }
+  },
+  "cli": "alibaba-coding-plan",
+  "enabledByDefault": false,
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API key",
+      "summary": "Keeps API-key priority, then the configured manual or browser cookie. Added accounts use their own secure credentials.",
+      "credential": {
+        "firstOf": [
+          {
+            "setting": "apiKey",
+            "as": {
+              "mode": "api"
+            }
+          },
+          {
+            "bySetting": {
+              "setting": "cookieSource",
+              "default": "auto",
+              "values": {
+                "manual": {
+                  "setting": "cookie"
+                },
+                "auto": {
+                  "browserCookies": {
+                    "domains": [
+                      "aliyun.com",
+                      "console.aliyun.com",
+                      "bailian.console.aliyun.com",
+                      "alibabacloud.com",
+                      "console.alibabacloud.com",
+                      "modelstudio.console.alibabacloud.com"
+                    ],
+                    "names": [
+                      "login_aliyunid_ticket",
+                      "login_aliyunid_csrf",
+                      "sec_token",
+                      "aliyun_choice",
+                      "cna"
+                    ],
+                    "format": "header"
+                  }
+                }
+              }
+            },
+            "as": {
+              "mode": "cookie"
+            }
+          }
+        ]
+      },
+      "fetch": {
+        "httpFlow": {
+          "script": "alibaba-flow.js",
+          "requests": {
+            "api": {
+              "url": "https://modelstudio.console.alibabacloud.com/data/api.json?action=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2&product=broadscope-bailian&api=queryCodingPlanInstanceInfoV2&currentRegionId=ap-southeast-1",
+              "urlBySetting": {
+                "setting": "region",
+                "values": {
+                  "intl": "https://modelstudio.console.alibabacloud.com/data/api.json?action=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2&product=broadscope-bailian&api=queryCodingPlanInstanceInfoV2&currentRegionId=ap-southeast-1",
+                  "cn": "https://bailian.console.aliyun.com/data/api.json?action=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2&product=broadscope-bailian&api=queryCodingPlanInstanceInfoV2&currentRegionId=cn-beijing"
+                }
+              },
+              "method": "POST",
+              "body": "{{body}}",
+              "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": "Bearer {{token}}",
+                "X-DashScope-API-Key": "{{token}}"
+              },
+              "timeout": 15,
+              "acceptedStatuses": [
+                200
+              ],
+              "errors": {
+                "401": "authenticationRequired",
+                "403": "authenticationRequired",
+                "default": {
+                  "executionFailed": "HTTP {{status}}"
+                }
+              },
+              "propagateNetworkErrors": true,
+              "ignoreResponseStatus": false
+            },
+            "dashboard": {
+              "url": "https://modelstudio.console.alibabacloud.com/ap-southeast-1/?tab=coding-plan#/efm/detail",
+              "urlBySetting": {
+                "setting": "region",
+                "values": {
+                  "intl": "https://modelstudio.console.alibabacloud.com/ap-southeast-1/?tab=coding-plan#/efm/detail",
+                  "cn": "https://bailian.console.aliyun.com/cn-beijing/?tab=model#/efm/coding_plan"
+                }
+              },
+              "method": "GET",
+              "body": null,
+              "headers": {
+                "Cookie": "{{token}}"
+              },
+              "timeout": 15,
+              "acceptedStatuses": [
+                200
+              ],
+              "errors": {},
+              "propagateNetworkErrors": true,
+              "ignoreResponseStatus": true
+            },
+            "console": {
+              "url": "https://bailian-singapore-cs.alibabacloud.com/data/api.json?action=IntlBroadScopeAspnGateway&product=sfm_bailian&api=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2",
+              "urlBySetting": {
+                "setting": "region",
+                "values": {
+                  "intl": "https://bailian-singapore-cs.alibabacloud.com/data/api.json?action=IntlBroadScopeAspnGateway&product=sfm_bailian&api=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2",
+                  "cn": "https://bailian-beijing-cs.aliyuncs.com/data/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2"
+                }
+              },
+              "method": "POST",
+              "body": "{{body}}",
+              "headers": {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "*/*",
+                "Cookie": "{{token}}",
+                "X-Requested-With": "XMLHttpRequest",
+                "x-csrf-token": "{{csrf}}"
+              },
+              "timeout": 15,
+              "acceptedStatuses": [
+                200
+              ],
+              "errors": {
+                "401": {
+                  "sessionExpired": "Re-authenticate in Alibaba Cloud console."
+                },
+                "403": {
+                  "sessionExpired": "Re-authenticate in Alibaba Cloud console."
+                },
+                "default": {
+                  "executionFailed": "HTTP {{status}}"
+                }
+              },
+              "propagateNetworkErrors": true,
+              "ignoreResponseStatus": false
+            }
+          },
+          "settings": {
+            "region": "region"
+          },
+          "constants": {
+            "regions": {
+              "intl": {
+                "base": "https://modelstudio.console.alibabacloud.com",
+                "rpc": "https://bailian-singapore-cs.alibabacloud.com",
+                "action": "IntlBroadScopeAspnGateway",
+                "commodity": "sfm_codingplan_public_intl",
+                "region": "ap-southeast-1",
+                "dashboard": "https://modelstudio.console.alibabacloud.com/ap-southeast-1/?tab=coding-plan#/efm/detail"
+              },
+              "cn": {
+                "base": "https://bailian.console.aliyun.com",
+                "rpc": "https://bailian-beijing-cs.aliyuncs.com",
+                "action": "BroadScopeAspnGateway",
+                "commodity": "sfm_codingplan_public_cn",
+                "region": "cn-beijing",
+                "dashboard": "https://bailian.console.aliyun.com/cn-beijing/?tab=model#/efm/coding_plan"
+              }
+            }
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "alibaba-quota.js"
+        }
+      }
+    },
+    {
+      "kind": "cookie",
+      "label": "Cookie",
+      "summary": "Reads the account\u2019s separately saved Alibaba Cloud console cookie.",
+      "credential": {
+        "firstOf": [
+          {
+            "setting": "apiKey",
+            "as": {
+              "mode": "api"
+            }
+          },
+          {
+            "bySetting": {
+              "setting": "cookieSource",
+              "default": "auto",
+              "values": {
+                "manual": {
+                  "setting": "cookie"
+                },
+                "auto": {
+                  "browserCookies": {
+                    "domains": [
+                      "aliyun.com",
+                      "console.aliyun.com",
+                      "bailian.console.aliyun.com",
+                      "alibabacloud.com",
+                      "console.alibabacloud.com",
+                      "modelstudio.console.alibabacloud.com"
+                    ],
+                    "names": [
+                      "login_aliyunid_ticket",
+                      "login_aliyunid_csrf",
+                      "sec_token",
+                      "aliyun_choice",
+                      "cna"
+                    ],
+                    "format": "header"
+                  }
+                }
+              }
+            },
+            "as": {
+              "mode": "cookie"
+            }
+          }
+        ]
+      },
+      "fetch": {
+        "httpFlow": {
+          "script": "alibaba-flow.js",
+          "requests": {
+            "api": {
+              "url": "https://modelstudio.console.alibabacloud.com/data/api.json?action=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2&product=broadscope-bailian&api=queryCodingPlanInstanceInfoV2&currentRegionId=ap-southeast-1",
+              "urlBySetting": {
+                "setting": "region",
+                "values": {
+                  "intl": "https://modelstudio.console.alibabacloud.com/data/api.json?action=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2&product=broadscope-bailian&api=queryCodingPlanInstanceInfoV2&currentRegionId=ap-southeast-1",
+                  "cn": "https://bailian.console.aliyun.com/data/api.json?action=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2&product=broadscope-bailian&api=queryCodingPlanInstanceInfoV2&currentRegionId=cn-beijing"
+                }
+              },
+              "method": "POST",
+              "body": "{{body}}",
+              "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": "Bearer {{token}}",
+                "X-DashScope-API-Key": "{{token}}"
+              },
+              "timeout": 15,
+              "acceptedStatuses": [
+                200
+              ],
+              "errors": {
+                "401": "authenticationRequired",
+                "403": "authenticationRequired",
+                "default": {
+                  "executionFailed": "HTTP {{status}}"
+                }
+              },
+              "propagateNetworkErrors": true,
+              "ignoreResponseStatus": false
+            },
+            "dashboard": {
+              "url": "https://modelstudio.console.alibabacloud.com/ap-southeast-1/?tab=coding-plan#/efm/detail",
+              "urlBySetting": {
+                "setting": "region",
+                "values": {
+                  "intl": "https://modelstudio.console.alibabacloud.com/ap-southeast-1/?tab=coding-plan#/efm/detail",
+                  "cn": "https://bailian.console.aliyun.com/cn-beijing/?tab=model#/efm/coding_plan"
+                }
+              },
+              "method": "GET",
+              "body": null,
+              "headers": {
+                "Cookie": "{{token}}"
+              },
+              "timeout": 15,
+              "acceptedStatuses": [
+                200
+              ],
+              "errors": {},
+              "propagateNetworkErrors": true,
+              "ignoreResponseStatus": true
+            },
+            "console": {
+              "url": "https://bailian-singapore-cs.alibabacloud.com/data/api.json?action=IntlBroadScopeAspnGateway&product=sfm_bailian&api=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2",
+              "urlBySetting": {
+                "setting": "region",
+                "values": {
+                  "intl": "https://bailian-singapore-cs.alibabacloud.com/data/api.json?action=IntlBroadScopeAspnGateway&product=sfm_bailian&api=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2",
+                  "cn": "https://bailian-beijing-cs.aliyuncs.com/data/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaEasy.broadscope-bailian.codingPlan.queryCodingPlanInstanceInfoV2"
+                }
+              },
+              "method": "POST",
+              "body": "{{body}}",
+              "headers": {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "*/*",
+                "Cookie": "{{token}}",
+                "X-Requested-With": "XMLHttpRequest",
+                "x-csrf-token": "{{csrf}}"
+              },
+              "timeout": 15,
+              "acceptedStatuses": [
+                200
+              ],
+              "errors": {
+                "401": {
+                  "sessionExpired": "Re-authenticate in Alibaba Cloud console."
+                },
+                "403": {
+                  "sessionExpired": "Re-authenticate in Alibaba Cloud console."
+                },
+                "default": {
+                  "executionFailed": "HTTP {{status}}"
+                }
+              },
+              "propagateNetworkErrors": true,
+              "ignoreResponseStatus": false
+            }
+          },
+          "settings": {
+            "region": "region"
+          },
+          "constants": {
+            "regions": {
+              "intl": {
+                "base": "https://modelstudio.console.alibabacloud.com",
+                "rpc": "https://bailian-singapore-cs.alibabacloud.com",
+                "action": "IntlBroadScopeAspnGateway",
+                "commodity": "sfm_codingplan_public_intl",
+                "region": "ap-southeast-1",
+                "dashboard": "https://modelstudio.console.alibabacloud.com/ap-southeast-1/?tab=coding-plan#/efm/detail"
+              },
+              "cn": {
+                "base": "https://bailian.console.aliyun.com",
+                "rpc": "https://bailian-beijing-cs.aliyuncs.com",
+                "action": "BroadScopeAspnGateway",
+                "commodity": "sfm_codingplan_public_cn",
+                "region": "cn-beijing",
+                "dashboard": "https://bailian.console.aliyun.com/cn-beijing/?tab=model#/efm/coding_plan"
+              }
+            }
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "alibaba-quota.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "dataSourceField": "source",
+    "form": [
+      {
+        "id": "source",
+        "label": "Sign-in method",
+        "choices": [
+          "api",
+          "cookie"
+        ],
+        "defaultValue": "api"
+      },
+      {
+        "id": "accountRegion",
+        "label": "Region",
+        "choices": [
+          "intl",
+          "cn"
+        ],
+        "defaultValue": "intl"
+      },
+      {
+        "id": "apiKey",
+        "label": "API key",
+        "secret": true,
+        "when": {
+          "source": "api"
+        }
+      },
+      {
+        "id": "cookie",
+        "label": "Console cookie header",
+        "secret": true,
+        "when": {
+          "source": "cookie"
+        }
+      }
+    ],
+    "patch": {
+      "api": {
+        "credential": {
+          "firstOf": null,
+          "setting": "apiKey",
+          "as": {
+            "mode": "api"
+          }
+        },
+        "fetch": {
+          "httpFlow": {
+            "settings": null,
+            "constants": {
+              "region": "{{account.accountRegion}}"
+            },
+            "requests": {
+              "api": {
+                "urlBySetting": {
+                  "setting": null,
+                  "value": "{{account.accountRegion}}"
+                }
+              },
+              "dashboard": {
+                "urlBySetting": {
+                  "setting": null,
+                  "value": "{{account.accountRegion}}"
+                }
+              },
+              "console": {
+                "urlBySetting": {
+                  "setting": null,
+                  "value": "{{account.accountRegion}}"
+                }
+              }
+            }
+          }
+        }
+      },
+      "cookie": {
+        "credential": {
+          "firstOf": null,
+          "setting": "cookie",
+          "as": {
+            "mode": "cookie"
+          }
+        },
+        "fetch": {
+          "httpFlow": {
+            "settings": null,
+            "constants": {
+              "region": "{{account.accountRegion}}"
+            },
+            "requests": {
+              "api": {
+                "urlBySetting": {
+                  "setting": null,
+                  "value": "{{account.accountRegion}}"
+                }
+              },
+              "dashboard": {
+                "urlBySetting": {
+                  "setting": null,
+                  "value": "{{account.accountRegion}}"
+                }
+              },
+              "console": {
+                "urlBySetting": {
+                  "setting": null,
+                  "value": "{{account.accountRegion}}"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

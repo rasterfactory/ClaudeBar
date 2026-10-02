@@ -37,7 +37,7 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
     private func migration(_ name: String, provider: String) -> SecureCredentialMigration? {
         // Compatibility lives at storage's boundary, never in the provider runtime.
         // Exact default-login keys only: an added login never inherits this entry.
-        let legacyKeys = ["provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key"]
+        let legacyKeys = ["provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key", "provider.alibaba.apiKey": "com.claudebar.credentials.alibaba-api-key", "provider.alibaba.cookie": "com.claudebar.credentials.alibaba-manual-cookie"]
         let key = Self.key(name, provider: provider)
         guard let legacyKey = legacyKeys[key] else { return nil }
         return SecureCredentialMigration(secureStore: credentials, legacyStore: legacyStore, secureKey: key, legacyKey: legacyKey)

@@ -390,6 +390,8 @@ vendor type:
 | `/cost` only for API-billed accounts; API→CLI only while a setting allows | `fallbackOn` (hand-off by failure) and `fallback.enabledBySetting`; the provider follows the chain and reports the first real failure |
 | 15-minute cache, a remembered 429 | `cache.ttl` (also the background floor) and rate-limit memory on `DataSource` |
 | the account's email and billing type | `context` files handed to the mapping |
+| console security-token discovery and conditional HTTP stages | `Fetch.httpFlow`: a pure script selects only declared HTTP request templates, at most eight calls; earlier text/JSON responses can fill later request values |
+| saved-key priority and manual/browser selection | lazy `CredentialLookup.bySetting` and nonsecret `as` tags; browser headers preserve empty cookie values and stop at the first matching store |
 | the folder-trust prompt | `recover.patchJSONFile`, tried once |
 | Codex logins in their own folders (#326) | `accounts` (`folder`), `{{account.x}}`, `identity` (fail closed when a folder signs in to someone else), `requiresFiles` (#216), `verifyBeforeBackground`, JSON-RPC `then` + `environment`, `#jwt.claim` and `$credential.` paths |
 | the usage API's model limits, plan and money | JSON mapping rules, not a script: `each` + `where`, names by `firstWord`/`lowercase`, `unique` (first wins), `overLimit` (negative left), `countdown: "hours"`, `plan.plans` from `$credential.`, and a list of `cost` shapes with `when` and exact `{amount, decimals}` minor units |
@@ -413,3 +415,11 @@ vendor type:
   one `Provider` owning its `Account`s. The rest is designed in
   [features/multi-account/design.md](../features/multi-account/design.md).
 - **A `command` fetch from the UI** — see [CANONICAL_MODEL §9](CANONICAL_MODEL.md#9--open).
+
+### Bounded HTTP flows and credential choices
+
+`httpFlow` declares `script`, named `requests`, optional named `settings` and `constants`. A pure `next(responses, context)` function returns `{request, values}`, `{done}` or `{error}`. Only the shared worker has I/O. It rejects undeclared request names, limits each fetch to eight requests, and never exposes script exceptions in errors. Scripts cannot overwrite credentials found by the lookup. Responses retain their original text and JSON for the next stage; the selected final response uses the ordinary mapping. Import review includes every declared regional destination.
+
+`credential.bySetting` selects one declared lookup lazily, falling back to its declared default when the setting is absent or invalid. `as` adds nonsecret facts to a found credential; token/refresh-token fields cannot be embedded as tags, and tags are stripped from refresh writeback. Ordered `firstOf` remains lazy, so a saved key avoids all browser access. Named accounts replace default credential lookup with their own vault entry.
+
+`HTTPRequest.propagateNetworkErrors` retains an existing underlying network error when its message is credential-safe; echoed credentials are redacted. `ignoreResponseStatus` permits token discovery from a text response without treating its HTTP status as the billing request's result. Both default to false. Browser header credentials retain empty named cookie values while single-value credentials require a nonempty value.

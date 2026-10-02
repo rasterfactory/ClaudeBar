@@ -138,6 +138,7 @@ struct ClaudeBarApp: App {
 
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
+        let alibaba = Self.builtIn("alibaba", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "alibaba"), secrets: vault)
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
         let repository = AIProviders(providers: [
             claude.defaultAccount,
@@ -174,10 +175,7 @@ struct ClaudeBarApp: App {
                 probe: VercelUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
-            AlibabaProvider(
-                probe: AlibabaUsageProbe(settingsRepository: settingsRepository, cookieProvider: AlibabaBrowserCookieProvider()),
-                settingsRepository: settingsRepository
-            ),
+            alibaba.defaultAccount,
             MistralProvider(
                 probe: MistralUsageProbe(),
                 settingsRepository: settingsRepository
@@ -200,7 +198,7 @@ struct ClaudeBarApp: App {
             ),
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + deepseek.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + deepseek.accounts + alibaba.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

@@ -19,9 +19,17 @@ extension ProviderDefinition {
 
     /// Where it sends a key — the host of every API that sends a credential.
     public var keyDestinations: [String] {
-        Array(Set(dataSources.compactMap { source -> String? in
-            guard source.credential != nil, case .http(let request) = source.fetch else { return nil }
-            return URL(string: request.url)?.host ?? request.url
+        Array(Set(dataSources.flatMap { source -> [String] in
+            guard source.credential != nil else { return [] }
+            let requests: [HTTPRequest]
+            switch source.fetch {
+            case .http(let request): requests = [request]
+            case .httpFlow(let flow): requests = Array(flow.requests.values)
+            default: requests = []
+            }
+            return requests.flatMap { request in
+                ([request.url] + Array(request.urlBySetting?.values.values ?? Dictionary<String,String>().values)).map { URL(string:$0)?.host ?? $0 }
+            }
         })).sorted()
     }
 
@@ -31,17 +39,19 @@ extension ProviderDefinition {
             switch source.fetch {
             case .cli(let call): ([call.cli] + call.args).joined(separator: " ")
             case .jsonRpc(let call): ([call.cli] + call.args).joined(separator: " ")
-            case .http, .file: nil
+            case .http, .file, .httpFlow: nil
             }
         }
     }
 
     private static func settings(in lookup: CredentialLookup) -> [String] {
         switch lookup {
+        case .bySetting(let choice): choice.values.values.flatMap(settings(in:))
+        case .tagged(let base, _): settings(in: base)
         case .setting(let name): [name]
         case .firstOf(let lookups): lookups.flatMap(settings(in:))
         case .refreshing(let base, _): settings(in: base)
-        case .environment, .jsonFile, .keychain: []
+        case .environment, .jsonFile, .keychain, .browserCookies: []
         }
     }
 }

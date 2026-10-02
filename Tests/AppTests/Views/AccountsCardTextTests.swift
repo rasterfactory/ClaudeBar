@@ -51,6 +51,19 @@ struct AccountsCardTextTests {
     }
 
     @Test
+    func `an API account is described and recovered without mentioning a CLI or folder`() throws {
+        let settings = JSONSettingsRepository(store: JSONSettingsStore(
+            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID()).json")))
+        let provider = try Providers.make("deepseek", settings: settings,
+                                          accounts: [ProviderAccountConfig(accountId: "work", label: "Work", probeConfig: [:], madeBy: .form)])
+        let text = AccountsCardText(provider: provider)
+        #expect(text.defaultLoginDescription == "Default account")
+        #expect(text.reauthHelp(for: provider.defaultAccount) == "Update the default account's key in Settings, then refresh.")
+        #expect(text.reauthHelp(for: provider.accounts[1]) == "Remove this account and add it again with a valid key.")
+        #expect(text.removeMessage(for: provider.accounts[1]) == "Removes Work from ClaudeBar and deletes its saved keys.")
+    }
+
+    @Test
     func `signing in yourself uses the definition's own command`() throws {
         let text = AccountsCardText(provider: try codex())
 

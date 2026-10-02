@@ -93,11 +93,46 @@ struct ScriptOutput: Decodable {
     struct Quota: Decodable {
         let type: QuotaKind
         let name: String?
-        let percentRemaining: Double
+        /// Exactly one measure: the old percentage or money, optionally of a ceiling.
+        let left: Left
         /// Epoch seconds.
         let resetsAt: Double?
         let resetText: String?
         let windowSeconds: Double?
+
+        private enum CodingKeys: String, CodingKey {
+            case type, name, percentRemaining, left, resetsAt, resetText, windowSeconds
+        }
+
+        private struct MoneyLeft: Decodable {
+            let money: Money
+            let of: Money?
+            let currency: String?
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            type = try container.decode(QuotaKind.self, forKey: .type)
+            name = try container.decodeIfPresent(String.self, forKey: .name)
+            let percent = try container.decodeIfPresent(Double.self, forKey: .percentRemaining)
+            let money = try container.decodeIfPresent(MoneyLeft.self, forKey: .left)
+            switch (percent, money) {
+            case (let percent?, nil): left = .share(percent)
+            case (nil, let money?):
+                let currency = money.currency ?? "USD"
+                guard !currency.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw DecodingError.dataCorruptedError(forKey: .left, in: container, debugDescription: "Empty currency")
+                }
+                left = .money(Quotas.Money(money.money.value, currency: currency),
+                              of: money.of.map { Quotas.Money($0.value, currency: currency) })
+            default:
+                throw DecodingError.dataCorruptedError(forKey: .left, in: container,
+                                                       debugDescription: "A quota must contain exactly one of percentRemaining or left")
+            }
+            resetsAt = try container.decodeIfPresent(Double.self, forKey: .resetsAt)
+            resetText = try container.decodeIfPresent(String.self, forKey: .resetText)
+            windowSeconds = try container.decodeIfPresent(Double.self, forKey: .windowSeconds)
+        }
     }
 
     struct Cost: Decodable {
@@ -128,7 +163,8 @@ struct ScriptOutput: Decodable {
             } else {
                 text = String(try container.decode(Double.self))
             }
-            guard let value = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")) else {
+            guard text.range(of: #"^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$"#, options: .regularExpression) != nil,
+                  let value = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")) else {
                 throw DecodingError.dataCorruptedError(in: container, debugDescription: "Not an amount: \(text)")
             }
             self.value = value
@@ -146,7 +182,7 @@ struct ScriptOutput: Decodable {
         let quotas = (quotas ?? []).compactMap { quota -> UsageQuota? in
             guard let type = JSONMapper.quotaType(quota.type, name: quota.name) else { return nil }
             return UsageQuota(
-                percentRemaining: quota.percentRemaining,
+                left: quota.left,
                 quotaType: type,
                 providerId: providerId,
                 resetsAt: quota.resetsAt.map { Date(timeIntervalSince1970: $0) },

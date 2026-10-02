@@ -25,10 +25,11 @@ struct ClaudeBarApp: App {
         _ id: String,
         settings: any MultiAccountSettingsRepository,
         accounts: [ProviderAccountConfig] = [],
+        secrets: (any SecretVault)? = nil,
         guestPasses: GuestPasses? = nil
     ) -> Provider {
         do {
-            return try Providers.make(id, settings: settings, accounts: accounts, guestPasses: guestPasses)
+            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses)
         } catch {
             preconditionFailure("Built-in provider '\(id)' failed to load: \(error.localizedDescription)")
         }
@@ -122,6 +123,9 @@ struct ClaudeBarApp: App {
         // product once, with the logins added beside the default one (#326).
         let codex = Self.builtIn("codex", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "codex"))
 
+        let commandcode = Self.builtIn("commandcode", settings: settingsRepository,
+            accounts: settingsRepository.accounts(forProvider: "commandcode"), secrets: ProviderVault())
+
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
@@ -183,13 +187,10 @@ struct ClaudeBarApp: App {
                 probe: GrokUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-            CommandCodeProvider(
-                probe: CommandCodeUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
+            commandcode.defaultAccount,
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + commandcode.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

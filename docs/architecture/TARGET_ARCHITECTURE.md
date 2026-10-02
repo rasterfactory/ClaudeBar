@@ -377,6 +377,8 @@ Each slice is one PR, green, with no change a user can see unless it says so.
 
 ## 8.1 · What Claude added
 
+Command Code adds `Fetch.httpSequence`: up to eight fixed HTTP requests collect named JSON objects. Later query values come from declared paths in earlier responses and are encoded as URL query items. A failed request or invalid response stops the sequence; HTTP status overrides retain the response status for OAuth retry. Import review includes every request host. The reusable script money result from the DeepSeek migration represents balances and capped money without inventing percentages.
+
 Claude needed more than Codex, and each need became a generic piece, never a
 vendor type:
 

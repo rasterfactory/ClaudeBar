@@ -1,0 +1,148 @@
+{
+  "profile": {
+    "id": "commandcode",
+    "name": "Command Code",
+    "links": {
+      "dashboard": "https://commandcode.ai/usage"
+    },
+    "look": {
+      "symbol": "command",
+      "icon": "CommandCodeIcon",
+      "color": {
+        "light": [
+          0.07,
+          0.07,
+          0.07
+        ],
+        "dark": [
+          0.33,
+          0.42,
+          0.95
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "dark": [
+          0.18,
+          0.11,
+          0.61
+        ]
+      }
+    }
+  },
+  "cli": "cmd",
+  "enabledByDefault": true,
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "credential": {
+        "firstOf": [
+          {
+            "environment": "COMMAND_CODE_API_KEY"
+          },
+          {
+            "environment": "COMMANDCODE_API_KEY"
+          },
+          {
+            "jsonFile": {
+              "path": "~/.commandcode/auth.json",
+              "token": "$.apiKey"
+            }
+          },
+          {
+            "setting": "apiKey"
+          }
+        ]
+      },
+      "fetch": {
+        "httpSequence": {
+          "steps": [
+            {
+              "name": "whoami",
+              "request": {
+                "url": "https://api.commandcode.ai/alpha/whoami?limits=1",
+                "timeout": 15,
+                "headers": {
+                  "Authorization": "Bearer {{token}}",
+                  "Accept": "application/json"
+                },
+                "errors": {
+                  "401": {
+                    "sessionExpired": "Run `cmd login` or set COMMAND_CODE_API_KEY."
+                  },
+                  "403": {
+                    "sessionExpired": "Run `cmd login` or set COMMAND_CODE_API_KEY."
+                  },
+                  "429": {
+                    "executionFailed": "HTTP error: 429"
+                  }
+                }
+              },
+              "whenInvalid": {
+                "parseFailed": "Failed to parse Command Code response as JSON"
+              }
+            },
+            {
+              "name": "credits",
+              "request": {
+                "url": "https://api.commandcode.ai/alpha/billing/credits",
+                "timeout": 15,
+                "headers": {
+                  "Authorization": "Bearer {{token}}",
+                  "Accept": "application/json"
+                },
+                "errors": {
+                  "401": {
+                    "sessionExpired": "Run `cmd login` or set COMMAND_CODE_API_KEY."
+                  },
+                  "403": {
+                    "sessionExpired": "Run `cmd login` or set COMMAND_CODE_API_KEY."
+                  },
+                  "429": {
+                    "executionFailed": "HTTP error: 429"
+                  }
+                }
+              },
+              "whenInvalid": {
+                "parseFailed": "Failed to parse Command Code response as JSON"
+              },
+              "queryFrom": {
+                "orgId": [
+                  "$.whoami.data.org.id",
+                  "$.whoami.org.id"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "commandcode-credits.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "form": [
+      {
+        "id": "apiKey",
+        "label": "API Key",
+        "secret": true
+      }
+    ],
+    "patch": {
+      "api": {
+        "credential": {
+          "firstOf": null,
+          "setting": "apiKey"
+        }
+      }
+    }
+  }
+}

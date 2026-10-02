@@ -39,7 +39,7 @@ struct AccountFormTests {
         return network
     }
 
-    private func provider(_ definition: ProviderDefinition, vault: MemoryVault, network: MockNetworkClient,
+    private func provider(_ definition: ProviderDefinition, vault: any SecretVault, network: MockNetworkClient,
                           settings: InMemoryProviderSettings = InMemoryProviderSettings()) -> Provider {
         Provider(
             definition: definition,
@@ -152,4 +152,21 @@ struct AccountFormTests {
 
         #expect(usage.quotas.first?.left == .money(Money(7, currency: "USD"), of: Money(50, currency: "USD")))
     }
+    @Test func `a rejected secure write never persists or enables an account`() throws {
+        let vault = RejectedVault()
+        let settings = InMemoryProviderSettings()
+        let provider = provider(try openRouter(), vault: vault, network: network([:]), settings: settings)
+        #expect(throws: UsageError.self) { try provider.addAccount(filling:["apiKey":"work-key"]) }
+        #expect(provider.accounts.count == 1)
+        #expect(settings.accounts(forProvider:"custom-openrouter").isEmpty)
+        #expect(vault.values.isEmpty)
+    }
+
+}
+
+private final class RejectedVault: SecretVault, @unchecked Sendable {
+    var values: [String:String] = [:]
+    func secret(_ name:String, provider:String) -> String? { values["\(provider).\(name)"] }
+    func save(_ value:String, _ name:String, provider:String) { values["\(provider).\(name)"] = "wrong-readback" }
+    func delete(_ name:String, provider:String) -> Bool { values["\(provider).\(name)"] = nil; return true }
 }

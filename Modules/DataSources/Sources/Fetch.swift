@@ -6,12 +6,40 @@ import Foundation
 public enum Fetch: Sendable, Equatable {
     /// An HTTP request — the *API* choice.
     case http(HTTPRequest)
+    /// Ordered JSON HTTP responses; later query values come from earlier responses.
+    case httpSequence(HTTPSequence)
     /// A JSON-RPC conversation with a CLI over stdin/stdout.
     case jsonRpc(JSONRPCCall)
     /// A CLI run in a terminal, its screen captured — the *CLI* choice.
     case cli(CLICall)
     /// A file on this Mac that some tool keeps up to date — the *File* choice.
     case file(FileCall)
+}
+
+public struct HTTPSequence: Sendable, Equatable, Codable {
+    public let steps: [Step]
+    public init(steps: [Step]) { self.steps = steps }
+
+    public struct Step: Sendable, Equatable, Codable {
+        public let name: String
+        public let request: HTTPRequest
+        /// Query name -> ordered paths in the responses accumulated so far.
+        public let queryFrom: [String: [String]]
+        public let whenInvalid: ErrorRef?
+        public init(name: String, request: HTTPRequest, queryFrom: [String: [String]] = [:], whenInvalid: ErrorRef? = nil) {
+            self.name = name
+            self.request = request
+            self.queryFrom = queryFrom
+            self.whenInvalid = whenInvalid
+        }
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(name: try container.decode(String.self, forKey: .name),
+                      request: try container.decode(HTTPRequest.self, forKey: .request),
+                      queryFrom: try container.decodeIfPresent([String: [String]].self, forKey: .queryFrom) ?? [:],
+                      whenInvalid: try container.decodeIfPresent(ErrorRef.self, forKey: .whenInvalid))
+        }
+    }
 }
 
 /// `{ "path": "~/.tool/usage.json" }` — `~` and `${VAR:-default}` expand.
@@ -27,13 +55,15 @@ public struct FileCall: Sendable, Equatable, Codable {
 /// credential at fetch time.
 public struct HTTPRequest: Sendable, Equatable, Codable {
     public let url: String
+    public let errors: [String: ErrorRef]?
     public let method: String
     public let headers: [String: String]
     public let body: String?
     public let timeout: TimeInterval
 
-    public init(url: String, method: String = "GET", headers: [String: String] = [:], body: String? = nil, timeout: TimeInterval = 15) {
+    public init(url: String, errors: [String: ErrorRef]? = nil, method: String = "GET", headers: [String: String] = [:], body: String? = nil, timeout: TimeInterval = 15) {
         self.url = url
+        self.errors = errors
         self.method = method
         self.headers = headers
         self.body = body
@@ -43,6 +73,7 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         url = try container.decode(String.self, forKey: .url)
+        errors = try container.decodeIfPresent([String: ErrorRef].self, forKey: .errors)
         method = try container.decodeIfPresent(String.self, forKey: .method) ?? "GET"
         headers = try container.decodeIfPresent([String: String].self, forKey: .headers) ?? [:]
         body = try container.decodeIfPresent(String.self, forKey: .body)
@@ -309,11 +340,12 @@ extension CLICall {
 // MARK: - JSON
 
 extension Fetch: Codable {
-    private static let tags = ["http", "jsonRpc", "cli", "file"]
+    private static let tags = ["http", "jsonRpc", "cli", "file", "httpSequence"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
         switch try container.singleTag(of: Self.tags, in: "fetch") {
+        case "httpSequence": self = .httpSequence(try container.decode(HTTPSequence.self, forKey: TagKey("httpSequence")))
         case "http": self = .http(try container.decode(HTTPRequest.self, forKey: TagKey("http")))
         case "jsonRpc": self = .jsonRpc(try container.decode(JSONRPCCall.self, forKey: TagKey("jsonRpc")))
         case "file": self = .file(try container.decode(FileCall.self, forKey: TagKey("file")))
@@ -324,6 +356,7 @@ extension Fetch: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: TagKey.self)
         switch self {
+        case .httpSequence(let sequence): try container.encode(sequence, forKey: TagKey("httpSequence"))
         case .http(let request): try container.encode(request, forKey: TagKey("http"))
         case .jsonRpc(let call): try container.encode(call, forKey: TagKey("jsonRpc"))
         case .cli(let call): try container.encode(call, forKey: TagKey("cli"))

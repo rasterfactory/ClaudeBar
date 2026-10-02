@@ -292,6 +292,8 @@ private struct ProviderDetailView: View {
                 DataSourceSection(provider: codex, monitor: monitor)
                 ProviderAccountsCard(provider: codex, monitor: monitor)
             }
+        case "kiro":
+            if let kiro = (provider as? Account)?.provider { ProviderAccountsCard(provider: kiro, monitor: monitor) }
         case "kimi":
             KimiConfigCard(monitor: monitor)
         case "minimax":

@@ -12,6 +12,18 @@ Shows your Kiro plan credits for the month (with the date they reset) and any bo
 2. Run `kiro-cli` once in a terminal and sign in.
 3. Settings → Providers → Kiro: turn it on (it is on by default).
 
+## Additional accounts
+
+The default account continues to use your existing CLI login. For another account, sign in with Kiro under a separate home directory, then use **Settings → Providers → Kiro → Add Account → Enter Signed-in Home Folder**. Enter its full absolute path, such as `/Users/you/kiro-work`, and rename the account to a short label such as Work or Personal.
+
+ClaudeBar sets that command's `HOME`, `KIRO_HOME` and XDG directories to the chosen profile and clears `KIRO_API_KEY`. A missing profile fails without retrying your default login. The folder's login and files remain in place when you remove the account from ClaudeBar. Reauthenticate with the CLI under that same home, then refresh.
+
+The profile must already be signed in; adding an empty folder does not sign you in. This uses the Kiro CLI's home-based profile behavior. ClaudeBar does not copy credentials between profiles.
+
+## Definition
+
+`Modules/Providers/Resources/Providers/kiro.json` declares the command, appearance and account profile. `kiro-usage.js` maps its output. The shared plain-process runner handles input, timeout, cancellation and each command's environment; it also preserves the existing PATH augmentation for runtime-based CLIs.
+
 ## Gotchas
 
 - **Nothing shows at all** means `kiro-cli` isn't on your login shell's `PATH` (ClaudeBar also looks in `~/.local/bin`, `/opt/homebrew/bin` and `/usr/local/bin`). Kiro is skipped silently until it's found. A newly installed CLI can take up to two minutes to be noticed.

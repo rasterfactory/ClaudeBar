@@ -378,6 +378,8 @@ Each slice is one PR, green, with no change a user can see unless it says so.
 
 ## 8.1 · What Claude added
 
+`cli.mode: "pipes"` selects the reusable plain-process runner, preserving timeout/cancellation, combined stdout/stderr, working directory and PATH augmentation. The terminal remains the default. CLI credential environment placeholders and optional exit error rules use the same per-process isolation in either mode. Account form fields may require an absolute filesystem path (`absolutePath`) so a profile root cannot silently resolve against the default home.
+
 Claude needed more than Codex, and each need became a generic piece, never a
 vendor type:
 

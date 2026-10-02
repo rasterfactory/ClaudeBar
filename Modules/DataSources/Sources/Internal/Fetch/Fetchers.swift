@@ -193,6 +193,22 @@ struct CLIFetcher: Fetching {
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
+        // Resolve a credential only at execution time. It never enters account
+        // metadata, the shared definition, or the app's process environment.
+        var additions: [String: String] = [:]
+        for (name, template) in call.environment.set {
+            guard let value = Template.fill(template, with: credential) else {
+                throw UsageError.authenticationRequired
+            }
+            additions[name] = value
+        }
+        let call = CLICall(cli: call.cli, args: call.args, input: call.input, timeout: call.timeout,
+            workingDirectory: call.workingDirectory, autoResponses: call.autoResponses,
+            environment: .init(unset: call.environment.unset, set: additions), readyWhen: call.readyWhen,
+            screen: call.screen, session: call.session, errors: call.errors, mode: call.mode)
+        if let label = call.errors?.missing, makeExecutor(call).locate(call.cli) == nil {
+            throw UsageError.cliNotFound(label)
+        }
         let directory = call.workingDirectory == .dedicated ? CLIWorkingDirectory.resolve() : nil
         let result: CLIResult
         do {
@@ -214,10 +230,18 @@ struct CLIFetcher: Fetching {
                     autoResponses: call.autoResponses
                 )
             }
-        } catch let error as UsageError {
-            throw error
         } catch {
+            if let template = call.errors?.failed {
+                let message: String
+                if case UsageError.executionFailed(let reason) = error { message = reason }
+                else { message = error.localizedDescription }
+                throw UsageError.executionFailed(template.replacingOccurrences(of: "{{error}}", with: message))
+            }
+            if let usage = error as? UsageError { throw usage }
             throw UsageError.executionFailed(error.localizedDescription)
+        }
+        if result.exitCode != 0, let template = call.errors?.nonzero {
+            throw UsageError.executionFailed(template.replacingOccurrences(of: "{{exitCode}}", with: String(result.exitCode)))
         }
         AppLog.probes.debug("\(call.cli) screen captured (\(result.output.count) chars)")
         switch call.screen {
@@ -228,7 +252,8 @@ struct CLIFetcher: Fetching {
 
     /// The real terminal: `DefaultCLIExecutor` with the call's environment and ready markers.
     static let system: MakeExecutor = { call in
-        DefaultCLIExecutor(
+        if call.mode == .pipes { return PipeCLIExecutor(environment: call.environment) }
+        return DefaultCLIExecutor(
             environmentExclusions: call.environment.unset,
             environmentAdditions: call.environment.set,
             completionRule: call.readyWhen.isEmpty

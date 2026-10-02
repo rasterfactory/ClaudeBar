@@ -261,34 +261,6 @@ extension KimiProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - KiroProvider Visual Identity
-
-extension KiroProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "wand.and.stars.inverse" }
-
-    public var iconAssetName: String { "KiroIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Purple/magenta color matching Kiro branding
-        scheme == .dark
-            ? Color(red: 0.55, green: 0.35, blue: 0.85)
-            : Color(red: 0.45, green: 0.25, blue: 0.75)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.70, green: 0.45, blue: 0.95)
-                    : Color(red: 0.60, green: 0.35, blue: 0.85)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - CursorProvider Visual Identity
 
 extension CursorProvider: ProviderVisualIdentity {

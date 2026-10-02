@@ -1,10 +1,11 @@
 // MiniMax Token Plan response, including legacy remaining-count responses.
 function read(response, context) {
     const body = response.json;
-    if (!body || !body.base_resp || typeof body.base_resp.status_code !== "number")
+    if (!body || !body.base_resp || !Number.isInteger(body.base_resp.status_code))
         return {error: {parseFailed: "Invalid MiniMax response"}};
     if (body.base_resp.status_code !== 0)
         return {error: {executionFailed: "MiniMax API error: " + (body.base_resp.status_msg || "Unknown error")}};
+    if (body.model_remains == null) return {error:"noData"};
     if (!Array.isArray(body.model_remains)) return {error: {parseFailed: "Invalid MiniMax model remains"}};
     const quotas = [];
     const clamp = n => Math.max(0, Math.min(100, n));

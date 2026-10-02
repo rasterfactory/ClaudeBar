@@ -154,6 +154,7 @@ struct MiniMaxDefinitionTests {
     @Test func `body-level API errors and empty responses remain failures`() async throws {
         await #expect(throws:UsageError.executionFailed("MiniMax API error: invalid api key")) { try await make(body:Self.sampleErrorResponse).defaultAccount.refresh() }
         await #expect(throws:UsageError.noData) { try await make(body:Self.sampleEmptyRemainsResponse).defaultAccount.refresh() }
+        await #expect(throws:UsageError.noData) { try await make(body:#"{"base_resp":{"status_code":0}}"#).defaultAccount.refresh() }
     }
     @Test(arguments:["not JSON",#"{"base_resp":{"status_code":0},"model_remains":[{}]}"#])
     func `malformed response fails mapping`(_ body:String) async throws {

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- MiniMax supports named accounts with separate secure API keys and China or International regions, preserving existing settings and Token Plan quotas. ([#382](https://github.com/tddworks/ClaudeBar/pull/382))
 - Claude's daily cost and token cards load much faster when you open the popover: ClaudeBar reads only the session log lines written since the last open, instead of re-reading every log from today and yesterday. ([#378](https://github.com/tddworks/ClaudeBar/pull/378))
 
 ---

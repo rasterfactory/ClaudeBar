@@ -14,6 +14,10 @@ Shows your MiniMax Token Plan quota: one row per model and window (the 5-hour in
    - **REGION**: International (minimax.io) or China (minimaxi.com). **The default is China**, so international accounts must switch it.
    - **API KEY**: paste the key, then press **Save & Test Connection**.
 
+## Multiple accounts
+
+Settings → Providers → MiniMax → Accounts → Add Account asks for a name, an API key, and a region. Each added account has its own secure key and region and never inherits the default account's environment variable. With one account the name stays MiniMax; additional accounts use their labels.
+
 ## Where the key comes from
 
 The key is looked up in this order, as the card's **API KEY LOOKUP ORDER** note says:
@@ -21,7 +25,7 @@ The key is looked up in this order, as the card's **API KEY LOOKUP ORDER** note 
 1. An environment variable: `MINIMAX_API_KEY`, or the name you type in **API KEY ENV VAR (ALTERNATIVE)**.
 2. The key saved in **API KEY**.
 
-**Remove API Key** deletes the saved key. The saved key is kept in the app's UserDefaults credential store, not in `settings.json`.
+**Remove API Key** deletes the saved key. The saved key is kept in ClaudeBar's secure credential store, not in `settings.json`. Existing UserDefaults keys migrate after secure persistence succeeds.
 
 ## Gotchas
 

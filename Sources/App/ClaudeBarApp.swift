@@ -25,10 +25,12 @@ struct ClaudeBarApp: App {
         _ id: String,
         settings: any MultiAccountSettingsRepository,
         accounts: [ProviderAccountConfig] = [],
+        secrets: (any SecretVault)? = nil,
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] },
         guestPasses: GuestPasses? = nil
     ) -> Provider {
         do {
-            return try Providers.make(id, settings: settings, accounts: accounts, guestPasses: guestPasses)
+            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, environment: environment)
         } catch {
             preconditionFailure("Built-in provider '\(id)' failed to load: \(error.localizedDescription)")
         }
@@ -122,6 +124,13 @@ struct ClaudeBarApp: App {
         // product once, with the logins added beside the default one (#326).
         let codex = Self.builtIn("codex", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "codex"))
 
+        let minimax = Self.builtIn("minimax", settings: settingsRepository,
+            accounts: settingsRepository.accounts(forProvider: "minimax"), secrets: ProviderVault(),
+            environment: { name in
+                let override = settingsRepository.minimaxAuthEnvVar()
+                return ProcessInfo.processInfo.environment[name == "MINIMAX_API_KEY" && !override.isEmpty ? override : name]
+            })
+
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
@@ -151,10 +160,7 @@ struct ClaudeBarApp: App {
             ),
             KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
-            MiniMaxProvider(
-                probe: MiniMaxUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
+            minimax.defaultAccount,
             DeepSeekProvider(
                 probe: DeepSeekUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
@@ -189,7 +195,7 @@ struct ClaudeBarApp: App {
             ),
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + minimax.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

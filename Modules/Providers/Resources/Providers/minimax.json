@@ -1,0 +1,116 @@
+{
+  "profile": {
+    "id": "minimax",
+    "name": "MiniMax",
+    "links": {
+      "dashboard": "https://platform.minimaxi.com/user-center/payment/coding-plan",
+      "dashboardBySetting": {
+        "setting": "region",
+        "values": {
+          "china": "https://platform.minimaxi.com/user-center/payment/coding-plan",
+          "international": "https://platform.minimax.io/user-center/payment/coding-plan"
+        }
+      }
+    },
+    "look": {
+      "symbol": "waveform",
+      "icon": "MiniMaxIcon",
+      "color": {
+        "light": [
+          0.82,
+          0.2,
+          0.35
+        ],
+        "dark": [
+          0.91,
+          0.27,
+          0.42
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.86,
+          0.43,
+          0.14
+        ],
+        "dark": [
+          0.96,
+          0.53,
+          0.24
+        ]
+      }
+    }
+  },
+  "enabledByDefault": false,
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "credential": {
+        "firstOf": [
+          {
+            "environment": "MINIMAX_API_KEY"
+          },
+          {
+            "setting": "apiKey"
+          }
+        ]
+      },
+      "fetch": {
+        "http": {
+          "url": "https://api.minimaxi.com/v1/token_plan/remains",
+          "urlBySetting": {
+            "setting": "region",
+            "values": {
+              "china": "https://api.minimaxi.com/v1/token_plan/remains",
+              "international": "https://api.minimax.io/v1/token_plan/remains"
+            }
+          },
+          "timeout": 30,
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept": "application/json"
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "minimax-remains.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "form": [
+      {
+        "id": "apiKey",
+        "label": "API Key",
+        "secret": true
+      },
+      {
+        "id": "region",
+        "label": "Region",
+        "choices": [
+          "china",
+          "international"
+        ]
+      }
+    ],
+    "patch": {
+      "api": {
+        "credential": {
+          "firstOf": null,
+          "setting": "apiKey"
+        },
+        "fetch": {
+          "http": {
+            "urlBySetting": {
+              "setting": null,
+              "value": "{{account.region}}"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -293,6 +293,9 @@ private struct ProviderDetailView: View {
         case "kimi":
             KimiConfigCard(monitor: monitor)
         case "minimax":
+            if let shared = (provider as? Account)?.provider {
+                ProviderAccountsCard(provider: shared, monitor: monitor)
+            }
             MiniMaxConfigCard(monitor: monitor)
         case "deepseek":
             DeepSeekConfigCard(monitor: monitor)

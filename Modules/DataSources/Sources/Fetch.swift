@@ -25,15 +25,34 @@ public struct FileCall: Sendable, Equatable, Codable {
 
 /// `{{name}}` placeholders in `url`, `headers` and `body` are filled from the
 /// credential at fetch time.
+public struct SettingURL: Sendable, Equatable, Codable {
+    public let setting: String?
+    public let value: String?
+    public let values: [String: String]
+
+    public init(setting: String? = nil, value: String? = nil, values: [String: String]) {
+        self.setting = setting
+        self.value = value
+        self.values = values
+    }
+
+    public func resolve(value selected: String? = nil) -> String? {
+        guard let key = value ?? selected else { return nil }
+        return values[key]
+    }
+}
+
 public struct HTTPRequest: Sendable, Equatable, Codable {
     public let url: String
+    public let urlBySetting: SettingURL?
     public let method: String
     public let headers: [String: String]
     public let body: String?
     public let timeout: TimeInterval
 
-    public init(url: String, method: String = "GET", headers: [String: String] = [:], body: String? = nil, timeout: TimeInterval = 15) {
+    public init(url: String, urlBySetting: SettingURL? = nil, method: String = "GET", headers: [String: String] = [:], body: String? = nil, timeout: TimeInterval = 15) {
         self.url = url
+        self.urlBySetting = urlBySetting
         self.method = method
         self.headers = headers
         self.body = body
@@ -43,6 +62,7 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         url = try container.decode(String.self, forKey: .url)
+        urlBySetting = try container.decodeIfPresent(SettingURL.self, forKey: .urlBySetting)
         method = try container.decodeIfPresent(String.self, forKey: .method) ?? "GET"
         headers = try container.decodeIfPresent([String: String].self, forKey: .headers) ?? [:]
         body = try container.decodeIfPresent(String.self, forKey: .body)

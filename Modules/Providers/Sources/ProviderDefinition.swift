@@ -9,6 +9,7 @@ import Foundation
 /// keeps the laws below.
 public struct ProviderDefinition: Sendable, Equatable, Codable {
     public struct Links: Sendable, Equatable, Codable {
+        public let dashboardBySetting: SettingURL?
         public let dashboard: URL?
         public let status: URL?
         /// A different dashboard for some plans — `{ "claudeApi": "…" }`. Keyed
@@ -16,7 +17,8 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         /// `claudeApi`) or a badge as written.
         public let dashboardByPlan: [String: URL]
 
-        public init(dashboard: URL? = nil, status: URL? = nil, dashboardByPlan: [String: URL] = [:]) {
+        public init(dashboard: URL? = nil, status: URL? = nil, dashboardByPlan: [String: URL] = [:], dashboardBySetting: SettingURL? = nil) {
+            self.dashboardBySetting = dashboardBySetting
             self.dashboard = dashboard
             self.status = status
             self.dashboardByPlan = dashboardByPlan
@@ -27,12 +29,14 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             self.init(
                 dashboard: try container.decodeIfPresent(URL.self, forKey: .dashboard),
                 status: try container.decodeIfPresent(URL.self, forKey: .status),
-                dashboardByPlan: try container.decodeIfPresent([String: URL].self, forKey: .dashboardByPlan) ?? [:]
+                dashboardByPlan: try container.decodeIfPresent([String: URL].self, forKey: .dashboardByPlan) ?? [:],
+                dashboardBySetting: try container.decodeIfPresent(SettingURL.self, forKey: .dashboardBySetting)
             )
         }
 
         /// The dashboard for the plan the last usage reported, else the default.
-        public func dashboard(for plan: AccountTier?) -> URL? {
+        public func dashboard(for plan: AccountTier?, value: String? = nil) -> URL? {
+            if let text = dashboardBySetting?.resolve(value: value), let url = URL(string: text) { return url }
             guard let plan, let url = dashboardByPlan[Self.key(for: plan)] else { return dashboard }
             return url
         }

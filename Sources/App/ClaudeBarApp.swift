@@ -206,6 +206,7 @@ struct ClaudeBarApp: App {
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after
         // the built-ins; their keys come from ClaudeBar's vault.
+        let vault = ProviderVault()
         for definition in ProviderCatalog().custom() {
             Providers.register(custom: definition)
             let custom = Providers.make(definition, settings: settingsRepository,

@@ -299,6 +299,9 @@ private struct ProviderDetailView: View {
         case "alibaba":
             AlibabaConfigCard(monitor: monitor)
         case "vercel-gateway":
+            if let vercel = (provider as? Account)?.provider {
+                ProviderAccountsCard(provider: vercel, monitor: monitor)
+            }
             VercelConfigCard(monitor: monitor)
         case "copilot":
             CopilotConfigCard(monitor: monitor)

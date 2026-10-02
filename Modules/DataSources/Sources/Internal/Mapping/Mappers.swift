@@ -271,7 +271,9 @@ struct JSONMapper: Reading {
                     if let number = scope.value(path) as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() {
                         return Decimal(string: number.stringValue, locale: Locale(identifier: "en_US_POSIX"))
                     }
-                    if let value = scope.number(path) { return Decimal(value) }
+                    if let text = scope.value(path) as? String, scope.number(path) != nil {
+                        return Decimal(string: text.trimmingCharacters(in: .whitespacesAndNewlines), locale: Locale(identifier: "en_US_POSIX"))
+                    }
                 }
             }
             return nil

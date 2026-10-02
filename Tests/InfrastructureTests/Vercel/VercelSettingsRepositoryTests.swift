@@ -68,7 +68,7 @@ struct VercelSettingsRepositoryTests {
         #expect(repository.vercelAuthEnvVar() == "CUSTOM_VERCEL_KEY")
         #expect(repository.getVercelApiKey() == "vck_test")
         #expect(repository.hasVercelApiKey() == true)
-        #expect(secureCredentials.get(forKey: CredentialKey.vercelApiKey) == "vck_test")
+        #expect(secureCredentials.get(forKey: "provider.vercel-gateway.apiKey") == "vck_test")
         #expect(credentials.object(forKey: "com.claudebar.credentials.vercel-api-key") == nil)
 
         #expect(repository.deleteVercelApiKey() == true)
@@ -135,7 +135,7 @@ struct VercelSettingsRepositoryTests {
         )
 
         #expect(repository.getVercelApiKey() == "legacy-key")
-        #expect(secureCredentials.get(forKey: CredentialKey.vercelApiKey) == "legacy-key")
+        #expect(secureCredentials.get(forKey: "provider.vercel-gateway.apiKey") == "legacy-key")
         #expect(credentials.object(forKey: "com.claudebar.credentials.vercel-api-key") == nil)
     }
 

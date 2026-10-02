@@ -10,11 +10,16 @@ struct SecureCredentialMigration {
     let legacyStore: UserDefaults
     let secureKey: String
     let legacyKey: String
+    /// A credential already in the secure store under an older name.
+    var legacySecureKey: String? = nil
 
     /// Saves a credential securely and removes its legacy copy after verification.
     func save(_ value: String) {
         secureStore.save(value, forKey: secureKey)
         if secureStore.get(forKey: secureKey) == value {
+            if let legacySecureKey, legacySecureKey != secureKey {
+                _ = secureStore.delete(forKey: legacySecureKey)
+            }
             legacyStore.removeObject(forKey: legacyKey)
         }
     }
@@ -22,6 +27,11 @@ struct SecureCredentialMigration {
     /// Reads the secure value or migrates and returns the legacy value.
     func get() -> String? {
         if let value = secureStore.get(forKey: secureKey) {
+            return value
+        }
+
+        if let legacySecureKey, let value = secureStore.get(forKey: legacySecureKey) {
+            save(value)
             return value
         }
 
@@ -41,6 +51,7 @@ struct SecureCredentialMigration {
             return false
         }
 
+        if let legacySecureKey, legacySecureKey != secureKey, !secureStore.delete(forKey: legacySecureKey) { return false }
         legacyStore.removeObject(forKey: legacyKey)
         return legacyStore.object(forKey: legacyKey) == nil
     }

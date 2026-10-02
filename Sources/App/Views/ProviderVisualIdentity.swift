@@ -373,34 +373,6 @@ extension DeepSeekProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - VercelProvider Visual Identity
-
-extension VercelProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "triangle.fill" }
-
-    public var iconAssetName: String { "VercelIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Vercel brand black/white monochrome
-        scheme == .dark
-            ? Color(white: 0.92)
-            : Color(white: 0.08)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(white: 0.55)
-                    : Color(white: 0.45)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - MistralProvider Visual Identity
 
 extension MistralProvider: ProviderVisualIdentity {

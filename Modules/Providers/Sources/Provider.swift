@@ -210,6 +210,8 @@ public final class Provider {
             for name in secrets.keys { vault?.delete(name, provider: lineupId) }
             throw UsageError.executionFailed("This \(name) account can't be added.")
         }
+        // Adding an authenticated form login is an explicit opt-in.
+        account.isEnabled = true
         return account
     }
 

@@ -34,8 +34,9 @@ public final class JSONSettingsRepository:
         SecureCredentialMigration(
             secureStore: secureCredentials,
             legacyStore: credentials,
-            secureKey: CredentialKey.vercelApiKey,
-            legacyKey: Self.legacyVercelApiKeyKey
+            secureKey: "provider.vercel-gateway.apiKey",
+            legacyKey: Self.legacyVercelApiKeyKey,
+            legacySecureKey: CredentialKey.vercelApiKey
         )
     }
 

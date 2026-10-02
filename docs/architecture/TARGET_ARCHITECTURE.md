@@ -412,3 +412,5 @@ vendor type:
   one `Provider` owning its `Account`s. The rest is designed in
   [features/multi-account/design.md](../features/multi-account/design.md).
 - **A `command` fetch from the UI** — see [CANONICAL_MODEL §9](CANONICAL_MODEL.md#9--open).
+
+Vercel’s migration also preserves numeric-string money directly as Decimal in the generic JSON mapper; account keys and the older secure-key name are bridged at the storage boundary.

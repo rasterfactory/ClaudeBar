@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Command Code accounts now use the shared account settings: add separate API keys and name each login, while keeping existing CLI logins and credit meters. ([#337](https://github.com/tddworks/ClaudeBar/issues/337))
+- Command Code accounts now use the shared account settings: add separate API keys and name each login, while keeping existing CLI logins and credit meters. ([#384](https://github.com/tddworks/ClaudeBar/pull/384))
 - Claude's daily cost and token cards load much faster when you open the popover: ClaudeBar reads only the session log lines written since the last open, instead of re-reading every log from today and yesterday. ([#378](https://github.com/tddworks/ClaudeBar/pull/378))
 
 ---

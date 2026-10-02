@@ -42,6 +42,9 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
                 secureKey: Self.key(name, provider: provider), legacyKey: "com.claudebar.credentials.vercel-api-key",
                 legacySecureKey: CredentialKey.vercelApiKey)
         }
-        return nil
+        let legacyKeys = ["provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key"]
+        let key = Self.key(name, provider: provider)
+        guard let legacyKey = legacyKeys[key] else { return nil }
+        return SecureCredentialMigration(secureStore: credentials, legacyStore: legacyStore, secureKey: key, legacyKey: legacyKey)
     }
 }

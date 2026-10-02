@@ -134,22 +134,24 @@ private struct ProviderListRow: View {
 
                 if provider.isEnabled, let quota = lowestQuota {
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text("\(Int(quota.percentRemaining))%")
+                        Text(quota.percentLeft.map { "\(Int($0))%" } ?? quota.formattedDollarRemaining ?? "—")
                             .font(.system(size: 12, weight: .bold, design: theme.fontDesign))
                             .foregroundStyle(theme.statusColor(for: quota.status(under: AppSettings.shared.statusPolicy)))
                             .monospacedDigit()
 
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(theme.progressTrack)
+                        if let percent = quota.percentLeft {
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule()
+                                        .fill(theme.progressTrack)
 
-                                Capsule()
-                                    .fill(theme.statusColor(for: quota.status(under: AppSettings.shared.statusPolicy)))
-                                    .frame(width: geo.size.width * quota.percentRemaining / 100)
+                                    Capsule()
+                                        .fill(theme.statusColor(for: quota.status(under: AppSettings.shared.statusPolicy)))
+                                        .frame(width: geo.size.width * max(0, min(100, percent)) / 100)
+                                }
                             }
+                            .frame(width: 80, height: 4)
                         }
-                        .frame(width: 80, height: 4)
                     }
                 }
 
@@ -295,6 +297,9 @@ private struct ProviderDetailView: View {
         case "minimax":
             MiniMaxConfigCard(monitor: monitor)
         case "deepseek":
+            if let deepseek = (provider as? Account)?.provider {
+                ProviderAccountsCard(provider: deepseek, monitor: monitor)
+            }
             DeepSeekConfigCard(monitor: monitor)
         case "alibaba":
             AlibabaConfigCard(monitor: monitor)

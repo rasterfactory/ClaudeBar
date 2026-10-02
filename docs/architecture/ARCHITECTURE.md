@@ -10,6 +10,13 @@ ClaudeBar follows a **layered architecture** with clear separation of concerns:
 - **Infrastructure Layer** - Technical implementations (CLI, network, storage)
 - **App Layer** - SwiftUI views that consume domain directly
 
+Claude, Codex and DeepSeek now run as bundled JSON definitions under
+`Modules/Providers/Resources/Providers/`, using one generic `Provider` and
+`DataSource` pipeline. Their account rules live in those definitions; their
+Swift provider and probe classes are gone. See [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md)
+and [DeepSeek's migration](../providers/deepseek/design.md). The remaining
+providers still use the legacy layers described below.
+
 The key principle is **QuotaMonitor as Single Source of Truth** - all provider state flows through this central actor.
 
 ## Architecture Diagram

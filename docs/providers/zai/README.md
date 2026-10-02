@@ -44,3 +44,16 @@ The key is looked up in this order: the **API KEY** saved in ClaudeBar settings,
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+
+## Multiple accounts
+
+In Settings, choose **Add account**, enter that account's API key and select
+its platform: Z.ai, Zhipu (`open.bigmodel.cn`) or the development endpoint.
+Give the account a short name such as Work or Personal. Each account uses its
+own secure key and platform, without falling back to your Claude configuration
+or the default account's key. Removing an account removes its saved key.
+
+One account stays labeled **Z.ai**. Multiple accounts use their names in the
+menu bar. Your existing default-account API key, custom Claude config path and
+login-shell environment fallback remain available in the configuration card.

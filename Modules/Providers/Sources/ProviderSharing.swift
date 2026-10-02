@@ -45,6 +45,7 @@ extension ProviderDefinition {
 
     private static func settings(in lookup: CredentialLookup) -> [String] {
         switch lookup {
+        case .script(let script): script.inputs.values.flatMap(settings(in:))
         case .setting(let name): [name]
         case .firstOf(let lookups): lookups.flatMap(settings(in:))
         case .refreshing(let base, _), .claiming(let base, _): settings(in: base)

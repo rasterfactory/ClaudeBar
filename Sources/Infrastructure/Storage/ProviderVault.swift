@@ -31,7 +31,8 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
     }
 
     static func key(_ name: String, provider: String) -> String {
-        "provider.\(provider).\(name)"
+        if provider == "zai", name == "apiKey" { return CredentialKey.zaiApiKey }
+        return "provider.\(provider).\(name)"
     }
 
     private func migration(_ name: String, provider: String) -> SecureCredentialMigration? {
@@ -43,6 +44,7 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
                 legacySecureKey: CredentialKey.vercelApiKey)
         }
         let legacyKeys = [
+            CredentialKey.zaiApiKey: "com.claudebar.credentials.zai-api-key",
             "provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key",
             "provider.minimax.apiKey": "com.claudebar.credentials.minimax-api-key",
             "provider.copilot.apiKey": "com.claudebar.credentials.github-copilot-token",

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cursor uses a JSON definition and supports separately named accounts with securely saved tokens, while preserving the desktop login and usage cards. ([#388](https://github.com/tddworks/ClaudeBar/pull/388))
 - Grok uses a JSON definition with separately named login folders, preserves billing cards and automatic token refresh, and keeps other sign-ins intact. ([#389](https://github.com/tddworks/ClaudeBar/pull/389))
 - Copilot supports separate GitHub accounts with their own secure tokens, API modes, monthly allowances and short names, while keeping existing billing and manual-usage settings. ([#391](https://github.com/tddworks/ClaudeBar/pull/391))
+- Z.ai supports separately named accounts with their own secure API keys and platform choices, while preserving Claude configuration, login-shell fallback and existing quotas. ([#392](https://github.com/tddworks/ClaudeBar/pull/392))
 - DeepSeek supports separate accounts with their own API keys, names and menu-bar pins, preserves existing sign-ins, and shows balances in their billing currency. ([#331](https://github.com/tddworks/ClaudeBar/issues/331))
 - Claude's daily cost and token cards load much faster when you open the popover: ClaudeBar reads only the session log lines written since the last open, instead of re-reading every log from today and yesterday. ([#378](https://github.com/tddworks/ClaudeBar/pull/378))
 

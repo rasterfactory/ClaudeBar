@@ -166,6 +166,12 @@ struct ClaudeBarApp: App {
             guard name == "COPILOT_TOKEN" else { return ProcessInfo.processInfo.environment[name] }
             let configured = settingsRepository.copilotAuthEnvVar()
             return configured.isEmpty ? nil : ProcessInfo.processInfo.environment[configured]
+        let zai = Self.builtIn("zai", settings: settingsRepository,
+                               accounts: settingsRepository.accounts(forProvider: "zai"), secrets: vault,
+                               environment: { name in
+            if name == "ZAI_CONFIG_PATH" { return settingsRepository.zaiConfigPath() }
+            if name == "GLM_AUTH_NAME" { return settingsRepository.glmAuthEnvVar() }
+            return ProcessInfo.processInfo.environment[name]
         })
 
         // The lineup: each login is its own pill. Legacy providers are their
@@ -181,6 +187,12 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             copilot.defaultAccount,
+            zai.defaultAccount,
+            CopilotProvider(
+                billingProbe: CopilotUsageProbe(settingsRepository: settingsRepository),
+                internalProbe: CopilotInternalAPIProbe(settingsRepository: settingsRepository),
+                settingsRepository: settingsRepository
+            ),
             BedrockProvider(
                 probe: BedrockUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
@@ -215,7 +227,7 @@ struct ClaudeBarApp: App {
                 probe: OmpUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

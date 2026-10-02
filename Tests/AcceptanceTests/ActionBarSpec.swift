@@ -80,7 +80,7 @@ struct ActionBarSpec {
             let suiteName = "com.claudebar.test.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suiteName)!
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            let zai = ZaiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let zai = Providers.make(try! Providers.builtIn("zai"), settings: JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")))).defaultAccount
             #expect(zai.dashboardURL?.absoluteString == "https://z.ai/subscribe")
         }
     }

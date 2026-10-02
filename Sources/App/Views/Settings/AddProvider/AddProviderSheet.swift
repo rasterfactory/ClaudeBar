@@ -507,6 +507,7 @@ struct AddProviderSheet: View {
 
     private static func usesSavedKey(_ lookup: CredentialLookup) -> Bool {
         switch lookup {
+        case .script(let script): script.inputs.values.contains(where: usesSavedKey)
         case .setting: true
         case .firstOf(let lookups): lookups.contains(where: usesSavedKey)
         case .refreshing(let base, _), .claiming(let base, _): usesSavedKey(base)

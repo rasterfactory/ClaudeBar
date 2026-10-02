@@ -1,4 +1,6 @@
 import Testing
+import Providers
+import DataSources
 import Foundation
 import Mockable
 @testable import Domain
@@ -14,6 +16,19 @@ import Mockable
 /// - #42: User sets env var fallback → probe uses env var if config file has no token
 @Suite("Feature: Z.ai Configuration")
 struct ZaiConfigSpec {
+    private struct FixtureKey: SecretStore {
+        func secret(_ name: String, provider: String) -> String? { "fixture-key" }
+    }
+    @MainActor private static func account(settings: UserDefaultsProviderSettingsRepository, status: Int) -> Account {
+        let network = MockNetworkClient()
+        given(network).request(.any).willReturn((Data(#"{"data":{"limits":[{"type":"TOKENS_LIMIT","percentage":20}]}}"#.utf8), HTTPURLResponse(url: URL(string:"https://api.z.ai")!,statusCode:status,httpVersion:nil,headerFields:nil)!))
+        let executor = MockCLIExecutor()
+        given(executor).locate(.any).willReturn(nil)
+        return Provider(definition:try! Providers.builtIn("zai"),settings:settings,makeDataSource:{ source,_ in
+            DataSources.make(source,providerId:"zai",cliExecutor:executor,network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:FixtureKey(),environment:{_ in nil},homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
+        }).defaultAccount
+    }
+
 
     // MARK: - #41: Custom config path
 
@@ -69,15 +84,7 @@ struct ZaiConfigSpec {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
             settings.setEnabled(true, forProvider: "zai")
 
-            let probe = MockUsageProbe()
-            given(probe).isAvailable().willReturn(true)
-            given(probe).probe().willReturn(UsageSnapshot(
-                providerId: "zai",
-                quotas: [UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "zai")],
-                capturedAt: Date()
-            ))
-
-            let zai = ZaiProvider(probe: probe, settingsRepository: settings)
+            let zai = ZaiConfigSpec.account(settings: settings, status: 200)
 
             // When
             _ = try await zai.refresh()
@@ -95,11 +102,7 @@ struct ZaiConfigSpec {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
             settings.setEnabled(true, forProvider: "zai")
 
-            let probe = MockUsageProbe()
-            given(probe).isAvailable().willReturn(true)
-            given(probe).probe().willThrow(UsageError.authenticationRequired)
-
-            let zai = ZaiProvider(probe: probe, settingsRepository: settings)
+            let zai = ZaiConfigSpec.account(settings: settings, status: 401)
 
             // When
             do {

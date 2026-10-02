@@ -187,6 +187,12 @@ struct KeychainReader: CredentialFinding {
 struct FirstOfReader: CredentialFinding {
     let readers: [any CredentialFinding]
 
+    func findForFetch() async throws -> FoundCredential? {
+        for reader in readers {
+            if let found = try await reader.findForFetch() { return found }
+        }
+        return nil
+    }
     func find() throws -> FoundCredential? {
         for reader in readers {
             if let found = try reader.find() {

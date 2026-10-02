@@ -70,8 +70,8 @@ public struct DataSource: Sendable {
         if definition.availability == .files, definition.identity == nil { return fetcher.isReady() }
         var credential: Credential?
         if let credentials {
-            guard let found = try? credentials.find() else { return false }
-            credential = found.credential
+            guard await credentials.isAvailable() else { return false }
+            credential = (try? credentials.find())?.credential
         }
         guard isExpectedLogin(credential) else { return false }
         return fetcher.isReady()
@@ -195,7 +195,7 @@ public struct DataSource: Sendable {
             AppLog.probes.error("\(providerId) \(kind): no \(file) — refusing to run")
             throw DataSourceError(.lookup, definition.missingFilesError?.usageError ?? .authenticationRequired)
         }
-        var found = try lookUp()
+        var found = try await lookUp()
         try checkIdentity(found?.credential)
         let result = try await fetchWith(&found)
         if definition.identity != nil {
@@ -250,11 +250,11 @@ public struct DataSource: Sendable {
         }
     }
 
-    private func lookUp() throws -> FoundCredential? {
+    private func lookUp() async throws -> FoundCredential? {
         guard let credentials else { return nil }
         let found: FoundCredential?
         do {
-            found = try credentials.find()
+            found = try await credentials.findForFetch()
         } catch {
             throw DataSourceError.wrap(error, as: .lookup)
         }
@@ -335,6 +335,13 @@ struct MappingFacts: Sendable {
 protocol CredentialFinding: Sendable {
     /// `nil` when nothing answered — *Key needed*.
     func find() throws -> FoundCredential?
+    func findForFetch() async throws -> FoundCredential?
+    func isAvailable() async -> Bool
+}
+
+extension CredentialFinding {
+    func findForFetch() async throws -> FoundCredential? { try find() }
+    func isAvailable() async -> Bool { (try? find()) != nil }
 }
 
 protocol CredentialRefreshing: Sendable {

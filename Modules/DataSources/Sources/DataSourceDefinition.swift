@@ -29,6 +29,7 @@ public struct DataSourceDefinition: Sendable, Equatable, Codable {
     public let cache: Cache?
     /// JSON files the mapping may read — `{ "account": { "path": …, "email": "$.…" } }`.
     public let context: [String: JSONFileCredential]
+    public let settings: [String: SettingBinding]
     /// What to do once when the mapping reports a failure, then try again.
     public let recover: [String: Recovery]
     /// Files that must exist before anything runs — a CLI that finds no
@@ -55,6 +56,7 @@ public struct DataSourceDefinition: Sendable, Equatable, Codable {
         fallbackOn: [String: String] = [:],
         cache: Cache? = nil,
         context: [String: JSONFileCredential] = [:],
+        settings: [String: SettingBinding] = [:],
         recover: [String: Recovery] = [:],
         requiresFiles: [String] = [],
         identity: Identity? = nil,
@@ -73,6 +75,7 @@ public struct DataSourceDefinition: Sendable, Equatable, Codable {
         self.fallbackOn = fallbackOn
         self.cache = cache
         self.context = context
+        self.settings = settings
         self.recover = recover
         self.requiresFiles = requiresFiles
         self.identity = identity
@@ -94,6 +97,7 @@ public struct DataSourceDefinition: Sendable, Equatable, Codable {
         fallbackOn = try container.decodeIfPresent([String: String].self, forKey: .fallbackOn) ?? [:]
         cache = try container.decodeIfPresent(Cache.self, forKey: .cache)
         context = try container.decodeIfPresent([String: JSONFileCredential].self, forKey: .context) ?? [:]
+        settings = try container.decodeIfPresent([String: SettingBinding].self, forKey: .settings) ?? [:]
         recover = try container.decodeIfPresent([String: Recovery].self, forKey: .recover) ?? [:]
         requiresFiles = try container.decodeIfPresent([String].self, forKey: .requiresFiles) ?? []
         identity = try container.decodeIfPresent(Identity.self, forKey: .identity)
@@ -178,5 +182,24 @@ public struct Identity: Sendable, Equatable, Codable {
         self.field = field
         self.equals = equals
         self.hint = hint
+    }
+}
+
+/// Non-secret, account-scoped settings named by a definition. Scripts may
+/// request changes only to bindings explicitly marked writable.
+public protocol SettingStore: Sendable {
+    func value(_ name: String) -> JSONValue?
+    func setValue(_ value: JSONValue?, for name: String)
+}
+
+public struct SettingBinding: Sendable, Equatable, Codable {
+    public let key: String?
+    public let `default`: JSONValue?
+    public let writable: Bool
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        key = try container.decodeIfPresent(String.self, forKey: .key)
+        `default` = try container.decodeIfPresent(JSONValue.self, forKey: .default)
+        writable = try container.decodeIfPresent(Bool.self, forKey: .writable) ?? false
     }
 }

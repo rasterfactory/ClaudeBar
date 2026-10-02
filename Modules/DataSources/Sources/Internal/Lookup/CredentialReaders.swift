@@ -1,5 +1,6 @@
 import Diagnostics
 import Foundation
+import Quotas
 
 /// `environment` — an environment variable holds the token.
 struct EnvironmentReader: CredentialFinding {
@@ -242,5 +243,21 @@ struct SettingReader: CredentialFinding {
             return nil
         }
         return FoundCredential(credential: Credential(["token": value]), save: nil)
+    }
+}
+
+struct CompanionsReader: CredentialFinding {
+    let base: any CredentialFinding
+    let fields: [String: any CredentialFinding]
+    let rule: CompanionLookups
+    func find() throws -> FoundCredential? {
+        guard var found = try base.find() else { return nil }
+        for (name, reader) in fields {
+            if let value = try reader.find()?.credential.token { found.credential[name] = value }
+        }
+        guard rule.required.allSatisfy({ found.credential[$0] != nil }) else {
+            throw rule.missing?.usageError ?? UsageError.authenticationRequired
+        }
+        return found
     }
 }

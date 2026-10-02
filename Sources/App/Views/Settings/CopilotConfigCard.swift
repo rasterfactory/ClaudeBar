@@ -1,6 +1,7 @@
 import SwiftUI
 import Domain
 import Infrastructure
+import Providers
 
 /// GitHub Copilot provider configuration card for SettingsView.
 struct CopilotConfigCard: View {
@@ -10,6 +11,7 @@ struct CopilotConfigCard: View {
     @Environment(\.appTheme) private var theme
 
     // Token input state
+    @State private var copilotUsernameInput: String = ""
     @State private var copilotTokenInput: String = ""
     @State private var showToken: Bool = false
     @State private var saveError: String?
@@ -25,14 +27,17 @@ struct CopilotConfigCard: View {
     @State private var isTestingCopilot = false
     @State private var copilotTestResult: String?
 
-    private var copilotProvider: CopilotProvider? {
-        monitor.provider(for: "copilot") as? CopilotProvider
+    private var copilotProvider: Account? {
+        monitor.provider(for: "copilot") as? Account
     }
 
     private var copilotUsernameBinding: Binding<String> {
         Binding(
-            get: { copilotProvider?.username ?? "" },
-            set: { newValue in copilotProvider?.username = newValue }
+            get: { copilotUsernameInput },
+            set: { newValue in
+                copilotUsernameInput = newValue
+                settings.copilot.saveGithubUsername(newValue)
+            }
         )
     }
 
@@ -71,6 +76,7 @@ struct CopilotConfigCard: View {
                 )
         )
         .onAppear {
+            copilotUsernameInput = settings.copilot.getGithubUsername() ?? ""
             copilotProbeMode = settings.copilot.copilotProbeMode()
             copilotAuthEnvVarInput = settings.copilot.copilotAuthEnvVar()
             copilotMonthlyLimit = settings.copilot.copilotMonthlyLimit() ?? 50
@@ -217,7 +223,7 @@ struct CopilotConfigCard: View {
 
                     Spacer()
 
-                    if copilotProvider?.hasToken == true {
+                    if settings.copilot.hasGithubToken() {
                         HStack(spacing: 3) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 9))
@@ -537,7 +543,7 @@ struct CopilotConfigCard: View {
             }
 
             // Delete token
-            if copilotProvider?.hasToken == true {
+            if settings.copilot.hasGithubToken() {
                 Button {
                     deleteToken()
                 } label: {
@@ -560,7 +566,11 @@ struct CopilotConfigCard: View {
         saveError = nil
         saveSuccess = false
 
-        copilotProvider?.saveToken(copilotTokenInput)
+        settings.copilot.saveGithubToken(copilotTokenInput)
+        guard settings.copilot.getGithubToken() == copilotTokenInput else {
+            saveError = "Could not save token securely. Please try again."
+            return
+        }
         copilotTokenInput = ""
         saveSuccess = true
 
@@ -576,7 +586,9 @@ struct CopilotConfigCard: View {
     }
 
     private func deleteToken() {
-        copilotProvider?.deleteCredentials()
+        settings.copilot.deleteGithubToken()
+        settings.copilot.deleteGithubUsername()
+        copilotUsernameInput = ""
         saveError = nil
     }
 
@@ -587,7 +599,12 @@ struct CopilotConfigCard: View {
         settings.copilot.setCopilotAuthEnvVar(copilotAuthEnvVarInput)
         if !copilotTokenInput.isEmpty {
             AppLog.credentials.info("Saving Copilot token for connection test")
-            copilotProvider?.saveToken(copilotTokenInput)
+            settings.copilot.saveGithubToken(copilotTokenInput)
+            guard settings.copilot.getGithubToken() == copilotTokenInput else {
+                copilotTestResult = "Could not save token securely. Please try again."
+                isTestingCopilot = false
+                return
+            }
             copilotTokenInput = ""
         }
 

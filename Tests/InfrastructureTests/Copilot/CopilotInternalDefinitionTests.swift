@@ -3,19 +3,37 @@ import Foundation
 import Mockable
 @testable import Infrastructure
 @testable import Domain
+import Providers
+import DataSources
 
-@Suite("CopilotInternalAPIProbe Tests")
-struct CopilotInternalAPIProbeTests {
+@MainActor @Suite("CopilotInternalDefinitionTests")
+struct CopilotInternalDefinitionTests {
+
+    private func makeProvider(networkClient: any NetworkClient = MockNetworkClient(), settingsRepository: JSONSettingsRepository, timeout: TimeInterval = 30) throws -> Account {
+        settingsRepository.setCopilotProbeMode(.copilotAPI)
+        let definition=try Providers.builtIn("copilot")
+        let provider=Provider(definition:definition,settings:settingsRepository,makeDataSource:{source,_ in
+            DataSources.make(source,providerId:"copilot",cliExecutor:MockCLIExecutor(),network:networkClient,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:CopilotFixtureSecrets(settings:settingsRepository),settings:settingsRepository.scopedValues(forProvider:"copilot"),environment:{name in
+                let configured=settingsRepository.copilotAuthEnvVar()
+                if name == "COPILOT_TOKEN" {
+                    return configured.isEmpty ? nil : ProcessInfo.processInfo.environment[configured]
+                }
+                return ProcessInfo.processInfo.environment[name]
+            },homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
+        })
+        return provider.defaultAccount
+    }
+
 
     // MARK: - Test Helpers
 
     private func makeSettingsRepository(
         hasToken: Bool = false,
         copilotAuthEnvVar: String = ""
-    ) -> UserDefaultsProviderSettingsRepository {
+    ) -> JSONSettingsRepository {
         let suiteName = "com.claudebar.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-        let repo = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")), credentials: defaults, secureCredentials: UserDefaultsCredentialRepository(defaults: defaults))
         repo.setEnabled(true, forProvider: "copilot")
         if hasToken {
             repo.saveGithubToken("ghp_test_token")
@@ -26,7 +44,7 @@ struct CopilotInternalAPIProbeTests {
         return repo
     }
 
-    private func makeHTTPResponse(statusCode: Int) -> HTTPURLResponse {
+    private nonisolated func makeHTTPResponse(statusCode: Int) -> HTTPURLResponse {
         HTTPURLResponse(
             url: URL(string: "https://api.github.com")!,
             statusCode: statusCode,
@@ -38,27 +56,27 @@ struct CopilotInternalAPIProbeTests {
     // MARK: - isAvailable Tests
 
     @Test
-    func `isAvailable returns true when token is configured`() async {
+    func `isAvailable returns true when token is configured`() async throws {
         let settings = makeSettingsRepository(hasToken: true)
-        let probe = CopilotInternalAPIProbe(settingsRepository: settings)
+        let probe = try makeProvider(settingsRepository: settings)
 
         #expect(await probe.isAvailable() == true)
     }
 
     @Test
-    func `isAvailable returns false when token is missing`() async {
+    func `isAvailable returns false when token is missing`() async throws {
         let settings = makeSettingsRepository(hasToken: false)
-        let probe = CopilotInternalAPIProbe(settingsRepository: settings)
+        let probe = try makeProvider(settingsRepository: settings)
 
         #expect(await probe.isAvailable() == false)
     }
 
     @Test
-    func `isAvailable does not require username`() async {
+    func `isAvailable does not require username`() async throws {
         // Unlike Billing API, Internal API doesn't need a username
         let settings = makeSettingsRepository(hasToken: true)
         // No username set
-        let probe = CopilotInternalAPIProbe(settingsRepository: settings)
+        let probe = try makeProvider(settingsRepository: settings)
 
         #expect(await probe.isAvailable() == true)
     }
@@ -89,12 +107,12 @@ struct CopilotInternalAPIProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, makeHTTPResponse(statusCode: 200)))
 
-        let probe = CopilotInternalAPIProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         #expect(snapshot.providerId == "copilot")
         #expect(snapshot.accountEmail == "business")
@@ -128,12 +146,12 @@ struct CopilotInternalAPIProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, makeHTTPResponse(statusCode: 200)))
 
-        let probe = CopilotInternalAPIProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         #expect(snapshot.accountEmail == "pro")
         let quota = snapshot.quotas.first!
@@ -162,12 +180,12 @@ struct CopilotInternalAPIProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, makeHTTPResponse(statusCode: 200)))
 
-        let probe = CopilotInternalAPIProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         #expect(quota.percentRemaining == 100)
@@ -195,12 +213,12 @@ struct CopilotInternalAPIProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, makeHTTPResponse(statusCode: 200)))
 
-        let probe = CopilotInternalAPIProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         #expect(quota.percentRemaining == 100)
@@ -212,81 +230,81 @@ struct CopilotInternalAPIProbeTests {
     // MARK: - Error Handling Tests
 
     @Test
-    func `probe throws authenticationRequired when token is missing`() async {
+    func `probe throws authenticationRequired when token is missing`() async throws {
         let settings = makeSettingsRepository(hasToken: false)
-        let probe = CopilotInternalAPIProbe(settingsRepository: settings)
+        let probe = try makeProvider(settingsRepository: settings)
 
         await #expect(throws: UsageError.authenticationRequired) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
     @Test
-    func `probe throws authenticationRequired on 401`() async {
+    func `probe throws authenticationRequired on 401`() async throws {
         let settings = makeSettingsRepository(hasToken: true)
         let mockNetwork = MockNetworkClient()
 
         given(mockNetwork).request(.any).willReturn((Data(), makeHTTPResponse(statusCode: 401)))
 
-        let probe = CopilotInternalAPIProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
         await #expect(throws: UsageError.authenticationRequired) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
     @Test
-    func `probe throws executionFailed on 403`() async {
+    func `probe throws executionFailed on 403`() async throws {
         let settings = makeSettingsRepository(hasToken: true)
         let mockNetwork = MockNetworkClient()
 
         given(mockNetwork).request(.any).willReturn((Data(), makeHTTPResponse(statusCode: 403)))
 
-        let probe = CopilotInternalAPIProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
         await #expect(throws: UsageError.self) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
     @Test
-    func `probe throws executionFailed on 404`() async {
+    func `probe throws executionFailed on 404`() async throws {
         let settings = makeSettingsRepository(hasToken: true)
         let mockNetwork = MockNetworkClient()
 
         given(mockNetwork).request(.any).willReturn((Data(), makeHTTPResponse(statusCode: 404)))
 
-        let probe = CopilotInternalAPIProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
         await #expect(throws: UsageError.self) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
     @Test
-    func `probe throws parseFailed on invalid JSON`() async {
+    func `probe throws parseFailed on invalid JSON`() async throws {
         let settings = makeSettingsRepository(hasToken: true)
         let mockNetwork = MockNetworkClient()
         let invalidJSON = "not valid json".data(using: .utf8)!
 
         given(mockNetwork).request(.any).willReturn((invalidJSON, makeHTTPResponse(statusCode: 200)))
 
-        let probe = CopilotInternalAPIProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
         await #expect(throws: UsageError.self) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -310,12 +328,12 @@ struct CopilotInternalAPIProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, makeHTTPResponse(statusCode: 200)))
 
-        let probe = CopilotInternalAPIProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
         let quota = try #require(snapshot.quotas.first)
         let expected = MonthlyResetDate.nextMonthlyResetDate(referenceDate: snapshot.capturedAt)
         #expect(quota.resetsAt == expected)

@@ -26,6 +26,7 @@ public enum DataSources {
         providerId: String,
         scripts: @escaping ScriptSource = { _ in nil },
         secrets: (any SecretStore)? = nil,
+        settings: (any SettingStore)? = nil,
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> DataSource {
         make(
@@ -39,6 +40,7 @@ public enum DataSources {
             security: KeychainReader.system,
             scripts: scripts,
             secrets: secrets,
+            settings: settings,
             environment: environment,
             homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
             now: { Date() }
@@ -57,6 +59,7 @@ public enum DataSources {
         security: @escaping @Sendable ([String]) -> (status: Int32, output: String) = { _ in (1, "") },
         scripts: @escaping ScriptSource = { _ in nil },
         secrets: (any SecretStore)? = nil,
+        settings: (any SettingStore)? = nil,
         environment: @escaping @Sendable (String) -> String?,
         homeDirectory: URL,
         now: @escaping @Sendable () -> Date
@@ -70,6 +73,7 @@ public enum DataSources {
             security: security,
             scripts: scripts,
             secrets: secrets,
+            settings: settings,
             environment: environment,
             homeDirectory: homeDirectory,
             now: now
@@ -85,6 +89,7 @@ public enum DataSources {
         security: @escaping KeychainReader.Security,
         scripts: @escaping ScriptSource,
         secrets: (any SecretStore)?,
+        settings: (any SettingStore)? = nil,
         environment: @escaping @Sendable (String) -> String?,
         homeDirectory: URL,
         now: @escaping @Sendable () -> Date
@@ -134,6 +139,7 @@ public enum DataSources {
             requiredFiles: definition.requiresFiles.map {
                 Paths.expand($0, homeDirectory: homeDirectory, environment: environment)
             },
+            settings: settings,
             now: now
         )
     }
@@ -157,6 +163,8 @@ public enum DataSources {
                 SettingReader(name: name, providerId: providerId, secrets: secrets)
             case .firstOf(let lookups):
                 FirstOfReader(readers: lookups.map { reader(for: $0) })
+            case .accompanying(let base, let rule):
+                CompanionsReader(base: reader(for: base), fields: rule.fields.mapValues { reader(for: $0) }, rule: rule)
             case .refreshing(let base, _):
                 // A refresh nested inside `firstOf` is refreshed by the outer
                 // data source only; reading still works.

@@ -90,7 +90,7 @@ public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
         }
         // A provider that is data names itself in its profile.
         if let definition = Providers.definition(forLineupId: providerId) {
-            return definition.profile.name
+            return definition.profile.notificationName ?? definition.profile.name
         }
         switch providerId {
         case "gemini": return "Gemini"

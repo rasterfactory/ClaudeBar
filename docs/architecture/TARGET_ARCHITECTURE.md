@@ -383,6 +383,11 @@ vendor type:
 
 | Need | Generic piece |
 |---|---|
+| an alert uses a longer product name than the menu | `profile.notificationName`, falling back to `profile.name` |
+| an API request needs a username beside its bearer key | `credential.companions` reads declared fields, required names and a missing-field error; it never supplies a missing primary token |
+| billing values and period rollover belong to one login | `settings` binds non-secret JSON values to the login scope. Scripts read `context.settings` and return `settings` effects; only declared writable keys persist, before a returned mapping error. Preview never writes |
+| an added login chooses an API and its allowance | `accounts.dataSourceField`, form `defaultValue`/`pattern`/`when`, and non-secret `vault` fields; tokens and vault fields remain outside settings JSON |
+| an endpoint accepts only 200 with specific error messages | `http.acceptedStatuses` and `http.errors` preserve the HTTP status for refresh rules |
 | a TUI screen and human reset dates no rule can say | `Mapping.script` — a JavaScript file in JavaScriptCore, no I/O, host `humanDate()`; the scripts ship beside the definition |
 | Claude Code's Keychain item | `CredentialLookup.keychain(service, fields)` via `security`, hex-decoded, written back as compact JSON |
 | expiry in milliseconds, a JSON refresh body with `scope` | `OAuth2Refresh.dueWhen`, `bodyFormat`, `scope`; values keep their JSON type on write-back; a failed refresh re-reads the store |

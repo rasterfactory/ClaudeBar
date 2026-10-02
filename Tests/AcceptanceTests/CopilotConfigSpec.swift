@@ -53,16 +53,15 @@ struct CopilotConfigSpec {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
             settings.setEnabled(true, forProvider: "copilot")
 
-            let copilot = CopilotProvider(probe: MockUsageProbe(), settingsRepository: settings)
 
             // When — user enters credentials
-            copilot.saveToken("ghp_test123")
-            copilot.username = "testuser"
+            settings.saveGithubToken("ghp_test123")
+            settings.saveGithubUsername("testuser")
 
             // Then
-            #expect(copilot.hasToken == true)
-            #expect(copilot.username == "testuser")
-            #expect(copilot.getToken() == "ghp_test123")
+            #expect(settings.hasGithubToken() == true)
+            #expect((settings.getGithubUsername() ?? "") == "testuser")
+            #expect(settings.getGithubToken() == "ghp_test123")
         }
 
         @Test
@@ -73,17 +72,17 @@ struct CopilotConfigSpec {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
             settings.setEnabled(true, forProvider: "copilot")
 
-            let copilot = CopilotProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            copilot.saveToken("ghp_test123")
-            copilot.username = "testuser"
+            settings.saveGithubToken("ghp_test123")
+            settings.saveGithubUsername("testuser")
 
             // When
-            copilot.deleteCredentials()
+            settings.deleteGithubToken()
+            settings.deleteGithubUsername()
 
             // Then
-            #expect(copilot.hasToken == false)
-            #expect(copilot.username == "")
-            #expect(copilot.getToken() == nil)
+            #expect(settings.hasGithubToken() == false)
+            #expect((settings.getGithubUsername() ?? "") == "")
+            #expect(settings.getGithubToken() == nil)
         }
     }
 

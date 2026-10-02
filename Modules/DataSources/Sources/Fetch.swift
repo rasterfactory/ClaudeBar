@@ -31,13 +31,17 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
     public let headers: [String: String]
     public let body: String?
     public let timeout: TimeInterval
+    public let acceptedStatuses: [Int]?
+    public let errors: [String: ErrorRef]
 
-    public init(url: String, method: String = "GET", headers: [String: String] = [:], body: String? = nil, timeout: TimeInterval = 15) {
+    public init(url: String, method: String = "GET", headers: [String: String] = [:], body: String? = nil, timeout: TimeInterval = 15, acceptedStatuses: [Int]? = nil, errors: [String: ErrorRef] = [:]) {
         self.url = url
         self.method = method
         self.headers = headers
         self.body = body
         self.timeout = timeout
+        self.acceptedStatuses = acceptedStatuses
+        self.errors = errors
     }
 
     public init(from decoder: Decoder) throws {
@@ -47,6 +51,8 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
         headers = try container.decodeIfPresent([String: String].self, forKey: .headers) ?? [:]
         body = try container.decodeIfPresent(String.self, forKey: .body)
         timeout = try container.decodeIfPresent(TimeInterval.self, forKey: .timeout) ?? 15
+        acceptedStatuses = try container.decodeIfPresent([Int].self, forKey: .acceptedStatuses)
+        errors = try container.decodeIfPresent([String: ErrorRef].self, forKey: .errors) ?? [:]
     }
 }
 

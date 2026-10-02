@@ -3,13 +3,31 @@ import Foundation
 import Mockable
 @testable import Infrastructure
 @testable import Domain
+import Providers
+import DataSources
 
-@Suite("CopilotUsageProbe Tests")
-struct CopilotUsageProbeTests {
+@MainActor @Suite("CopilotBillingDefinitionTests")
+struct CopilotBillingDefinitionTests {
+
+    private func makeProvider(networkClient: any NetworkClient = MockNetworkClient(), settingsRepository: JSONSettingsRepository, timeout: TimeInterval = 30) throws -> Account {
+        settingsRepository.setCopilotProbeMode(.billing)
+        let definition=try Providers.builtIn("copilot")
+        let provider=Provider(definition:definition,settings:settingsRepository,makeDataSource:{source,_ in
+            DataSources.make(source,providerId:"copilot",cliExecutor:MockCLIExecutor(),network:networkClient,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:CopilotFixtureSecrets(settings:settingsRepository),settings:settingsRepository.scopedValues(forProvider:"copilot"),environment:{name in
+                let configured=settingsRepository.copilotAuthEnvVar()
+                if name == "COPILOT_TOKEN" {
+                    return configured.isEmpty ? nil : ProcessInfo.processInfo.environment[configured]
+                }
+                return ProcessInfo.processInfo.environment[name]
+            },homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
+        })
+        return provider.defaultAccount
+    }
+
 
     // MARK: - Test Helpers
 
-    private func makeHTTPResponse(statusCode: Int) -> HTTPURLResponse {
+    private nonisolated func makeHTTPResponse(statusCode: Int) -> HTTPURLResponse {
         HTTPURLResponse(
             url: URL(string: "https://api.github.com")!,
             statusCode: statusCode,
@@ -29,10 +47,10 @@ struct CopilotUsageProbeTests {
         apiReturnedEmpty: Bool = false,
         lastUsagePeriodMonth: Int? = nil,
         lastUsagePeriodYear: Int? = nil
-    ) -> UserDefaultsProviderSettingsRepository {
+    ) -> JSONSettingsRepository {
         let suiteName = "com.claudebar.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-        let repo = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+        let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")), credentials: defaults, secureCredentials: UserDefaultsCredentialRepository(defaults: defaults))
         repo.setEnabled(true, forProvider: "copilot")
         if !username.isEmpty {
             repo.saveGithubUsername(username)
@@ -61,25 +79,25 @@ struct CopilotUsageProbeTests {
     // MARK: - isAvailable Tests
 
     @Test
-    func `isAvailable returns true when token and username are configured`() async {
+    func `isAvailable returns true when token and username are configured`() async throws {
         let settings = makeSettingsRepository(username: "testuser", hasToken: true)
-        let probe = CopilotUsageProbe(settingsRepository: settings)
+        let probe = try makeProvider(settingsRepository: settings)
 
         #expect(await probe.isAvailable() == true)
     }
 
     @Test
-    func `isAvailable returns false when token is missing`() async {
+    func `isAvailable returns false when token is missing`() async throws {
         let settings = makeSettingsRepository(username: "testuser", hasToken: false)
-        let probe = CopilotUsageProbe(settingsRepository: settings)
+        let probe = try makeProvider(settingsRepository: settings)
 
         #expect(await probe.isAvailable() == false)
     }
 
     @Test
-    func `isAvailable returns false when username is missing`() async {
+    func `isAvailable returns false when username is missing`() async throws {
         let settings = makeSettingsRepository(username: "", hasToken: true)
-        let probe = CopilotUsageProbe(settingsRepository: settings)
+        let probe = try makeProvider(settingsRepository: settings)
 
         #expect(await probe.isAvailable() == false)
     }
@@ -89,20 +107,20 @@ struct CopilotUsageProbeTests {
     @Test
     func `probe throws authenticationRequired when token is missing`() async throws {
         let settings = makeSettingsRepository(username: "testuser", hasToken: false)
-        let probe = CopilotUsageProbe(settingsRepository: settings)
+        let probe = try makeProvider(settingsRepository: settings)
 
         await #expect(throws: UsageError.authenticationRequired) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
     @Test
     func `probe throws executionFailed when username is missing`() async throws {
         let settings = makeSettingsRepository(username: "", hasToken: true)
-        let probe = CopilotUsageProbe(settingsRepository: settings)
+        let probe = try makeProvider(settingsRepository: settings)
 
         await #expect(throws: UsageError.self) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -141,12 +159,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         #expect(snapshot.providerId == "copilot")
         #expect(snapshot.accountEmail == "testuser")
@@ -198,12 +216,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         #expect(quota.resetsAt != nil)
@@ -232,12 +250,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         #expect(quota.resetsAt != nil)
@@ -274,12 +292,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         // 100/300 = 33.33% used, 66.67% remaining
@@ -316,12 +334,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         // Should use default 50 (Free/Pro tier AI credits)
@@ -359,12 +377,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         // 750/1500 = 50% used, 50% remaining
@@ -402,12 +420,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         // Should fall back to default 50 when limit is invalid (0 or negative)
@@ -439,12 +457,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         // Verify apiReturnedEmpty flag was set (but manual override NOT auto-enabled)
         #expect(settings.copilotApiReturnedEmpty() == true)
@@ -482,12 +500,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         // Verify apiReturnedEmpty flag is set even when API returns non-Copilot items
         #expect(settings.copilotApiReturnedEmpty() == true)
@@ -527,12 +545,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         // Manual usage: 99/300 = 33% used, 67% remaining
@@ -573,12 +591,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         // Should use manual value (50) not API value (10)
@@ -617,12 +635,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        _ = try await probe.probe()
+        _ = try await probe.refresh()
 
         // Flag should be cleared when API returns data
         #expect(settings.copilotApiReturnedEmpty() == false)
@@ -654,14 +672,14 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
         // Should throw when manual override is on but value is nil
         await #expect(throws: UsageError.self) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -693,12 +711,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         // 198% used = -98% remaining (594 requests of 300 limit)
@@ -735,12 +753,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         let quota = snapshot.quotas.first!
         // 99/50 = -98% remaining
@@ -779,14 +797,14 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
         // Should throw because period changed (Dec 2025 → Jan 2026) and manual value was cleared
         await #expect(throws: UsageError.self) {
-            try await probe.probe()
+            try await probe.refresh()
         }
 
         // Verify manual value was cleared
@@ -826,12 +844,12 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         // Manual value should still be there
         #expect(settings.copilotManualUsageValue() == 99)
@@ -857,13 +875,13 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
         await #expect(throws: UsageError.authenticationRequired) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -880,13 +898,13 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
         await #expect(throws: UsageError.self) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -904,13 +922,13 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((invalidJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
         await #expect(throws: UsageError.self) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -937,14 +955,85 @@ struct CopilotUsageProbeTests {
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
-        let probe = CopilotUsageProbe(
+        let probe = try makeProvider(
             networkClient: mockNetwork,
             settingsRepository: settings
         )
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
         let quota = try #require(snapshot.quotas.first)
         let expected = MonthlyResetDate.nextMonthlyResetDate(referenceDate: snapshot.capturedAt)
         #expect(quota.resetsAt == expected)
+    }
+    @Test func `added accounts have separate tokens usernames modes limits and billing state`() async throws {
+        let suite="CopilotAccounts.\(UUID())", defaults=UserDefaults(suiteName:suite)!
+        defer {defaults.removePersistentDomain(forName:suite)}
+        let file=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString+".json")
+        defer {try? FileManager.default.removeItem(at:file)}
+        let credentials=UserDefaultsCredentialRepository(defaults:defaults)
+        let settings=JSONSettingsRepository(store:JSONSettingsStore(fileURL:file),credentials:defaults,secureCredentials:credentials)
+        settings.saveGithubToken("personal-token");settings.saveGithubUsername("personal")
+        settings.setCopilotMonthlyLimit(100);settings.setCopilotManualOverrideEnabled(true);settings.setCopilotManualUsageValue(30)
+        let vault=ProviderVault(credentials:credentials,legacyStore:defaults), network=MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            let token=request.value(forHTTPHeaderField:"Authorization") ?? "",path=request.url?.path ?? ""
+            if path == "/copilot_internal/user" {
+                #expect(token == "Bearer internal-token")
+                return (Data(#"{"copilot_plan":"business","quota_snapshots":{"premium_interactions":{"entitlement":100,"remaining":25,"percent_remaining":25}}}"#.utf8),self.makeHTTPResponse(statusCode:200))
+            }
+            #expect((token == "Bearer personal-token" && path.contains("/users/personal/")) || (token == "Bearer work-token" && path.contains("/users/work/")))
+            let user=token == "Bearer personal-token" ? "personal" : "work"
+            return (Data("{\"timePeriod\":{\"year\":2026,\"month\":10},\"user\":\"\(user)\",\"usageItems\":[{\"product\":\"Copilot\",\"grossQuantity\":10}]}".utf8),self.makeHTTPResponse(statusCode:200))
+        }
+        let definition=try Providers.builtIn("copilot")
+        let factory: @MainActor () -> Provider = {
+            Provider(definition:definition,settings:settings,accounts:settings.accounts(forProvider:"copilot"),makeDataSource:{source,login in
+                DataSources.make(source,providerId:"copilot",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:vault.scoped(to:login),settings:settings.scopedValues(forProvider:login),environment:{_ in "personal-token"},homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
+            },vault:vault)
+        }
+        let provider=factory()
+        #expect(provider.defaultAccount.displayName == "Copilot")
+        #expect(throws:UsageError.self) {try provider.addAccount(filling:["apiKey":"bad-token","username":"work","monthlyLimit":"invalid"])}
+        let work=try provider.addAccount(filling:["apiKey":"work-token","username":"work","monthlyLimit":"200"])
+        let internalAccount=try provider.addAccount(filling:["apiKey":"internal-token","source":"copilotAPI"])
+        provider.rename(work,to:"Work");provider.rename(internalAccount,to:"Business")
+        #expect((try await work.refresh()).quotas[0].percentRemaining == 95)
+        #expect((try await internalAccount.refresh()).quotas[0].percentRemaining == 25)
+        #expect((try await provider.defaultAccount.refresh()).quotas[0].percentRemaining == 70)
+        #expect(settings.value("lastUsagePeriodMonth",forProvider:work.id) == .number(10))
+        #expect(settings.value("lastUsagePeriodMonth",forProvider:internalAccount.id) == nil)
+        #expect(settings.copilotManualUsageValue() == 30)
+        #expect(settings.accounts(forProvider:"copilot").allSatisfy { $0.probeConfig["apiKey"] == nil && $0.probeConfig["username"] == nil })
+        let restored=factory(), restoredWork=try #require(restored.accounts.first {$0.id == work.id})
+        #expect(restoredWork.displayName == "Work")
+        #expect((try await restoredWork.refresh()).quotas[0].percentRemaining == 95)
+        _ = vault.delete("apiKey",provider:restoredWork.id)
+        await #expect(throws:UsageError.authenticationRequired) { try await restoredWork.refresh() }
+        restored.remove(restoredWork)
+        #expect(vault.secret("username",provider:work.id) == nil)
+        #expect(settings.value("lastUsagePeriodMonth",forProvider:work.id) == nil)
+        #expect(vault.secret("apiKey",provider:"copilot") == "personal-token")
+    }
+
+
+    @Test func `definition preserves identity defaults look and live API mode selection`() throws {
+        let settings = makeSettingsRepository()
+        settings.setEnabled(false, forProvider: "copilot")
+        let definition = try Providers.builtIn("copilot")
+        let provider = Providers.make(definition, settings: settings)
+        let account = provider.defaultAccount
+        #expect(account.id == "copilot")
+        #expect(account.name == "Copilot")
+        #expect(account.cliCommand == "gh")
+        #expect(account.dashboardURL?.absoluteString == "https://github.com/settings/copilot/features")
+        #expect(account.statusPageURL?.absoluteString == "https://www.githubstatus.com")
+        #expect(account.isEnabled == false)
+        #expect(account.snapshot == nil)
+        #expect(account.lastError == nil)
+        #expect(account.isSyncing == false)
+        #expect(definition.profile.look.icon == "CopilotIcon")
+        #expect(provider.dataSourceKind(for: account) == "billing")
+        settings.setCopilotProbeMode(.copilotAPI)
+        #expect(provider.dataSourceKind(for: account) == "copilotAPI")
     }
 }

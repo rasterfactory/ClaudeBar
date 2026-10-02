@@ -23,6 +23,10 @@ struct ScriptMapper: Reading {
     let now: @Sendable () -> Date
 
     func read(_ response: Response, facts: MappingFacts, providerId: String) throws -> UsageSnapshot {
+        try readResult(response, facts: facts, providerId: providerId).value()
+    }
+
+    func readResult(_ response: Response, facts: MappingFacts, providerId: String) throws -> ReadingResult {
         guard let source else {
             throw UsageError.parseFailed("Mapping script '\(file)' is missing")
         }
@@ -62,7 +66,8 @@ struct ScriptMapper: Reading {
         } catch {
             throw UsageError.parseFailed("Mapping script '\(file)' returned an unexpected shape: \(error.localizedDescription)")
         }
-        return try result.snapshot(providerId: providerId, capturedAt: now())
+        let usage = result.error == nil ? try result.snapshot(providerId: providerId, capturedAt: now()) : nil
+        return ReadingResult(usage: usage, error: result.error?.usageError, settings: result.settings ?? [:])
     }
 
     private static func inputJSON(_ response: Response, facts: MappingFacts, now: Date) throws -> String {
@@ -70,6 +75,7 @@ struct ScriptMapper: Reading {
             "now": now.timeIntervalSince1970,
             "timeZone": TimeZone.current.identifier,
             "credential": facts.credential,
+            "settings": facts.settings.mapValues(\.foundationObject),
         ]
         for (name, fields) in facts.context {
             context[name] = fields
@@ -176,6 +182,7 @@ struct ScriptOutput: Decodable {
     let cost: Cost?
     let account: Account?
     let error: ErrorRef?
+    let settings: [String: JSONValue]?
 
     func snapshot(providerId: String, capturedAt: Date) throws -> UsageSnapshot {
         if let error { throw error.usageError }

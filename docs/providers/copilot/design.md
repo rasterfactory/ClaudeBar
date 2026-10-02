@@ -583,3 +583,25 @@ Facts about the two probes that the plan above takes for granted:
 - **Copilot API mode**: `GET https://api.github.com/copilot_internal/user` with a Classic PAT that has the `copilot` scope. It reads `quota_snapshots.premium_interactions`: `entitlement`, `remaining`, `percent_remaining`, `unlimited`. If there's no `premium_interactions`, it shows 100% "No AI credits quota". This endpoint is internal and undocumented, and it works on every plan type.
 - **Token lookup** in both modes: the environment variable named in settings (from ClaudeBar's own process environment, not a login shell), then the stored token. The token is kept in `UserDefaults.standard` under `com.claudebar.credentials.github-copilot-token` and hasn't moved to the Keychain yet.
 - **Reset date** is always the next 1st of the month at 00:00 UTC (`MonthlyResetDate`), including in Copilot API mode, where the API's own `quotaResetDateUtc` is ignored.
+
+
+## Definition migration
+
+`Modules/Providers/Resources/Providers/copilot.json` defines both Billing and
+Copilot API sources. `copilot-billing.js` and `copilot-internal.js` replace the
+legacy probes. The account runtime owns lifecycle, errors and display labels.
+
+Billing settings retain their existing default-login keys. Each added login
+uses its own token, username, source choice, allowance and billing state. The
+username is a visible form field stored in the vault; credentials never enter
+account metadata. Existing UserDefaults credentials migrate only for the exact
+default scope, with read-back verification before removing the old copy.
+
+Manual values, percentage mode, empty-response signaling, monthly rollover,
+calendar UTC resets and both PAT permission errors retain their fixture behavior.
+The existing settings card continues to configure the default login. API source
+choice and allowance for added logins come from the shared account form.
+
+The original 39 parser/request/availability fixture functions now exercise the
+real definition with the native JSON repository. Additional tests cover account
+isolation, secure migration, modes, relaunch/removal, and declared setting effects.

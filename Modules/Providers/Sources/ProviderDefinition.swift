@@ -73,20 +73,34 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         /// …or by filling in the account's own settings — an API key, a
         /// region. A secret field is kept in the vault, under the account.
         public let form: [Field]
+        public let dataSourceField: String?
 
         /// One setting *Add Account*'s form asks for.
         public struct Field: Sendable, Equatable, Codable {
             public let id: String
             public let label: String
             public let secret: Bool
+            public let vault: Bool
+            public let defaultValue: String?
+            public let pattern: String?
+            /// Only ask for this field when these form choices match.
+            public let when: [String: String]?
             /// The only values it takes, when it is a choice.
             public let choices: [String]?
 
-            public init(id: String, label: String, secret: Bool = false, choices: [String]? = nil) {
+            public init(id: String, label: String, secret: Bool = false, vault: Bool = false, defaultValue: String? = nil, pattern: String? = nil, when: [String: String]? = nil, choices: [String]? = nil) {
                 self.id = id
                 self.label = label
                 self.secret = secret
+                self.vault = vault
+                self.defaultValue = defaultValue
+                self.pattern = pattern
+                self.when = when
                 self.choices = choices
+            }
+
+            public func isShown(values: [String: String]) -> Bool {
+                when?.allSatisfy { values[$0.key] == $0.value } ?? true
             }
 
             public init(from decoder: Decoder) throws {
@@ -94,6 +108,13 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 id = try container.decode(String.self, forKey: .id)
                 label = try container.decode(String.self, forKey: .label)
                 secret = try container.decodeIfPresent(Bool.self, forKey: .secret) ?? false
+                vault = try container.decodeIfPresent(Bool.self, forKey: .vault) ?? false
+                defaultValue = try container.decodeIfPresent(String.self, forKey: .defaultValue)
+                pattern = try container.decodeIfPresent(String.self, forKey: .pattern)
+                when = try container.decodeIfPresent([String: String].self, forKey: .when)
+                if secret, defaultValue != nil {
+                    throw DecodingError.dataCorruptedError(forKey: .defaultValue, in: container, debugDescription: "Secret account fields cannot embed a default value")
+                }
                 choices = try container.decodeIfPresent([String].self, forKey: .choices)
             }
         }
@@ -187,9 +208,10 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             [signIn.map { _ in .signIn }, folder.map { _ in .folder }, form.isEmpty ? nil : .form].compactMap { $0 }
         }
 
-        public init(folder: Folder? = nil, signIn: SignInCall? = nil, form: [Field] = [], patch: [String: JSONValue] = [:]) {
+        public init(folder: Folder? = nil, signIn: SignInCall? = nil, form: [Field] = [], dataSourceField: String? = nil, patch: [String: JSONValue] = [:]) {
             self.signIn = signIn
             self.form = form
+            self.dataSourceField = dataSourceField
             self.folder = folder
             self.patch = patch
         }
@@ -199,6 +221,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             folder = try container.decodeIfPresent(Folder.self, forKey: .folder)
             signIn = try container.decodeIfPresent(SignInCall.self, forKey: .signIn)
             form = try container.decodeIfPresent([Field].self, forKey: .form) ?? []
+            dataSourceField = try container.decodeIfPresent(String.self, forKey: .dataSourceField)
             if signIn != nil, folder == nil {
                 throw DecodingError.dataCorruptedError(forKey: .signIn, in: container,
                     debugDescription: "accounts.signIn needs accounts.folder to check the folder it signs into")
@@ -311,6 +334,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 signIn: SignInCall(cli: binary, args: signIn.args, homeVariable: signIn.homeVariable,
                                    unset: signIn.unset, timeout: signIn.timeout, alsoAt: signIn.alsoAt),
                 form: accounts?.form ?? [],
+                dataSourceField: accounts?.dataSourceField,
                 patch: accounts?.patch ?? [:]
             )
         }
@@ -360,14 +384,17 @@ public struct ProviderProfile: Sendable, Equatable, Codable {
     /// Stable forever: settings, the menu-bar choice and the lineup are keyed by it.
     public let id: String
     public let name: String
+    /// The longer product name used in alerts, when different from the menu label.
+    public let notificationName: String?
     public let links: ProviderDefinition.Links
     public let look: ProviderLook
     /// Not written in the file: whoever loads it knows where it came from.
     public var origin: Origin
 
-    public init(id: String, name: String, links: ProviderDefinition.Links = .init(), look: ProviderLook = .init(), origin: Origin = .builtIn) {
+    public init(id: String, name: String, notificationName: String? = nil, links: ProviderDefinition.Links = .init(), look: ProviderLook = .init(), origin: Origin = .builtIn) {
         self.id = id
         self.name = name
+        self.notificationName = notificationName
         self.links = links
         self.look = look
         self.origin = origin
@@ -378,13 +405,14 @@ public struct ProviderProfile: Sendable, Equatable, Codable {
         self.init(
             id: try container.decode(String.self, forKey: .id),
             name: try container.decode(String.self, forKey: .name),
+            notificationName: try container.decodeIfPresent(String.self, forKey: .notificationName),
             links: try container.decodeIfPresent(ProviderDefinition.Links.self, forKey: .links) ?? .init(),
             look: try container.decodeIfPresent(ProviderLook.self, forKey: .look) ?? .init()
         )
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, links, look
+        case id, name, notificationName, links, look
     }
 }
 

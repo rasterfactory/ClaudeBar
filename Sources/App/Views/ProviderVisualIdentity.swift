@@ -93,34 +93,6 @@ extension GeminiProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - CopilotProvider Visual Identity
-
-extension CopilotProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "chevron.left.forwardslash.chevron.right" }
-
-    public var iconAssetName: String { "CopilotIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // GitHub's blue color
-        scheme == .dark
-            ? Color(red: 0.38, green: 0.55, blue: 0.93)
-            : Color(red: 0.26, green: 0.43, blue: 0.82)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.55, green: 0.40, blue: 0.90)
-                    : Color(red: 0.45, green: 0.30, blue: 0.80)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - AntigravityProvider Visual Identity
 
 extension AntigravityProvider: ProviderVisualIdentity {

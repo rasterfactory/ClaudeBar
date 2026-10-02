@@ -1,4 +1,5 @@
 import Testing
+import Providers
 import Foundation
 import Mockable
 @testable import Domain
@@ -261,14 +262,13 @@ struct ZaiProviderTests {
     @Test
     func `zai provider has unique id compared to other providers`() {
         let zaiSettings = MockRepositoryFactory.makeZaiSettingsRepository()
-        let copilotSettings = MockRepositoryFactory.makeCopilotSettingsRepository()
         let baseSettings = MockRepositoryFactory.makeSettingsRepository()
         let mockProbe = MockUsageProbe()
         let zai = ZaiProvider(probe: mockProbe, settingsRepository: zaiSettings)
         let claude = StubClaudeProvider(probe: mockProbe, settingsRepository: baseSettings)
         let codex = StubCodexProvider(probe: mockProbe, settingsRepository: baseSettings)
         let gemini = GeminiProvider(probe: mockProbe, settingsRepository: baseSettings)
-        let copilot = CopilotProvider(probe: mockProbe, settingsRepository: copilotSettings)
+        let copilot = Providers.make(try! Providers.builtIn("copilot"), settings: JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")))).defaultAccount
         let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: baseSettings)
 
         let ids = Set([zai.id, claude.id, codex.id, gemini.id, copilot.id, antigravity.id])

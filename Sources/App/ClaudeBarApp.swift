@@ -25,10 +25,12 @@ struct ClaudeBarApp: App {
         _ id: String,
         settings: any MultiAccountSettingsRepository,
         accounts: [ProviderAccountConfig] = [],
-        guestPasses: GuestPasses? = nil
+        secrets: (any SecretVault)? = nil,
+        guestPasses: GuestPasses? = nil,
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> Provider {
         do {
-            return try Providers.make(id, settings: settings, accounts: accounts, guestPasses: guestPasses)
+            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, environment: environment)
         } catch {
             preconditionFailure("Built-in provider '\(id)' failed to load: \(error.localizedDescription)")
         }

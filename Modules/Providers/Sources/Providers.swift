@@ -71,14 +71,15 @@ public enum Providers {
         settings: any MultiAccountSettingsRepository,
         accounts: [ProviderAccountConfig] = [],
         secrets: (any SecretVault)? = nil,
-        guestPasses: GuestPasses? = nil
+        guestPasses: GuestPasses? = nil,
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> Provider {
         Provider(
             definition: definition,
             settings: settings,
             accounts: accounts,
             makeDataSource: { source, login in
-                DataSources.make(source, providerId: definition.id, scripts: builtInScripts, secrets: secrets?.scoped(to: login))
+                DataSources.make(source, providerId: definition.id, scripts: builtInScripts, secrets: secrets?.scoped(to: login), environment: environment)
             },
             guestPasses: guestPasses,
             vault: secrets
@@ -91,8 +92,10 @@ public enum Providers {
         _ id: String,
         settings: any MultiAccountSettingsRepository,
         accounts: [ProviderAccountConfig] = [],
-        guestPasses: GuestPasses? = nil
+        secrets: (any SecretVault)? = nil,
+        guestPasses: GuestPasses? = nil,
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) throws -> Provider {
-        make(try builtIn(id), settings: settings, accounts: accounts, guestPasses: guestPasses)
+        make(try builtIn(id), settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, environment: environment)
     }
 }

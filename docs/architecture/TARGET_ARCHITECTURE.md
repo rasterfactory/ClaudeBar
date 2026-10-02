@@ -383,6 +383,7 @@ vendor type:
 
 | Need | Generic piece |
 |---|---|
+| daily totals from independent session-log folders | `Fetch.directory` reads declared immediate-child files, with native calendar boundaries and replaceable file I/O; pure scripts receive text and return `dailyUsageReport`; `jsonDecimal()` and `decimalAdd()` preserve recorded costs |
 | a TUI screen and human reset dates no rule can say | `Mapping.script` — a JavaScript file in JavaScriptCore, no I/O, host `humanDate()`; the scripts ship beside the definition |
 | Claude Code's Keychain item | `CredentialLookup.keychain(service, fields)` via `security`, hex-decoded, written back as compact JSON |
 | expiry in milliseconds, a JSON refresh body with `scope` | `OAuth2Refresh.dueWhen`, `bodyFormat`, `scope`; values keep their JSON type on write-back; a failed refresh re-reads the store |

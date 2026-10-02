@@ -62,7 +62,7 @@ struct VibeSessionLogAnalyzerTests {
         let sessionDir = makeSessionDir(in: tempDir)
         writeMetadata(to: sessionDir, totalTokens: 1500)
 
-        let analyzer = VibeSessionLogAnalyzer(
+        let analyzer = MistralDefinitionAnalyzer(
             vibeSessionsDir: tempDir,
             now: { Date() }
         )
@@ -85,7 +85,7 @@ struct VibeSessionLogAnalyzerTests {
         let yesterdayDir = makeSessionDir(in: tempDir, date: yesterday, suffix: "yesterday")
         writeMetadata(to: yesterdayDir, totalTokens: 3000)
 
-        let analyzer = VibeSessionLogAnalyzer(
+        let analyzer = MistralDefinitionAnalyzer(
             vibeSessionsDir: tempDir,
             now: { Date() }
         )
@@ -106,7 +106,7 @@ struct VibeSessionLogAnalyzerTests {
         let session2 = makeSessionDir(in: tempDir, suffix: "sess2")
         writeMetadata(to: session2, totalTokens: 3000)
 
-        let analyzer = VibeSessionLogAnalyzer(
+        let analyzer = MistralDefinitionAnalyzer(
             vibeSessionsDir: tempDir,
             now: { Date() }
         )
@@ -121,7 +121,7 @@ struct VibeSessionLogAnalyzerTests {
         let tempDir = makeTempDir()
         defer { cleanup(tempDir) }
 
-        let analyzer = VibeSessionLogAnalyzer(
+        let analyzer = MistralDefinitionAnalyzer(
             vibeSessionsDir: tempDir,
             now: { Date() }
         )
@@ -145,7 +145,7 @@ struct VibeSessionLogAnalyzerTests {
         let badMetadata = badDir.appendingPathComponent("meta.json")
         try? "{ not valid json !! }".data(using: .utf8)!.write(to: badMetadata)
 
-        let analyzer = VibeSessionLogAnalyzer(
+        let analyzer = MistralDefinitionAnalyzer(
             vibeSessionsDir: tempDir,
             now: { Date() }
         )
@@ -162,7 +162,7 @@ struct VibeSessionLogAnalyzerTests {
         let sessionDir = makeSessionDir(in: tempDir)
         writeMetadata(to: sessionDir, totalTokens: 50_000, cost: "2.40")
 
-        let analyzer = VibeSessionLogAnalyzer(
+        let analyzer = MistralDefinitionAnalyzer(
             vibeSessionsDir: tempDir,
             now: { Date() }
         )

@@ -90,6 +90,7 @@ let project = Project(
                 .external(name: "Mockable"),
                 .external(name: "SwiftTerm"),
                 .external(name: "Subprocess"),
+                .external(name: "SweetCookieKit"),
             ],
             settings: .settings(
                 base: [

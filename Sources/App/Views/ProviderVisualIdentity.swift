@@ -373,34 +373,6 @@ extension VercelProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - MistralProvider Visual Identity
-
-extension MistralProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "cat.fill" }
-
-    public var iconAssetName: String { "MistralIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Mistral brand orange
-        scheme == .dark
-            ? Color(red: 1.0, green: 0.55, blue: 0.0)
-            : Color(red: 0.90, green: 0.45, blue: 0.0)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.85, green: 0.35, blue: 0.10)
-                    : Color(red: 0.75, green: 0.25, blue: 0.05)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - OpenCodeProvider Visual Identity
 
 extension OpenCodeProvider: ProviderVisualIdentity {

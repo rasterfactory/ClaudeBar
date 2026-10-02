@@ -194,6 +194,7 @@ public enum ErrorRef: Sendable, Equatable, Codable {
     case folderTrustRequired
     case subscriptionRequired
     case noData
+    case cliNotFound(String)
     case parseFailed(String)
     case sessionExpired(String?)
     case executionFailed(String)
@@ -205,6 +206,7 @@ public enum ErrorRef: Sendable, Equatable, Codable {
         case .folderTrustRequired: .folderTrustRequired
         case .subscriptionRequired: .subscriptionRequired
         case .noData: .noData
+        case .cliNotFound(let name): .cliNotFound(name)
         case .parseFailed(let reason): .parseFailed(reason)
         case .sessionExpired(let hint): .sessionExpired(hint: hint)
         case .executionFailed(let reason): .executionFailed(reason)
@@ -226,9 +228,10 @@ public enum ErrorRef: Sendable, Equatable, Codable {
             return
         }
         let container = try decoder.container(keyedBy: TagKey.self)
-        let tag = try container.singleTag(of: ["parseFailed", "sessionExpired", "executionFailed"], in: "error")
+        let tag = try container.singleTag(of: ["cliNotFound", "parseFailed", "sessionExpired", "executionFailed"], in: "error")
         let text = try container.decode(String.self, forKey: TagKey(tag))
         switch tag {
+        case "cliNotFound": self = .cliNotFound(text)
         case "parseFailed": self = .parseFailed(text)
         case "executionFailed": self = .executionFailed(text)
         default: self = .sessionExpired(text)
@@ -237,6 +240,9 @@ public enum ErrorRef: Sendable, Equatable, Codable {
 
     public func encode(to encoder: Encoder) throws {
         switch self {
+        case .cliNotFound(let name):
+            var container = encoder.container(keyedBy: TagKey.self)
+            try container.encode(name, forKey: TagKey("cliNotFound"))
         case .parseFailed(let reason):
             var container = encoder.container(keyedBy: TagKey.self)
             try container.encode(reason, forKey: TagKey("parseFailed"))

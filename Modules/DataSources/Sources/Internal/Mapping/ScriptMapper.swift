@@ -40,8 +40,21 @@ struct ScriptMapper: Reading {
             HumanDate.parse(text, now: clock()).map { $0.timeIntervalSince1970 } ?? NSNull()
         }
         context.setObject(humanDate, forKeyedSubscript: "humanDate" as NSString)
+        let decimalAdd: @convention(block) (String, String) -> Any = { left, right in
+            let pattern = #"^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$"#
+            guard left.count <= 2048, right.count <= 2048,
+                  left.range(of: pattern, options: .regularExpression) != nil,
+                  right.range(of: pattern, options: .regularExpression) != nil,
+                  let a = Decimal(string: left, locale: Locale(identifier: "en_US_POSIX")),
+                  let b = Decimal(string: right, locale: Locale(identifier: "en_US_POSIX")) else { return NSNull() }
+            let result = a + b
+            guard !result.isNaN else { return NSNull() }
+            return NSDecimalNumber(decimal: result).stringValue
+        }
+        context.setObject(decimalAdd, forKeyedSubscript: "decimalAdd" as NSString)
         context.setObject(try Self.inputJSON(response, facts: facts, now: now()), forKeyedSubscript: "__input" as NSString)
 
+        context.evaluateScript(DecimalScript.source)
         context.evaluateScript(source)
         if let exception {
             throw UsageError.parseFailed("Mapping script '\(file)' failed to load: \(exception)")
@@ -171,7 +184,25 @@ struct ScriptOutput: Decodable {
         }
     }
 
+    struct DailyReport: Decodable {
+        let today: DailyStat
+        let previous: DailyStat
+        var report: DailyUsageReport { DailyUsageReport(today: today.stat, previous: previous.stat) }
+    }
+    struct DailyStat: Decodable {
+        let date: Double
+        let totalCost: Money
+        let totalTokens: Int
+        let workingTime: Double
+        let sessionCount: Int
+        var stat: DailyUsageStat {
+            DailyUsageStat(date: Date(timeIntervalSince1970: date), totalCost: totalCost.value,
+                           totalTokens: totalTokens, workingTime: workingTime, sessionCount: sessionCount)
+        }
+    }
+
     let quotas: [Quota]?
+    let dailyUsageReport: DailyReport?
     let plan: String?
     let cost: Cost?
     let account: Account?
@@ -210,7 +241,8 @@ struct ScriptOutput: Decodable {
             accountOrganization: account?.organization,
             loginMethod: account?.loginMethod,
             accountTier: plan.map(Self.tier),
-            costUsage: costUsage
+            costUsage: costUsage,
+            dailyUsageReport: dailyUsageReport?.report
         )
     }
 

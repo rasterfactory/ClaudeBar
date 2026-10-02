@@ -28,18 +28,25 @@ struct HTTPFetcher: Fetching {
     let network: any NetworkClient
     let now: @Sendable () -> Date
 
+    var settingValue: @Sendable (String) -> String? = { _ in nil }
+
     static let defaultRetryAfter: TimeInterval = 5 * 60
 
     func isReady() -> Bool { true }
 
-    func fetch(with credential: Credential?) async throws -> Response {
-        guard let urlText = Template.fill(request.url, with: credential), let url = URL(string: urlText) else {
+    func fetch(with original: Credential?) async throws -> Response {
+        var values = original?.values ?? [:]
+        values["system.timeZone"] = TimeZone.current.identifier
+        let credential = Credential(values)
+        let selectedURL = request.urlBySetting?.resolve(value: request.urlBySetting?.setting.flatMap(settingValue)) ?? request.url
+        guard let urlText = Template.fill(selectedURL, with: credential), let url = URL(string: urlText) else {
             throw UsageError.executionFailed("Invalid URL")
         }
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = request.method
         urlRequest.timeoutInterval = request.timeout
-        for (name, value) in request.headers {
+        let selectedHeaders = request.headersBySetting?.resolve(selected: request.headersBySetting?.setting.flatMap(settingValue)) ?? [:]
+        for (name, value) in request.headers.merging(selectedHeaders, uniquingKeysWith: { _, selected in selected }) {
             if let filled = Template.fill(value, with: credential) {
                 urlRequest.setValue(filled, forHTTPHeaderField: name)
             }
@@ -53,11 +60,19 @@ struct HTTPFetcher: Fetching {
         do {
             (data, response) = try await network.request(urlRequest)
         } catch {
-            AppLog.probes.error("HTTP fetch failed: \(error.localizedDescription)")
-            throw UsageError.executionFailed("Network error: \(error.localizedDescription)")
+            if request.propagateNetworkErrors {
+                let detail = Self.redacted(error.localizedDescription, credential: original)
+                if detail == error.localizedDescription { throw error }
+                throw UsageError.executionFailed(detail)
+            }
+            AppLog.probes.error("HTTP fetch failed")
+            throw UsageError.executionFailed((request.networkErrorPrefix ?? "Network error: ") + Self.redacted(error.localizedDescription, credential: original))
+        }
+        if request.ignoreResponseStatus {
+            return Response(status: (response as? HTTPURLResponse)?.statusCode, body: data)
         }
         guard let http = response as? HTTPURLResponse else {
-            throw UsageError.executionFailed("Invalid response")
+            throw request.invalidResponseError?.usageError ?? UsageError.executionFailed("Invalid response")
         }
 
         var headers: [String: String] = [:]
@@ -67,10 +82,15 @@ struct HTTPFetcher: Fetching {
             }
         }
 
+        let accepted = request.acceptedStatuses?.contains(http.statusCode) ?? (200..<300).contains(http.statusCode)
+        if accepted { return Response(status: http.statusCode, headers: headers, body: data) }
+        if let error = request.errors[String(http.statusCode)] ?? request.errors["default"] {
+            var reason = error.usageError
+            if case .executionFailed(let message) = reason { reason = .executionFailed(message.replacingOccurrences(of: "{{status}}", with: String(http.statusCode)).replacingOccurrences(of: "{{body}}", with: Self.redacted(String(data: data, encoding: .utf8) ?? "<binary>", credential: original))) }
+            throw HTTPStatusError(status: http.statusCode, reason: reason)
+        }
         switch http.statusCode {
-        case 200..<300:
-            return Response(status: http.statusCode, headers: headers, body: data)
-        case 401, 403:
+                case 401, 403:
             throw HTTPStatusError(status: http.statusCode, reason: .authenticationRequired)
         case 429:
             let wait = Self.retryAfter(http.value(forHTTPHeaderField: "Retry-After"), now: now()) ?? Self.defaultRetryAfter
@@ -78,6 +98,12 @@ struct HTTPFetcher: Fetching {
         default:
             AppLog.probes.error("HTTP fetch: status \(http.statusCode)")
             throw HTTPStatusError(status: http.statusCode, reason: .executionFailed("HTTP error: \(http.statusCode)"))
+        }
+    }
+
+    private static func redacted(_ text: String, credential: Credential?) -> String {
+        (credential?.values.values ?? Dictionary<String, String>().values).filter { !$0.isEmpty }.sorted { $0.count > $1.count }.reduce(text) { result, secret in
+            result.replacingOccurrences(of: secret, with: "[redacted]")
         }
     }
 
@@ -193,6 +219,7 @@ struct CLIFetcher: Fetching {
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
+        if call.checkAvailability && !isReady() { throw UsageError.cliNotFound(call.cli) }
         let directory = call.workingDirectory == .dedicated ? CLIWorkingDirectory.resolve() : nil
         let result: CLIResult
         do {
@@ -215,7 +242,7 @@ struct CLIFetcher: Fetching {
                 )
             }
         } catch let error as UsageError {
-            throw error
+            throw call.wrapExecutionErrors ? UsageError.executionFailed(error.localizedDescription) : error
         } catch {
             throw UsageError.executionFailed(error.localizedDescription)
         }
@@ -233,7 +260,8 @@ struct CLIFetcher: Fetching {
             environmentAdditions: call.environment.set,
             completionRule: call.readyWhen.isEmpty
                 ? nil
-                : CLICompletionRule(readyMarkers: call.readyWhen.map { CLICompletionRule.Marker($0.text, endsRow: $0.endsRow) })
+                : CLICompletionRule(readyMarkers: call.readyWhen.map { CLICompletionRule.Marker($0.text, endsRow: $0.endsRow) }),
+            inputDelay: call.inputDelay ?? 0
         )
     }
 }

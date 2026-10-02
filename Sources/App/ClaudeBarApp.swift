@@ -175,6 +175,7 @@ struct ClaudeBarApp: App {
         })
         let gemini = Self.builtIn("gemini", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "gemini"))
         let antigravity = Self.builtIn("antigravity", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "antigravity"), secrets: vault)
+        let mistral = Self.builtIn("mistral", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "mistral"))
 
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
@@ -237,11 +238,16 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             opencode.defaultAccount,
+            mistral.defaultAccount,
+            OpenCodeProvider(
+                probe: OpenCodeAPIUsageProbe(fallback: OpenCodeUsageProbe()),
+                settingsRepository: settingsRepository
+            ),
             OmpProvider(
                 probe: OmpUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts + gemini.accounts + antigravity.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts + gemini.accounts + antigravity.accounts + mistral.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

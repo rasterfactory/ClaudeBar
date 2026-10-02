@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Mistral uses a JSON definition and supports independent Vibe session-log folders while preserving daily costs and token totals. ([#397](https://github.com/tddworks/ClaudeBar/pull/397))
+
 ### Changed
 - Vercel AI Gateway supports separately named accounts with secure API keys, preserving existing credentials and environment settings. ([#381](https://github.com/tddworks/ClaudeBar/pull/381))
 - MiniMax supports named accounts with separate secure API keys and China or International regions, preserving existing settings and Token Plan quotas. ([#382](https://github.com/tddworks/ClaudeBar/pull/382))

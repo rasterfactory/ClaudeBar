@@ -14,6 +14,12 @@ Shows how much you spent and how many tokens you used in **Mistral Vibe** today,
 
 No key, no network access and no permission prompts: ClaudeBar only reads the local log files.
 
+## Multiple accounts
+
+Settings → Providers → Mistral → Add Account accepts an existing absolute session-log folder. Give the account a short name such as Work or Personal. Each account reads only its own folder and retains its label and totals after relaunch. Removing it leaves Vibe's logs in place.
+
+The folder must contain Vibe's `session_YYYYMMDD_HHMMSS_*` directories and their `meta.json` files. Separate folders must already exist; adding an account does not sign in to Vibe or split an existing combined log folder. Missing folders produce an empty report and remain unavailable, without falling back to the default folder.
+
 ## Gotchas
 
 - **Only Vibe is counted.** Le Chat and the Mistral API used from other tools (OpenCode and the like) don't write Vibe logs, so their usage is missing. For account-wide spend, use the Mistral console.

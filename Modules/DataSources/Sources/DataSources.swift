@@ -70,7 +70,9 @@ public enum DataSources {
         environment: @escaping @Sendable (String) -> String?,
         homeDirectory: URL,
         now: @escaping @Sendable () -> Date,
-        sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) }
+        sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) },
+        calendar: Calendar = .current,
+        directoryReader: any DirectoryReading = SystemDirectoryReader()
     ) -> DataSource {
         make(
             definition,
@@ -87,7 +89,7 @@ public enum DataSources {
             settings: settings,
             environment: environment,
             homeDirectory: homeDirectory,
-            now: now, sleep: sleep
+            now: now, sleep: sleep, calendar: calendar, directoryReader: directoryReader
         )
     }
 
@@ -107,7 +109,9 @@ public enum DataSources {
         environment: @escaping @Sendable (String) -> String?,
         homeDirectory: URL,
         now: @escaping @Sendable () -> Date,
-        sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) }
+        sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) },
+        calendar: Calendar = .current,
+        directoryReader: any DirectoryReading = SystemDirectoryReader()
     ) -> DataSource {
         let fetcher: any Fetching = switch definition.fetch {
         case .commandPlan(let plan):
@@ -118,6 +122,8 @@ public enum DataSources {
             HTTPFlowFetcher(flow: flow, network: network, script: scripts(flow.script), settingValue: settingValue, now: now, sleep: sleep)
         case .workflow(let flow):
             WorkflowFetcher(flow: flow, network: network, loopbackNetwork: loopbackNetwork, makeExecutor: makeCLIExecutor, script: scripts(flow.script), now: now, settingValue: settingValue)
+        case .directory(let call):
+            DirectoryFetcher(call: call, reader: directoryReader, homeDirectory: homeDirectory, environment: environment, calendar: calendar, now: now)
         case .http(let request):
             HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue)
         case .jsonRpc(let call):

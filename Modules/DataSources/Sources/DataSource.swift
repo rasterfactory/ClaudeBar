@@ -225,6 +225,8 @@ public struct DataSource: Sendable {
             }
             do {
                 return (try await fetcher.fetch(with: renewed.credential), renewed.credential)
+            } catch let refused as HTTPStatusError where refresher.retryStatuses.contains(refused.status) {
+                throw DataSourceError(.fetch, refresher.retryFailure ?? refused.reason)
             } catch {
                 throw Self.fetchError(error)
             }
@@ -321,9 +323,12 @@ protocol CredentialFinding: Sendable {
 
 protocol CredentialRefreshing: Sendable {
     var retryStatuses: [Int] { get }
+    var retryFailure: UsageError? { get }
     func isDue(_ credential: Credential) -> Bool
     func refresh(_ credential: Credential) async throws -> Credential
 }
+
+extension CredentialRefreshing { var retryFailure: UsageError? { nil } }
 
 protocol Fetching: Sendable {
     func isReady() -> Bool

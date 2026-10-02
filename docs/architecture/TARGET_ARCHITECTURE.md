@@ -409,6 +409,10 @@ vendor type:
 | Desktop installation availability | `availability: "files"` with `requiresFiles` and optional `missingFilesError`; added accounts can use credential availability instead |
 | Account recovery copy | `accounts.defaultLoginDescription` and `defaultReauthHelp` describe the default login without assuming a CLI or API key |
 | HTTP response contracts | `fetch.http.acceptedStatuses` and `errors` preserve provider status handling; errors retain HTTP status for OAuth retry |
+| Dictionary login files | `jsonFile.select` selects by mapped-field presence and expiry and writes back into the exact selected record; defaults are request companions |
+| OAuth issuer/client and ISO expiry | Templates in `oauth2.tokenURL` and `clientId`, optional `tokenPath`, ISO-8601 `dueWhen`, and configurable missing-token and retry errors |
+| Separate signed-in folders | Absolute-path account form fields and per-account credential paths, with recovery/removal text that leaves external login files intact |
+| HTTP response contracts | Optional `acceptedStatuses` and error maps preserve status handling and OAuth retry |
 
 ## 9 · Open
 

@@ -158,6 +158,8 @@ struct ClaudeBarApp: App {
             accounts: settingsRepository.accounts(forProvider: "omp"))
         let cursor = Self.builtIn("cursor", settings: settingsRepository,
                                   accounts: settingsRepository.accounts(forProvider: "cursor"), secrets: vault)
+        let grok = Self.builtIn("grok", settings: settingsRepository,
+                                accounts: settingsRepository.accounts(forProvider: "grok"), secrets: vault)
 
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
@@ -210,19 +212,7 @@ struct ClaudeBarApp: App {
                 probe: OmpUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-            OpenCodeProvider(
-                probe: OpenCodeAPIUsageProbe(fallback: OpenCodeUsageProbe()),
-                settingsRepository: settingsRepository
-            ),
-            omp.defaultAccount,
-            GrokProvider(
-                probe: GrokUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-            commandcode.defaultAccount,
-        ])
-        // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

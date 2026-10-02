@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kiro now uses a JSON definition and shared account profiles; monthly and bonus credits retain their existing behavior. ([#386](https://github.com/tddworks/ClaudeBar/pull/386))
 - Oh My Pi uses a JSON definition and separate account profiles, preserving grouped quotas, spending and account notes. ([#387](https://github.com/tddworks/ClaudeBar/pull/387))
 - Cursor uses a JSON definition and supports separately named accounts with securely saved tokens, while preserving the desktop login and usage cards. ([#388](https://github.com/tddworks/ClaudeBar/pull/388))
+- Grok uses a JSON definition with separately named login folders, preserves billing cards and automatic token refresh, and keeps other sign-ins intact. ([#389](https://github.com/tddworks/ClaudeBar/pull/389))
 - DeepSeek supports separate accounts with their own API keys, names and menu-bar pins, preserves existing sign-ins, and shows balances in their billing currency. ([#331](https://github.com/tddworks/ClaudeBar/issues/331))
 - Claude's daily cost and token cards load much faster when you open the popover: ClaudeBar reads only the session log lines written since the last open, instead of re-reading every log from today and yesterday. ([#378](https://github.com/tddworks/ClaudeBar/pull/378))
 

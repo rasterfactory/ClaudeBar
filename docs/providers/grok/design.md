@@ -55,3 +55,11 @@ A dictionary keyed by `"<issuer>::<client-id>"` (OIDC login) or a plain scope UR
 - `productUsage[].product` is shown without the `Grok` prefix and with camelCase split (`GrokBuild` → "Build").
 - Amounts come wrapped as `{"val": N}`. On-demand is only emitted when `onDemandCap.val > 0`.
 - **Empty but valid** (99cb779): billing can return 200 with a `currentPeriod` and no percentages (fresh period, unmetered plan). That yields one 100%-remaining quota for the period instead of an empty grid. A response with no period at all still yields no quotas.
+
+## JSON definition
+
+`Modules/Providers/Resources/Providers/grok.json` declares credential-record selection, OAuth refresh, HTTP status handling, appearance and account overrides. The pure `grok-billing.js` script maps billing data. No vendor-specific Swift worker remains.
+
+Shared `jsonFile.select` chooses a dictionary record by mapped-field presence and latest expiry, then preserves its exact key for refresh writes. `defaults` supplies the fallback issuer without adding it to the auth file. OAuth accepts ISO-8601 expiry, templated issuer/client, optional token path and recovery errors after retry.
+
+All original billing, credential and request fixtures run through the generic engine. Temporary-file tests cover separate account folders, label persistence, missing credentials, exact record writes and other records. Live Grok authentication remains untested.

@@ -11,7 +11,13 @@ Shows how much of your xAI credit allowance is left in the current billing perio
 1. Install xAI's `grok` CLI and run `grok login`. This writes `~/.grok/auth.json`, which ClaudeBar reads.
 2. Settings → Providers → Grok → make sure the switch is on (it is on by default).
 
-The `grok` binary doesn't need to be on your PATH; ClaudeBar only needs the sign-in file. There are no Grok-specific settings.
+The `grok` binary doesn't need to be on your PATH; ClaudeBar only needs the sign-in file. The default account needs no additional settings.
+
+## Additional accounts
+
+Settings → Providers → Grok → Add Account accepts an absolute path to a separate signed-in Grok folder containing `auth.json`. Give each account a short name such as Personal or Work; names and menu-bar pins are independent. With one account, the usual Grok label stays.
+
+Each added account reads and refreshes only its selected folder. It never falls back to the default `~/.grok` login. Removing it from ClaudeBar leaves its auth file and folder in place. Keep independent sign-ins in the selected folders; changing an auth file changes the login it represents.
 
 ## Gotchas
 

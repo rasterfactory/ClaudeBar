@@ -20,8 +20,14 @@ extension ProviderDefinition {
     /// Where it sends a key — the host of every API that sends a credential.
     public var keyDestinations: [String] {
         Array(Set(dataSources.flatMap { source -> [String] in
-            guard source.credential != nil, case .http(let request) = source.fetch else { return [] }
-            return ([request.url] + Array(request.urlBySetting?.values.values ?? [:].values)).map { URL(string: $0)?.host ?? $0 }
+            guard source.credential != nil else { return [] }
+            let requests: [HTTPRequest]
+            switch source.fetch {
+            case .http(let request): requests = [request]
+            case .httpSequence(let sequence): requests = sequence.steps.map(\.request)
+            default: requests = []
+            }
+            return requests.flatMap { request in ([request.url] + Array(request.urlBySetting?.values.values ?? [:].values)).map {URL(string:$0)?.host ?? $0} }
         })).sorted()
     }
 
@@ -32,7 +38,7 @@ extension ProviderDefinition {
             case .commandPlan(let plan): "\(plan.cli) (arguments from \(plan.script), up to 8 commands)"
             case .cli(let call): ([call.cli] + call.args).joined(separator: " ")
             case .jsonRpc(let call): ([call.cli] + call.args).joined(separator: " ")
-            case .http, .file: nil
+            case .http, .httpSequence, .file: nil
             }
         }
     }

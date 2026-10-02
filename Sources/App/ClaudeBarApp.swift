@@ -139,6 +139,8 @@ struct ClaudeBarApp: App {
             })
         let opencode = Self.builtIn("opencode-go", settings: settingsRepository,
             accounts: settingsRepository.accounts(forProvider: "opencode-go"), secrets: ProviderVault())
+        let commandcode = Self.builtIn("commandcode", settings: settingsRepository,
+            accounts: settingsRepository.accounts(forProvider: "commandcode"), secrets: ProviderVault())
 
         let deepseek = Self.builtIn("deepseek", settings: settingsRepository,
                                    accounts: settingsRepository.accounts(forProvider: "deepseek"), secrets: ProviderVault(),
@@ -197,13 +199,10 @@ struct ClaudeBarApp: App {
                 probe: GrokUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-            CommandCodeProvider(
-                probe: CommandCodeUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
+            commandcode.defaultAccount,
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

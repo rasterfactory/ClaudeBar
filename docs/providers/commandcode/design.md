@@ -1,4 +1,4 @@
-# Command Code: probe design
+# Command Code: definition design
 
 Contributor research for the Command Code provider (`commandcode`). User-facing setup is in [README.md](README.md). Added in ba390fc (2026-09).
 
@@ -41,8 +41,14 @@ Environment variables come from the app's process environment.
 
 ## Credits meter
 
-`monthlyCredits` is treated as the **remaining** monthly allowance, not the allowance itself, so the cap comes from the plan id: a hard-coded map of plan-id prefix → monthly dollars (`planTotals` in the probe; e.g. `individual-go` $10, `individual-ultra` $300). It has to be updated by hand when Command Code changes its plans.
+`monthlyCredits` is treated as the **remaining** monthly allowance, not the allowance itself, so the cap comes from the plan id: a hard-coded map of plan-id prefix → monthly dollars (`planTotals` in `commandcode-credits.js`; e.g. `individual-go` $10, `individual-ultra` $300). It has to be updated by hand when Command Code changes its plans.
 
 - The plan id is lowercased, `_` → `-`, and matched by prefix, **longest key first**, so `individual-pro-v1` doesn't match `individual-pro`.
 - Remaining = monthly + purchased + free. Cap = max(plan allowance, monthly) + purchased + free; the `max` guards against a balance above the known allowance.
 - Unknown plan: no cap, so a balance-only card at a fixed 100%, emitted **only** when there are no window quotas, so the card is never empty but a fake percentage never sits next to real ones.
+
+## Definition and accounts
+
+`Modules/Providers/Resources/Providers/commandcode.json` runs through the shared provider lifecycle. The generic `httpSequence` fetch makes the two requests in order, retains their named JSON objects, and URL-encodes the organization query taken from the first response. Both use a 15-second timeout; HTTP status overrides keep the legacy login and rate-limit errors. The pure mapping script handles plan-prefix allowances and the two response envelopes.
+
+The default login retains environment → CLI file precedence, with a saved account key last. Added accounts patch the lookup to their own vault key only; no default credential fallback is possible. Keys are read back before account metadata is saved. Golden tests port the old credits, timestamp, credential and error fixtures through the real definition over stubbed network connections.

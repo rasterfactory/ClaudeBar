@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vercel AI Gateway supports separately named accounts with secure API keys, preserving existing credentials and environment settings. ([#381](https://github.com/tddworks/ClaudeBar/pull/381))
 - MiniMax supports named accounts with separate secure API keys and China or International regions, preserving existing settings and Token Plan quotas. ([#382](https://github.com/tddworks/ClaudeBar/pull/382))
 - OpenCode Go supports separately named API-key accounts through JSON definitions, preserving server usage and the default account's local database fallback. ([#383](https://github.com/tddworks/ClaudeBar/pull/383))
+- Command Code accounts now use the shared account settings: add separate API keys and name each login, while keeping existing CLI logins and credit meters. ([#384](https://github.com/tddworks/ClaudeBar/pull/384))
 - DeepSeek supports separate accounts with their own API keys, names and menu-bar pins, preserves existing sign-ins, and shows balances in their billing currency. ([#331](https://github.com/tddworks/ClaudeBar/issues/331))
 - Claude's daily cost and token cards load much faster when you open the popover: ClaudeBar reads only the session log lines written since the last open, instead of re-reading every log from today and yesterday. ([#378](https://github.com/tddworks/ClaudeBar/pull/378))
 

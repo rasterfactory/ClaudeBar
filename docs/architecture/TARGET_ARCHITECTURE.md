@@ -380,6 +380,7 @@ Each slice is one PR, green, with no change a user can see unless it says so.
 
 MiniMax adds `SettingURL`: `http.urlBySetting` selects a fixed URL by a live named provider setting, or an explicit account value. Unknown or unset selections use the request URL. `links.dashboardBySetting` uses the same selector, with each account's saved values before the default provider setting. No arbitrary setting becomes a URL.
 OpenCode adds `Fetch.commandPlan`: a fixed CLI and a bundled pure `next(responses, context)` JavaScript planner produce at most eight argv commands, each exit-checked before its response is passed back. The planner receives prior stdout and one fixed clock; it has no host I/O and cannot change the executable. `done` becomes the mapping response. Settings' CLI location applies to this fetch too, and import review names the CLI and planner. HTTP requests may declare per-status `errors`; the status remains available for OAuth retry logic.
+Command Code adds `Fetch.httpSequence`: up to eight fixed HTTP requests collect named JSON objects. Later query values come from declared paths in earlier responses and are encoded as URL query items. A failed request or invalid response stops the sequence; HTTP status overrides retain the response status for OAuth retry. Import review includes every request host. The reusable script money result from the DeepSeek migration represents balances and capped money without inventing percentages.
 
 Claude needed more than Codex, and each need became a generic piece, never a
 vendor type:

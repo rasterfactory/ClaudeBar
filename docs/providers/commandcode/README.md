@@ -12,7 +12,7 @@ Shows your Command Code 5-hour and weekly windows with reset times, plus a **Cre
    Or set `COMMAND_CODE_API_KEY` (also accepted: `COMMANDCODE_API_KEY`); it takes precedence over the file.
 2. Settings → Providers → Command Code → make sure the switch is on (it is on by default).
 
-ClaudeBar only needs the key; the `cmd` binary doesn't have to be on your PATH. There are no Command Code-specific settings.
+ClaudeBar only needs the key; the `cmd` binary doesn't have to be on your PATH. Settings → Providers → Command Code → Accounts also accepts an API key directly, saved securely for that account. Add Account creates another login with its own key; name it Work or Personal to distinguish it. Added accounts never use the default account's environment variables or CLI login file.
 
 ## Gotchas
 

@@ -295,6 +295,8 @@ private struct ProviderDetailView: View {
         case "opencode-go":
             if let shared = (provider as? Account)?.provider {
                 DataSourceSection(provider: shared, monitor: monitor)
+        case "commandcode":
+            if let shared = (provider as? Account)?.provider {
                 ProviderAccountsCard(provider: shared, monitor: monitor)
             }
         case "kimi":

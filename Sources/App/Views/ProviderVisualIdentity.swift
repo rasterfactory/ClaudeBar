@@ -350,31 +350,6 @@ extension MistralProvider: ProviderVisualIdentity {
 
 // MARK: - OpenCodeProvider Visual Identity
 
-extension OpenCodeProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "square.stack.3d.up.fill" }
-
-    public var iconAssetName: String { "OpenCodeIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // OpenCode brand purple
-        scheme == .dark
-            ? Color(red: 0.52, green: 0.36, blue: 1.0)
-            : Color(red: 0.42, green: 0.28, blue: 1.0)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.36, green: 0.20, blue: 0.90)
-                    : Color(red: 0.30, green: 0.15, blue: 0.80)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
 
 // MARK: - OmpProvider Visual Identity
 

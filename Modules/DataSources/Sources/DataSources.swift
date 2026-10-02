@@ -95,6 +95,8 @@ public enum DataSources {
         now: @escaping @Sendable () -> Date
     ) -> DataSource {
         let fetcher: any Fetching = switch definition.fetch {
+        case .commandPlan(let plan):
+            CommandPlanFetcher(plan: plan, executor: makeCLIExecutor(CLICall(cli: plan.cli)), script: scripts(plan.script), now: now)
         case .http(let request):
             HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue)
         case .jsonRpc(let call):

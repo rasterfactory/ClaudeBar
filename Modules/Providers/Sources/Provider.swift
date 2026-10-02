@@ -396,6 +396,8 @@ public final class Provider {
     public func isAvailable(_ account: Account) async -> Bool {
         guard let active = startingDataSource(for: account) else { return false }
         if await active.isReady() { return true }
+        if !active.hasKey, let kind = active.definition.fallbackOn["authenticationRequired"],
+           let handOff = dataSource(kind, for: account), await handOff.isReady() { return true }
         guard let fallback = enabledFallback(of: active, for: account) else { return false }
         return await fallback.isReady()
     }

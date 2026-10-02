@@ -29,6 +29,7 @@ extension ProviderDefinition {
     public var commands: [String] {
         dataSources.compactMap { source in
             switch source.fetch {
+            case .commandPlan(let plan): "\(plan.cli) (arguments from \(plan.script), up to 8 commands)"
             case .cli(let call): ([call.cli] + call.args).joined(separator: " ")
             case .jsonRpc(let call): ([call.cli] + call.args).joined(separator: " ")
             case .http, .file: nil

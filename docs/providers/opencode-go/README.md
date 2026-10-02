@@ -22,6 +22,10 @@ ClaudeBar chooses the mode itself; there is no switch.
 | API (preferred) | An OpenCode Zen API key: `OPENCODE_API_KEY`, or the `opencode-go` / `opencode` entry in `~/.local/share/opencode/auth.json` (or `$XDG_DATA_HOME/opencode/auth.json`) | A key is found. Numbers match the opencode.ai dashboard |
 | Local database (fallback) | `opencode` on your PATH | No key is found. Estimates usage from this Mac's opencode history |
 
+## Multiple accounts
+
+Settings → Providers → OpenCode Go → Accounts → Add Account stores each account's API key securely. Added accounts use their own key and never inherit the default login or its local database fallback. With one account the label stays OpenCode Go.
+
 ## Gotchas
 
 - **Local-database numbers are an estimate.** They only count opencode-go messages sent from this Mac, and they compare the summed cost against fixed limits ($12 per 5 hours, $30 per week, $60 per month). Sign in to Zen so the API mode is used if you work on more than one machine.

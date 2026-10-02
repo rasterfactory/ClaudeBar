@@ -85,12 +85,15 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             public let secret: Bool
             /// The only values it takes, when it is a choice.
             public let choices: [String]?
+            /// An account profile root must be an absolute filesystem path.
+            public let absolutePath: Bool
 
-            public init(id: String, label: String, secret: Bool = false, choices: [String]? = nil) {
+            public init(id: String, label: String, secret: Bool = false, choices: [String]? = nil, absolutePath: Bool = false) {
                 self.id = id
                 self.label = label
                 self.secret = secret
                 self.choices = choices
+                self.absolutePath = absolutePath
             }
 
             public init(from decoder: Decoder) throws {
@@ -99,6 +102,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 label = try container.decode(String.self, forKey: .label)
                 secret = try container.decodeIfPresent(Bool.self, forKey: .secret) ?? false
                 choices = try container.decodeIfPresent([String].self, forKey: .choices)
+                absolutePath = try container.decodeIfPresent(Bool.self, forKey: .absolutePath) ?? false
             }
         }
         /// By data source kind, what an added login changes — its own folder,

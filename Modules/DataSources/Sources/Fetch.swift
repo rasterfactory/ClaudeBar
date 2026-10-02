@@ -280,6 +280,9 @@ public struct CLICall: Sendable, Equatable, Codable {
     public let session: Session?
     /// Optional exit and launch errors; absent rules preserve terminal-screen behavior.
     public let errors: Errors?
+    /// Pipes for ordinary commands; terminal preserves the existing TUI behavior.
+    public let mode: Mode
+    public enum Mode: String, Sendable, Equatable, Codable { case terminal, pipes }
 
     public struct Errors: Sendable, Equatable, Codable {
         public let missing: String?
@@ -298,7 +301,8 @@ public struct CLICall: Sendable, Equatable, Codable {
         readyWhen: [ReadyMarker] = [],
         screen: Screen = .raw,
         session: Session? = nil,
-        errors: Errors? = nil
+        errors: Errors? = nil,
+        mode: Mode = .terminal
     ) {
         self.cli = cli
         self.args = args
@@ -311,6 +315,7 @@ public struct CLICall: Sendable, Equatable, Codable {
         self.screen = screen
         self.session = session
         self.errors = errors
+        self.mode = mode
     }
 
     public init(from decoder: Decoder) throws {
@@ -326,10 +331,11 @@ public struct CLICall: Sendable, Equatable, Codable {
         screen = try container.decodeIfPresent(Screen.self, forKey: .screen) ?? .raw
         session = try container.decodeIfPresent(Session.self, forKey: .session)
         errors = try container.decodeIfPresent(Errors.self, forKey: .errors)
+        mode = try container.decodeIfPresent(Mode.self, forKey: .mode) ?? .terminal
     }
 
     private enum CodingKeys: String, CodingKey {
-        case cli, args, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session, errors
+        case cli, args, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session, errors, mode
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -345,6 +351,7 @@ public struct CLICall: Sendable, Equatable, Codable {
         try container.encode(screen, forKey: .screen)
         try container.encodeIfPresent(session, forKey: .session)
         try container.encodeIfPresent(errors, forKey: .errors)
+        try container.encode(mode, forKey: .mode)
     }
 }
 

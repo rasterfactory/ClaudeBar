@@ -210,7 +210,7 @@ struct CLIFetcher: Fetching {
         let call = CLICall(cli: call.cli, args: call.args, input: call.input, timeout: call.timeout,
             workingDirectory: call.workingDirectory, autoResponses: call.autoResponses,
             environment: .init(unset: call.environment.unset, set: additions), readyWhen: call.readyWhen,
-            screen: call.screen, session: call.session, errors: call.errors)
+            screen: call.screen, session: call.session, errors: call.errors, mode: call.mode)
         if let label = call.errors?.missing, makeExecutor(call).locate(call.cli) == nil {
             throw UsageError.cliNotFound(label)
         }
@@ -257,7 +257,8 @@ struct CLIFetcher: Fetching {
 
     /// The real terminal: `DefaultCLIExecutor` with the call's environment and ready markers.
     static let system: MakeExecutor = { call in
-        DefaultCLIExecutor(
+        if call.mode == .pipes { return PipeCLIExecutor(environment: call.environment) }
+        return DefaultCLIExecutor(
             environmentExclusions: call.environment.unset,
             environmentAdditions: call.environment.set,
             completionRule: call.readyWhen.isEmpty

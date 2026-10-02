@@ -42,7 +42,7 @@ struct AccountsCardText {
     }
 
     func removeMessage(for account: Account) -> String {
-        if account.madeBy == .form {
+        if account.madeBy == .form && fields.contains(where: \.secret) {
             return "Removes \(account.displayName) from ClaudeBar and deletes its saved keys."
         }
         if account.folder?.goesWithAccount == true {
@@ -61,6 +61,9 @@ struct AccountsCardText {
     /// made; otherwise how the person does it in their own folder.
     func reauthHelp(for account: Account) -> String? {
         if account.madeBy == .form {
+            if let field = fields.first(where: \.absolutePath), let path = account.values[field.id] {
+                return "Sign in again in \(path) with your CLI, then refresh."
+            }
             return "Remove this account and add it again with a valid key."
         }
         if account.isDefault, provider.definition.cli == nil {

@@ -152,6 +152,9 @@ struct ClaudeBarApp: App {
             return ProcessInfo.processInfo.environment[variable]
         })
 
+        let kiro = Self.builtIn("kiro", settings: settingsRepository,
+            accounts: settingsRepository.accounts(forProvider: "kiro"))
+
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
@@ -179,7 +182,7 @@ struct ClaudeBarApp: App {
                 apiProbe: KimiUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
-            KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
+            kiro.defaultAccount,
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
             minimax.defaultAccount,
             deepseek.defaultAccount,
@@ -204,7 +207,7 @@ struct ClaudeBarApp: App {
             commandcode.defaultAccount,
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

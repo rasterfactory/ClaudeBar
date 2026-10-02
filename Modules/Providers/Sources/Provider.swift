@@ -198,6 +198,9 @@ public final class Provider {
             if let choices = field.choices, !choices.contains(value) {
                 throw UsageError.executionFailed("Choose a \(field.label) from the list.")
             }
+            if field.absolutePath && !value.hasPrefix("/") {
+                throw UsageError.executionFailed("Enter an absolute path for \(field.label).")
+            }
             if field.secret { secrets[field.id] = value } else { values[field.id] = value }
         }
         guard secrets.isEmpty || vault != nil else {

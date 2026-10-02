@@ -291,10 +291,46 @@ private struct ProviderDetailView: View {
             } else if account.isDefault {
                 defaultConfigCard
             }
+<<<<<<< HEAD
         } else {
             defaultConfigCard
             if let extProvider = provider as? ExtensionProvider, extProvider.manifest.hasConfig {
                 ExtensionConfigCard(provider: extProvider, configRepository: AppSettings.shared.extensionConfig)
+=======
+        case "kiro":
+            if let kiro = (provider as? Account)?.provider { ProviderAccountsCard(provider: kiro, monitor: monitor) }
+        case "kimi":
+            KimiConfigCard(monitor: monitor)
+        case "minimax":
+            MiniMaxConfigCard(monitor: monitor)
+        case "deepseek":
+            if let deepseek = (provider as? Account)?.provider {
+                ProviderAccountsCard(provider: deepseek, monitor: monitor)
+            }
+            DeepSeekConfigCard(monitor: monitor)
+        case "alibaba":
+            AlibabaConfigCard(monitor: monitor)
+        case "vercel-gateway":
+            VercelConfigCard(monitor: monitor)
+        case "copilot":
+            CopilotConfigCard(monitor: monitor)
+        case "zai":
+            ZaiConfigCard(monitor: monitor)
+        case "bedrock":
+            BedrockConfigCard(monitor: monitor)
+        default:
+            if let custom = (provider as? Account)?.provider, custom.definition.profile.origin == .custom {
+                DataSourceSection(provider: custom, monitor: monitor)
+                if custom.definition.accounts != nil {
+                    ProviderAccountsCard(provider: custom, monitor: monitor)
+                }
+                CustomProviderCard(provider: custom, monitor: monitor, onDeleted: onBack)
+            } else if let extProvider = provider as? ExtensionProvider, extProvider.manifest.hasConfig {
+                ExtensionConfigCard(
+                    provider: extProvider,
+                    configRepository: AppSettings.shared.extensionConfig
+                )
+>>>>>>> migrate/kiro-provider-json
             }
         }
     }

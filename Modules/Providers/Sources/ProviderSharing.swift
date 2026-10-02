@@ -28,6 +28,12 @@ extension ProviderDefinition {
             default: requests = []
             }
             return requests.flatMap { request in ([request.url] + Array(request.urlBySetting?.values.values ?? [:].values)).map {URL(string:$0)?.host ?? $0} }
+            case .httpFlow(let flow): requests = Array(flow.requests.values)
+            default: requests = []
+            }
+            return requests.flatMap { request in
+                ([request.url] + Array(request.urlBySetting?.values.values ?? Dictionary<String,String>().values)).map { URL(string:$0)?.host ?? $0 }
+            }
         })).sorted()
     }
 
@@ -39,6 +45,7 @@ extension ProviderDefinition {
             case .cli(let call): ([call.cli] + call.args).joined(separator: " ")
             case .jsonRpc(let call): ([call.cli] + call.args).joined(separator: " ")
             case .http, .httpSequence, .file: nil
+            case .http, .file, .httpFlow: nil
             }
         }
     }
@@ -52,6 +59,12 @@ extension ProviderDefinition {
         
         case .accompanying(let base, let rule): settings(in: base) + rule.fields.values.flatMap { settings(in: $0) }
         case .environment, .jsonFile, .keychain, .sqlite, .browserCookies: []
+        case .bySetting(let choice): choice.values.values.flatMap(settings(in:))
+        case .tagged(let base, _): settings(in: base)
+        case .setting(let name): [name]
+        case .firstOf(let lookups): lookups.flatMap(settings(in:))
+        case .refreshing(let base, _): settings(in: base)
+        case .environment, .jsonFile, .keychain, .browserCookies: []
         }
     }
 }

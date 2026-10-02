@@ -514,6 +514,12 @@ struct AddProviderSheet: View {
         
         case .accompanying(let base, let rule): usesSavedKey(base) || rule.fields.values.contains(where: usesSavedKey)
         case .environment, .jsonFile, .keychain, .sqlite, .browserCookies: false
+        case .bySetting(let choice): choice.values.values.contains(where: usesSavedKey)
+        case .tagged(let base, _): usesSavedKey(base)
+        case .setting: true
+        case .firstOf(let lookups): lookups.contains(where: usesSavedKey)
+        case .refreshing(let base, _): usesSavedKey(base)
+        case .environment, .jsonFile, .keychain, .browserCookies: false
         }
     }
 

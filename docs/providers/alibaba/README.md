@@ -43,3 +43,9 @@ The cookie modes are picked under **COOKIE SOURCE**. To go from the API key back
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+## Multiple accounts
+
+**Add Account** accepts an API key or a separately saved console cookie header, plus the account's region. Name accounts Personal and Work or use names that help you distinguish them. Each added account uses only its own secure credential. Removing one deletes that credential and leaves the default sign-in intact.
+
+The default account keeps API-key priority, manual/automatic cookie selection and the existing region setting. Stored keys and manual cookies move to secure storage after a verified write; an unsuccessful migration retains the existing sign-in. API-key failures do not switch to another account's browser session.

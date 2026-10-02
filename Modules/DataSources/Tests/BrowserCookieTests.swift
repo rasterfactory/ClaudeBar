@@ -6,7 +6,8 @@ import Testing
 @Suite struct BrowserCookieTests {
     private struct Cookies: BrowserCookieReading {
         let stores: [[BrowserCookie]]
-        func stores(domains: [String], names: [String]) -> [[BrowserCookie]] { domains == ["example.com"] ? stores : [] }
+        func stores(domains: [String], names: [String]) -> [[BrowserCookie]] { stores(domains: domains, names: names, includeEmpty: false) }
+        func stores(domains: [String], names: [String], includeEmpty: Bool) -> [[BrowserCookie]] { domains == ["example.com"] ? stores : [] }
     }
     private func reader(format: String, stores: [[BrowserCookie]], region: String? = nil) throws -> BrowserCookieReader {
         let data = Data("{\"domains\":[\"example.com\"],\"domainsBySetting\":{\"setting\":\"region\",\"values\":{\"other\":[\"other.com\"]}},\"names\":[\"session\",\"identity\"],\"format\":\"\(format)\"}".utf8)

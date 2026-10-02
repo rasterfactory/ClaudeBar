@@ -122,6 +122,10 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 when?.allSatisfy { values[$0.key] == $0.value } ?? true
             }
 
+            public func isShown(values: [String: String]) -> Bool {
+                when?.allSatisfy { values[$0.key] == $0.value } ?? true
+            }
+
             public init(from decoder: Decoder) throws {
                 let container = try decoder.container(keyedBy: CodingKeys.self)
                 id = try container.decode(String.self, forKey: .id)
@@ -131,6 +135,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 defaultValue = try container.decodeIfPresent(String.self, forKey: .defaultValue)
                 pattern = try container.decodeIfPresent(String.self, forKey: .pattern)
                 when = try container.decodeIfPresent([String: String].self, forKey: .when)
+                absolutePath = try container.decodeIfPresent(Bool.self, forKey: .absolutePath) ?? false
                 existingDirectory = try container.decodeIfPresent(Bool.self, forKey: .existingDirectory) ?? false
                 excludedPaths = try container.decodeIfPresent([String].self, forKey: .excludedPaths) ?? []
                 if secret, defaultValue != nil {

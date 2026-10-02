@@ -109,6 +109,8 @@ public enum DataSources {
             CommandPlanFetcher(plan: plan, executor: makeCLIExecutor(CLICall(cli: plan.cli)), script: scripts(plan.script), now: now)
         case .httpSequence(let sequence):
             HTTPSequenceFetcher(sequence: sequence, network: network, now: now)
+        case .httpFlow(let flow):
+            HTTPFlowFetcher(flow: flow, network: network, script: scripts(flow.script), settingValue: settingValue, now: now)
         case .http(let request):
             HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue)
         case .jsonRpc(let call):
@@ -159,7 +161,7 @@ public enum DataSources {
         )
     }
 
-    private struct Readers {
+    private struct Readers: Sendable {
         let environment: @Sendable (String) -> String?
         let homeDirectory: URL
         let security: KeychainReader.Security
@@ -184,6 +186,10 @@ public enum DataSources {
                 SQLiteReader(file: file, homeDirectory: homeDirectory, environment: environment)
             case .claiming(let base, let claims):
                 ClaimsReader(base: reader(for: base), claims: claims)
+            case .bySetting(let choice):
+                ChoiceReader(choice: choice, settingValue: settingValue, makeReader: reader(for:))
+            case .tagged(let lookup, let facts):
+                TaggedReader(base: reader(for: lookup), facts: facts)
             case .browserCookies(let query):
                 BrowserCookieReader(query: query, cookies: browserCookies, settingValue: settingValue)
             case .setting(let name):

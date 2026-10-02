@@ -1,3 +1,4 @@
+import Providers
 import SwiftUI
 import Domain
 import Infrastructure
@@ -19,7 +20,9 @@ struct AlibabaConfigCard: View {
     @State private var alibabaTestResult: String?
 
     private var dashboardURL: URL {
-        alibabaRegion.dashboardURL
+        let definition = try? Providers.builtIn("alibaba")
+        let destination = definition?.profile.links.dashboardBySetting?.values[alibabaRegion.rawValue]
+        return destination.flatMap(URL.init(string:)) ?? definition?.profile.links.dashboard ?? URL(string: "https://modelstudio.console.alibabacloud.com")!
     }
 
     var body: some View {
@@ -305,10 +308,20 @@ struct AlibabaConfigCard: View {
         if !alibabaApiKeyInput.isEmpty {
             AppLog.credentials.info("Saving Alibaba API key for connection test")
             settings.alibaba.saveAlibabaApiKey(alibabaApiKeyInput)
+            guard settings.alibaba.getAlibabaApiKey() == alibabaApiKeyInput else {
+                alibabaTestResult = "Failed: Could not save the API key securely."
+                isTestingAlibaba = false
+                return
+            }
             alibabaApiKeyInput = ""
         }
         if alibabaCookieSource == .manual && !alibabaManualCookieInput.isEmpty {
             settings.alibaba.saveAlibabaManualCookie(alibabaManualCookieInput)
+            guard settings.alibaba.getAlibabaManualCookie() == alibabaManualCookieInput else {
+                alibabaTestResult = "Failed: Could not save the cookie securely."
+                isTestingAlibaba = false
+                return
+            }
         }
 
         AppLog.credentials.info("Testing Alibaba connection via provider refresh")

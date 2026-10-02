@@ -25,6 +25,9 @@ public indirect enum CredentialLookup: Sendable, Equatable {
     case sqlite(SQLiteCredential)
     case claiming(CredentialLookup, CredentialClaims)
     case browserCookies(BrowserCookieCredential)
+    case browserCookies(BrowserCookieCredential)
+    case bySetting(CredentialChoice)
+    case tagged(CredentialLookup, [String: String])
     /// The first lookup that answers wins.
     case firstOf([CredentialLookup])
     /// A lookup whose token is kept fresh by an OAuth 2 refresh.
@@ -225,7 +228,7 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
 // MARK: - JSON
 
 extension CredentialLookup: Codable {
-    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf", "sqlite", "script", "browserCookies"]
+    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf", "sqlite", "script", "browserCookies", "bySetting"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
@@ -241,6 +244,8 @@ extension CredentialLookup: Codable {
             base = .keychain(try container.decode(KeychainCredential.self, forKey: TagKey("keychain")))
         case "sqlite":
             base = .sqlite(try container.decode(SQLiteCredential.self, forKey: TagKey("sqlite")))
+        case "bySetting":
+            base = .bySetting(try container.decode(CredentialChoice.self, forKey: TagKey("bySetting")))
         case "browserCookies":
             base = .browserCookies(try container.decode(BrowserCookieCredential.self, forKey: TagKey("browserCookies")))
         case "setting":
@@ -254,11 +259,16 @@ extension CredentialLookup: Codable {
         if let companions = try container.decodeIfPresent(CompanionLookups.self, forKey: TagKey("companions")) {
             base = .accompanying(base, companions)
         }
+        let facts = try container.decodeIfPresent([String: String].self, forKey: TagKey("as")) ?? [:]
+        guard Set(facts.keys).isDisjoint(with: ["token", "refreshToken", "accessToken", "apiKey"]) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Credential tags cannot embed secret values"))
+        }
+        let tagged = facts.isEmpty ? base : .tagged(base, facts)
         if container.contains(TagKey("refresh")) {
             let refresh = try container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
-            self = .refreshing(base, try refresh.decode(OAuth2Refresh.self, forKey: TagKey("oauth2")))
+            self = .refreshing(tagged, try refresh.decode(OAuth2Refresh.self, forKey: TagKey("oauth2")))
         } else {
-            self = base
+            self = tagged
         }
     }
 
@@ -282,6 +292,11 @@ extension CredentialLookup: Codable {
         case .claiming(let base, let claims):
             try base.encodeBase(into: &container)
             try container.encode(claims, forKey: TagKey("claims"))
+        case .bySetting(let choice):
+            try container.encode(choice, forKey: TagKey("bySetting"))
+        case .tagged(let lookup, let facts):
+            try lookup.encodeBase(into: &container)
+            try container.encode(facts, forKey: TagKey("as"))
         case .browserCookies(let query):
             try container.encode(query, forKey: TagKey("browserCookies"))
         case .setting(let name):
@@ -310,6 +325,8 @@ extension CredentialLookup {
         case .sqlite(let file): [file.path]
         case .claiming(let base, _): base.lookupOrder
         case .keychain(let item): ["Keychain “\(item.service)”"]
+        case .bySetting(let choice): choice.values.keys.sorted().flatMap { choice.values[$0]?.lookupOrder ?? [] }
+        case .tagged(let base, _): base.lookupOrder
         case .browserCookies: ["Signed-in browser cookies"]
         case .setting: ["API key saved in ClaudeBar"]
         case .firstOf(let lookups): lookups.flatMap(\.lookupOrder)
@@ -321,11 +338,14 @@ extension CredentialLookup {
     /// the refresh's hint ("Run `claude` in terminal to log in again.").
     public var hint: String? {
         switch self {
+        case .tagged(let base, _): base.hint
+        case .bySetting(let choice): choice.values.keys.sorted().lazy.compactMap { choice.values[$0]?.hint }.first
         case .refreshing(let base, let refresh): refresh.hint ?? base.hint
         case .claiming(let base, _): base.hint
         case .accompanying(let base, _): base.hint
         case .firstOf(let lookups): lookups.lazy.compactMap(\.hint).first
         case .browserCookies, .script, .environment, .jsonFile, .keychain, .setting, .sqlite: nil
+        case .environment, .jsonFile, .keychain, .setting, .browserCookies: nil
         }
     }
 }
@@ -395,4 +415,10 @@ public struct BrowserCookieCredential: Codable, Sendable, Equatable {
     public let names: [String]
     public let format: Format
     public enum Format: String, Codable, Sendable { case value, header }
+}
+
+public struct CredentialChoice: Codable, Sendable, Equatable {
+    public let setting: String
+    public let `default`: String
+    public let values: [String: CredentialLookup]
 }

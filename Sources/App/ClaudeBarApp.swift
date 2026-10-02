@@ -177,6 +177,7 @@ struct ClaudeBarApp: App {
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
         let kimi = Self.builtIn("kimi", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "kimi"), secrets: vault)
+        let alibaba = Self.builtIn("alibaba", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "alibaba"), secrets: vault)
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
         let repository = AIProviders(providers: [
             claude.defaultAccount,
@@ -222,6 +223,11 @@ struct ClaudeBarApp: App {
                 probe: AlibabaUsageProbe(settingsRepository: settingsRepository, cookieProvider: AlibabaBrowserCookieProvider()),
                 settingsRepository: settingsRepository
             ),
+            VercelProvider(
+                probe: VercelUsageProbe(settingsRepository: settingsRepository),
+                settingsRepository: settingsRepository
+            ),
+            alibaba.defaultAccount,
             MistralProvider(
                 probe: MistralUsageProbe(),
                 settingsRepository: settingsRepository
@@ -231,7 +237,7 @@ struct ClaudeBarApp: App {
                 probe: OmpUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

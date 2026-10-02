@@ -34,8 +34,12 @@ struct HTTPFetcher: Fetching {
 
     func isReady() -> Bool { true }
 
-    func fetch(with credential: Credential?) async throws -> Response {
-        guard let urlText = Template.fill(request.urlBySetting?.resolve(value: request.urlBySetting?.setting.flatMap(settingValue)) ?? request.url, with: credential), let url = URL(string: urlText) else {
+    func fetch(with original: Credential?) async throws -> Response {
+        var values = original?.values ?? [:]
+        values["system.timeZone"] = TimeZone.current.identifier
+        let credential = Credential(values)
+        let selectedURL = request.urlBySetting?.resolve(value: request.urlBySetting?.setting.flatMap(settingValue)) ?? request.url
+        guard let urlText = Template.fill(selectedURL, with: credential), let url = URL(string: urlText) else {
             throw UsageError.executionFailed("Invalid URL")
         }
         var urlRequest = URLRequest(url: url)
@@ -56,8 +60,16 @@ struct HTTPFetcher: Fetching {
         do {
             (data, response) = try await network.request(urlRequest)
         } catch {
+            if request.propagateNetworkErrors {
+                let detail = Self.redacted(error.localizedDescription, credential: original)
+                if detail == error.localizedDescription { throw error }
+                throw UsageError.executionFailed(detail)
+            }
             AppLog.probes.error("HTTP fetch failed")
             throw UsageError.executionFailed((request.networkErrorPrefix ?? "Network error: ") + Self.redacted(error.localizedDescription, credential: original))
+        }
+        if request.ignoreResponseStatus {
+            return Response(status: (response as? HTTPURLResponse)?.statusCode, body: data)
         }
         guard let http = response as? HTTPURLResponse else {
             throw request.invalidResponseError?.usageError ?? UsageError.executionFailed("Invalid response")
@@ -74,7 +86,7 @@ struct HTTPFetcher: Fetching {
         if accepted { return Response(status: http.statusCode, headers: headers, body: data) }
         if let error = request.errors[String(http.statusCode)] ?? request.errors["default"] {
             var reason = error.usageError
-            if case .executionFailed(let message) = reason { reason = .executionFailed(message.replacingOccurrences(of: "{{status}}", with: String(http.statusCode))) }
+            if case .executionFailed(let message) = reason { reason = .executionFailed(message.replacingOccurrences(of: "{{status}}", with: String(http.statusCode)).replacingOccurrences(of: "{{body}}", with: Self.redacted(String(data: data, encoding: .utf8) ?? "<binary>", credential: original))) }
             throw HTTPStatusError(status: http.statusCode, reason: reason)
         }
         switch http.statusCode {
@@ -207,23 +219,8 @@ struct CLIFetcher: Fetching {
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
-        // Resolve a credential only at execution time. It never enters account
-        // metadata, the shared definition, or the app's process environment.
-        var additions: [String: String] = [:]
-        for (name, template) in call.environment.set {
-            guard let value = Template.fill(template, with: credential) else {
-                throw UsageError.authenticationRequired
-            }
-            additions[name] = value
-        }
-        let call = CLICall(cli: call.cli, args: call.args, input: call.input, timeout: call.timeout,
-            workingDirectory: call.workingDirectory, autoResponses: call.autoResponses,
-            environment: .init(unset: call.environment.unset, set: additions), readyWhen: call.readyWhen,
-            screen: call.screen, session: call.session, errors: call.errors, mode: call.mode)
-        if let label = call.errors?.missing, makeExecutor(call).locate(call.cli) == nil {
-            throw UsageError.cliNotFound(label)
-        }
-        let directory = try call.workingDirectory?.resolve()
+        if call.checkAvailability && !isReady() { throw UsageError.cliNotFound(call.cli) }
+        let directory = call.workingDirectory == .dedicated ? CLIWorkingDirectory.resolve() : nil
         let result: CLIResult
         do {
             if let plan = call.session {

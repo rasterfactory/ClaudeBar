@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Copilot supports separate GitHub accounts with their own secure tokens, API modes, monthly allowances and short names, while keeping existing billing and manual-usage settings. ([#391](https://github.com/tddworks/ClaudeBar/pull/391))
 - Z.ai supports separately named accounts with their own secure API keys and platform choices, while preserving Claude configuration, login-shell fallback and existing quotas. ([#392](https://github.com/tddworks/ClaudeBar/pull/392))
 - Kimi supports named API sessions and isolated CLI accounts, keeps existing regions and sign-ins, and runs through the shared JSON provider engine. ([#393](https://github.com/tddworks/ClaudeBar/pull/393))
+- Alibaba supports named API-key and console-cookie accounts, preserves existing regions and browser sign-ins, and moves stored credentials into the shared vault. ([#394](https://github.com/tddworks/ClaudeBar/pull/394))
 - DeepSeek supports separate accounts with their own API keys, names and menu-bar pins, preserves existing sign-ins, and shows balances in their billing currency. ([#331](https://github.com/tddworks/ClaudeBar/issues/331))
 - Claude's daily cost and token cards load much faster when you open the popover: ClaudeBar reads only the session log lines written since the last open, instead of re-reading every log from today and yesterday. ([#378](https://github.com/tddworks/ClaudeBar/pull/378))
 

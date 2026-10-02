@@ -6,6 +6,7 @@ import Foundation
 public enum Fetch: Sendable, Equatable {
     /// An exit-checked CLI sequence whose arguments depend on prior responses.
     case commandPlan(CommandPlan)
+    case httpFlow(HTTPFlow)
     /// An HTTP request — the *API* choice.
     case http(HTTPRequest)
     /// Ordered JSON HTTP responses; later query values come from earlier responses.
@@ -98,6 +99,8 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
     public let headersBySetting: SettingValues<[String: String]>?
     public let networkErrorPrefix: String?
     public let invalidResponseError: ErrorRef?
+    public let propagateNetworkErrors: Bool
+    public let ignoreResponseStatus: Bool
     public let method: String
     public let headers: [String: String]
     public let body: String?
@@ -105,9 +108,14 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
     public let acceptedStatuses: [Int]?
     public let errors: [String: ErrorRef]
 
-    public init(url: String, urlBySetting: SettingURL? = nil, method: String = "GET", headers: [String: String] = [:], body: String? = nil, timeout: TimeInterval = 15, acceptedStatuses: [Int]? = nil, errors: [String: ErrorRef] = [:]) {
+    public init(url: String, urlBySetting: SettingURL? = nil, headersBySetting: SettingValues<[String: String]>? = nil, networkErrorPrefix: String? = nil, invalidResponseError: ErrorRef? = nil, propagateNetworkErrors: Bool = false, ignoreResponseStatus: Bool = false, method: String = "GET", headers: [String: String] = [:], body: String? = nil, timeout: TimeInterval = 15, acceptedStatuses: [Int]? = nil, errors: [String: ErrorRef] = [:]) {
         self.url = url
         self.urlBySetting = urlBySetting
+        self.headersBySetting = headersBySetting
+        self.networkErrorPrefix = networkErrorPrefix
+        self.invalidResponseError = invalidResponseError
+        self.propagateNetworkErrors = propagateNetworkErrors
+        self.ignoreResponseStatus = ignoreResponseStatus
         self.method = method
         self.headers = headers
         self.body = body
@@ -123,6 +131,8 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
         headersBySetting = try container.decodeIfPresent(SettingValues<[String: String]>.self, forKey: .headersBySetting)
         networkErrorPrefix = try container.decodeIfPresent(String.self, forKey: .networkErrorPrefix)
         invalidResponseError = try container.decodeIfPresent(ErrorRef.self, forKey: .invalidResponseError)
+        propagateNetworkErrors = try container.decodeIfPresent(Bool.self, forKey: .propagateNetworkErrors) ?? false
+        ignoreResponseStatus = try container.decodeIfPresent(Bool.self, forKey: .ignoreResponseStatus) ?? false
         method = try container.decodeIfPresent(String.self, forKey: .method) ?? "GET"
         headers = try container.decodeIfPresent([String: String].self, forKey: .headers) ?? [:]
         body = try container.decodeIfPresent(String.self, forKey: .body)
@@ -372,7 +382,7 @@ public struct CLICall: Sendable, Equatable, Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case cli, args, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session, errors, mode
+        case cli, args, inputDelay, checkAvailability, wrapExecutionErrors, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session, errors, mode
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -441,13 +451,14 @@ extension CLICall {
 // MARK: - JSON
 
 extension Fetch: Codable {
-    private static let tags = ["http", "jsonRpc", "cli", "file", "commandPlan", "httpSequence"]
+    private static let tags = ["http", "jsonRpc", "cli", "file", "commandPlan", "httpSequence", "httpFlow"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
         switch try container.singleTag(of: Self.tags, in: "fetch") {
         case "commandPlan": self = .commandPlan(try container.decode(CommandPlan.self, forKey: TagKey("commandPlan")))
         case "httpSequence": self = .httpSequence(try container.decode(HTTPSequence.self, forKey: TagKey("httpSequence")))
+        case "httpFlow": self = .httpFlow(try container.decode(HTTPFlow.self, forKey: TagKey("httpFlow")))
         case "http": self = .http(try container.decode(HTTPRequest.self, forKey: TagKey("http")))
         case "jsonRpc": self = .jsonRpc(try container.decode(JSONRPCCall.self, forKey: TagKey("jsonRpc")))
         case "file": self = .file(try container.decode(FileCall.self, forKey: TagKey("file")))
@@ -460,6 +471,7 @@ extension Fetch: Codable {
         switch self {
         case .commandPlan(let plan): try container.encode(plan, forKey: TagKey("commandPlan"))
         case .httpSequence(let sequence): try container.encode(sequence, forKey: TagKey("httpSequence"))
+        case .httpFlow(let flow): try container.encode(flow, forKey: TagKey("httpFlow"))
         case .http(let request): try container.encode(request, forKey: TagKey("http"))
         case .jsonRpc(let call): try container.encode(call, forKey: TagKey("jsonRpc"))
         case .cli(let call): try container.encode(call, forKey: TagKey("cli"))
@@ -474,4 +486,12 @@ public struct SettingValues<Value: Codable & Sendable & Equatable>: Codable, Sen
     public let value: String?
     public let values: [String: Value]
     public func resolve(selected: String?) -> Value? { (value ?? selected).flatMap { values[$0] } }
+}
+
+/// A bounded HTTP conversation; scripts select only named, fixed request templates.
+public struct HTTPFlow: Codable, Sendable, Equatable {
+    public let script: String
+    public let requests: [String: HTTPRequest]
+    public let settings: [String: String]?
+    public let constants: [String: JSONValue]?
 }

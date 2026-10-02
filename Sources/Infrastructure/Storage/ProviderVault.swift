@@ -44,6 +44,8 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
                 legacySecureKey: CredentialKey.vercelApiKey)
         }
         let legacyKeys = [
+        let legacyKeys = ["provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key", "provider.alibaba.apiKey": "com.claudebar.credentials.alibaba-api-key", "provider.alibaba.cookie": "com.claudebar.credentials.alibaba-manual-cookie"]
+
             CredentialKey.zaiApiKey: "com.claudebar.credentials.zai-api-key",
             "provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key",
             "provider.minimax.apiKey": "com.claudebar.credentials.minimax-api-key",

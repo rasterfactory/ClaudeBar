@@ -20,6 +20,8 @@ public indirect enum CredentialLookup: Sendable, Equatable {
     case keychain(KeychainCredential)
     /// A key the person gave ClaudeBar (*API KEY*), kept in its vault.
     case setting(String)
+    case sqlite(SQLiteCredential)
+    case claiming(CredentialLookup, CredentialClaims)
     /// The first lookup that answers wins.
     case firstOf([CredentialLookup])
     /// A lookup whose token is kept fresh by an OAuth 2 refresh.
@@ -195,11 +197,11 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
 // MARK: - JSON
 
 extension CredentialLookup: Codable {
-    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf"]
+    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf", "sqlite"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
-        let base: CredentialLookup
+        var base: CredentialLookup
         switch try container.singleTag(of: Self.tags, in: "credential") {
         case "environment":
             base = .environment(try container.decode(String.self, forKey: TagKey("environment")))
@@ -207,10 +209,15 @@ extension CredentialLookup: Codable {
             base = .jsonFile(try container.decode(JSONFileCredential.self, forKey: TagKey("jsonFile")))
         case "keychain":
             base = .keychain(try container.decode(KeychainCredential.self, forKey: TagKey("keychain")))
+        case "sqlite":
+            base = .sqlite(try container.decode(SQLiteCredential.self, forKey: TagKey("sqlite")))
         case "setting":
             base = .setting(try container.decode(String.self, forKey: TagKey("setting")))
         default:
             base = .firstOf(try container.decode([CredentialLookup].self, forKey: TagKey("firstOf")))
+        }
+        if let claims = try container.decodeIfPresent(CredentialClaims.self, forKey: TagKey("claims")) {
+            base = .claiming(base, claims)
         }
         if container.contains(TagKey("refresh")) {
             let refresh = try container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
@@ -233,6 +240,11 @@ extension CredentialLookup: Codable {
             try container.encode(file, forKey: TagKey("jsonFile"))
         case .keychain(let item):
             try container.encode(item, forKey: TagKey("keychain"))
+        case .sqlite(let file):
+            try container.encode(file, forKey: TagKey("sqlite"))
+        case .claiming(let base, let claims):
+            try base.encodeBase(into: &container)
+            try container.encode(claims, forKey: TagKey("claims"))
         case .setting(let name):
             try container.encode(name, forKey: TagKey("setting"))
         case .firstOf(let lookups):
@@ -252,6 +264,8 @@ extension CredentialLookup {
         switch self {
         case .environment(let name): ["$\(name)"]
         case .jsonFile(let file): [file.path]
+        case .sqlite(let file): [file.path]
+        case .claiming(let base, _): base.lookupOrder
         case .keychain(let item): ["Keychain “\(item.service)”"]
         case .setting: ["API key saved in ClaudeBar"]
         case .firstOf(let lookups): lookups.flatMap(\.lookupOrder)
@@ -264,8 +278,20 @@ extension CredentialLookup {
     public var hint: String? {
         switch self {
         case .refreshing(let base, let refresh): refresh.hint ?? base.hint
+        case .claiming(let base, _): base.hint
         case .firstOf(let lookups): lookups.lazy.compactMap(\.hint).first
-        case .environment, .jsonFile, .keychain, .setting: nil
+        case .environment, .jsonFile, .keychain, .setting, .sqlite: nil
         }
     }
+}
+
+public struct SQLiteCredential: Sendable, Equatable, Codable {
+    public let path: String
+    public let query: String
+    public let fields: [String: String]
+}
+
+public struct CredentialClaims: Sendable, Equatable, Codable {
+    public let fields: [String: String]
+    public let required: [String]
 }

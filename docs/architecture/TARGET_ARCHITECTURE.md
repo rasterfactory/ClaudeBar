@@ -396,6 +396,12 @@ vendor type:
 | today's usage and guest passes | `UsageHistory` beside the providers (read with the popover open, never in the background; keyed by the login whose logs it reads) and the `GuestPasses` capability |
 | Claude logins in their own config folders | `accounts.folder` with `email` and `accountId.field` as an `IdentityField` (`$context.account.email`), `derived` values (the Keychain service, from a sha256 of the folder), `identity` read from a context file; today's usage and guest passes stay with the default login |
 
+| Desktop state databases | `credential.sqlite` opens a database read-only and maps named columns from a read-only query; no login database is created or updated |
+| Token request companions | `credential.claims` maps JWT payload fields and requires named values before fetching; the API authenticates the token |
+| Desktop installation availability | `availability: "files"` with `requiresFiles` and optional `missingFilesError`; added accounts can use credential availability instead |
+| Account recovery copy | `accounts.defaultLoginDescription` and `defaultReauthHelp` describe the default login without assuming a CLI or API key |
+| HTTP response contracts | `fetch.http.acceptedStatuses` and `errors` preserve provider status handling; errors retain HTTP status for OAuth retry |
+
 ## 9 · Open
 
 - **The mapping language's ceiling.** Slices 1, 2 and 5 will find what it must

@@ -18,7 +18,7 @@ struct AccountsCardText {
     }
 
     var defaultLoginDescription: String {
-        provider.definition.cli == nil ? "Default account" : "Your \(provider.name) CLI's own login"
+        provider.definition.accounts?.defaultLoginDescription ?? (provider.definition.cli == nil ? "Default account" : "Your \(provider.name) CLI's own login")
     }
 
     /// *Add Account*'s choices — what the definition says, easiest first.
@@ -60,6 +60,7 @@ struct AccountsCardText {
     /// `nil` when the card can sign in again itself — a folder ClaudeBar
     /// made; otherwise how the person does it in their own folder.
     func reauthHelp(for account: Account) -> String? {
+        if account.isDefault, let help = provider.definition.accounts?.defaultReauthHelp { return help }
         if account.madeBy == .form {
             return "Remove this account and add it again with a valid key."
         }

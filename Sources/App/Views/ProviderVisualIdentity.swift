@@ -289,34 +289,6 @@ extension KiroProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - CursorProvider Visual Identity
-
-extension CursorProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "cursorarrow.rays" }
-
-    public var iconAssetName: String { "CursorIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Cursor brand teal/cyan
-        scheme == .dark
-            ? Color(red: 0.20, green: 0.78, blue: 0.82)
-            : Color(red: 0.12, green: 0.62, blue: 0.66)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.15, green: 0.55, blue: 0.75)
-                    : Color(red: 0.08, green: 0.45, blue: 0.60)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - MiniMaxProvider Visual Identity
 
 extension MiniMaxProvider: ProviderVisualIdentity {

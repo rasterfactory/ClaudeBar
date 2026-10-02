@@ -1,5 +1,7 @@
 import Diagnostics
 import Foundation
+import SQLite3
+import Quotas
 
 /// `environment` — an environment variable holds the token.
 struct EnvironmentReader: CredentialFinding {
@@ -242,5 +244,70 @@ struct SettingReader: CredentialFinding {
             return nil
         }
         return FoundCredential(credential: Credential(["token": value]), save: nil)
+    }
+}
+
+// Read-only SQL lookup. The query must be a single read-only statement; no
+// credential database is created, updated or copied by ClaudeBar.
+struct SQLiteReader: CredentialFinding {
+    let file: SQLiteCredential
+    let homeDirectory: URL
+    let environment: @Sendable (String) -> String?
+
+    func find() throws -> FoundCredential? {
+        var database: OpaquePointer?
+        let path = Paths.expand(file.path, homeDirectory: homeDirectory, environment: environment)
+        guard sqlite3_open_v2(path, &database, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            if let database { sqlite3_close(database) }
+            throw UsageError.executionFailed("Could not read credential database")
+        }
+        defer { sqlite3_close(database) }
+        sqlite3_busy_timeout(database, 1000)
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, file.query, -1, &statement, nil) == SQLITE_OK else {
+            throw UsageError.executionFailed("Could not query credential database")
+        }
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_stmt_readonly(statement) != 0 else {
+            throw UsageError.executionFailed("Credential queries must be read-only")
+        }
+        let status = sqlite3_step(statement)
+        if status == SQLITE_DONE { return nil }
+        guard status == SQLITE_ROW else { throw UsageError.executionFailed("Could not query credential database") }
+        var document: [String: Any] = [:]
+        for index in 0..<sqlite3_column_count(statement) {
+            guard sqlite3_column_type(statement, index) != SQLITE_NULL,
+                  sqlite3_column_bytes(statement, index) <= 65_536,
+                  let name = sqlite3_column_name(statement, index),
+                  let value = sqlite3_column_text(statement, index) else { continue }
+            document[String(cString: name)] = String(cString: value)
+        }
+        let values = CredentialDocument.values(file.fields, in: document)
+        guard values["token"] != nil else { return nil }
+        return FoundCredential(credential: Credential(values), save: nil)
+    }
+}
+
+// Claims supply request companions, never a verified identity. The receiving
+// API authenticates the complete token; secrets stay out of mapper contexts.
+struct ClaimsReader: CredentialFinding {
+    let base: any CredentialFinding
+    let claims: CredentialClaims
+
+    func find() throws -> FoundCredential? {
+        guard let found = try base.find(), let token = found.credential.token else { return nil }
+        let parts = token.split(separator: ".")
+        guard parts.count >= 2 else { throw UsageError.parseFailed("Invalid JWT format") }
+        var payload = String(parts[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
+        guard let data = Data(base64Encoded: payload) else { throw UsageError.parseFailed("Failed to decode JWT payload") }
+        let document = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        var credential = found.credential
+        for (name, path) in claims.fields {
+            let value = JSONPath.string(JSONPath.walk(document, JSONPath.components(path))).map(Credential.trimmed)
+            if let value, !value.isEmpty { credential[name] = value }
+            else if claims.required.contains(name) { throw UsageError.parseFailed("JWT payload missing '\(path)' claim") }
+        }
+        return FoundCredential(credential: credential, save: found.save)
     }
 }

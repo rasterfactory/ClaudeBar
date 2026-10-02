@@ -205,13 +205,18 @@ public final class Provider {
         }
         let config = ProviderAccountConfig(accountId: UUID().uuidString.lowercased(), label: "", probeConfig: values, madeBy: .form)
         let lineupId = config.toProviderAccount(providerId: id).id
-        for (name, value) in secrets { vault?.save(value, name, provider: lineupId) }
+        for (key, value) in secrets {
+            vault?.save(value, key, provider: lineupId)
+            guard vault?.secret(key, provider: lineupId) == value else {
+                for name in secrets.keys { vault?.delete(name, provider: lineupId) }
+                throw UsageError.executionFailed("ClaudeBar couldn't keep this key securely. The account wasn't added.")
+            }
+        }
         guard let account = add(config) else {
             for name in secrets.keys { vault?.delete(name, provider: lineupId) }
             throw UsageError.executionFailed("This \(name) account can't be added.")
         }
-        // Supplying this login's key is an explicit opt-in, even when the
-        // product's unconfigured default login starts disabled.
+        // Adding an authenticated form login is an explicit opt-in.
         account.isEnabled = true
         return account
     }

@@ -96,4 +96,12 @@ struct AccountsCardTextTests {
         #expect(text.reauthHelp(for: provider.accounts[1]) == nil)
         #expect(text.reauthHelp(for: provider.accounts[2]) == #"Sign in again yourself: CODEX_HOME=/Users/me/codex-b codex -c 'cli_auth_credentials_store="file"' login — then refresh."#)
     }
+    @Test func `desktop logins describe where the default account comes from and signs in again`() throws {
+        let json = #"{"profile":{"id":"example","name":"Example"},"defaultDataSource":"api","dataSources":[{"kind":"api","fetch":{"http":{"url":"https://example.test"}},"mapping":{"json":{"quotas":[]}}}],"accounts":{"defaultLoginDescription":"Your desktop app's current login","defaultReauthHelp":"Sign in again in the desktop app, then refresh.","form":[{"id":"token","label":"Access Token","secret":true}],"patch":{}}}"#
+        let provider=Providers.make(try ProviderDefinition.parse(Data(json.utf8)),settings:JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("desktop-card-\(UUID()).json"))))
+        let text=AccountsCardText(provider:provider)
+        #expect(text.defaultLoginDescription == "Your desktop app's current login")
+        #expect(text.reauthHelp(for:provider.defaultAccount) == "Sign in again in the desktop app, then refresh.")
+    }
+
 }

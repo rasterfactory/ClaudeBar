@@ -153,6 +153,10 @@ public enum DataSources {
                 JSONFileReader(file: file, homeDirectory: homeDirectory, environment: environment)
             case .keychain(let item):
                 KeychainReader(item: item, security: security)
+            case .sqlite(let file):
+                SQLiteReader(file: file, homeDirectory: homeDirectory, environment: environment)
+            case .claiming(let base, let claims):
+                ClaimsReader(base: reader(for: base), claims: claims)
             case .setting(let name):
                 SettingReader(name: name, providerId: providerId, secrets: secrets)
             case .firstOf(let lookups):

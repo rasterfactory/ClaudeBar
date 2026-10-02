@@ -290,6 +290,11 @@ private struct ProviderDetailView: View {
                 DataSourceSection(provider: codex, monitor: monitor)
                 ProviderAccountsCard(provider: codex, monitor: monitor)
             }
+        case "opencode-go":
+            if let shared = (provider as? Account)?.provider {
+                DataSourceSection(provider: shared, monitor: monitor)
+                ProviderAccountsCard(provider: shared, monitor: monitor)
+            }
         case "kimi":
             KimiConfigCard(monitor: monitor)
         case "minimax":

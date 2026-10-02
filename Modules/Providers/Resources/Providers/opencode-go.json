@@ -1,0 +1,126 @@
+{
+  "profile": {
+    "id": "opencode-go",
+    "name": "OpenCode Go",
+    "links": {
+      "dashboard": "https://opencode.ai/auth"
+    },
+    "look": {
+      "symbol": "square.stack.3d.up.fill",
+      "icon": "OpenCodeIcon",
+      "color": {
+        "light": [
+          0.42,
+          0.28,
+          1
+        ],
+        "dark": [
+          0.52,
+          0.36,
+          1
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.3,
+          0.15,
+          0.8
+        ],
+        "dark": [
+          0.36,
+          0.2,
+          0.9
+        ]
+      }
+    }
+  },
+  "cli": "opencode",
+  "enabledByDefault": true,
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "credential": {
+        "firstOf": [
+          {
+            "environment": "OPENCODE_API_KEY"
+          },
+          {
+            "jsonFile": {
+              "path": "${XDG_DATA_HOME:-~/.local/share}/opencode/auth.json",
+              "token": "$.opencode-go.key"
+            }
+          },
+          {
+            "jsonFile": {
+              "path": "${XDG_DATA_HOME:-~/.local/share}/opencode/auth.json",
+              "token": "$.opencode.key"
+            }
+          }
+        ]
+      },
+      "fetch": {
+        "http": {
+          "url": "https://opencode.ai/zen/go/v1/usage",
+          "timeout": 15,
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept": "application/json"
+          },
+          "errors": {
+            "401": {
+              "sessionExpired": "Run `opencode auth login` and pick OpenCode Zen to refresh your API key."
+            },
+            "403": "subscriptionRequired",
+            "429": {
+              "executionFailed": "HTTP error: 429"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "opencode-api.js"
+        }
+      },
+      "fallbackOn": {
+        "authenticationRequired": "local"
+      }
+    },
+    {
+      "kind": "local",
+      "hidden": true,
+      "fetch": {
+        "commandPlan": {
+          "cli": "opencode",
+          "script": "opencode-local-plan.js",
+          "timeout": 15
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "opencode-local.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "form": [
+      {
+        "id": "apiKey",
+        "label": "API Key",
+        "secret": true
+      }
+    ],
+    "patch": {
+      "api": {
+        "credential": {
+          "firstOf": null,
+          "setting": "apiKey"
+        },
+        "fallbackOn": null
+      },
+      "local": null
+    }
+  }
+}

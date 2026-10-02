@@ -298,6 +298,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         let sources = try dataSources.map { source -> DataSourceDefinition in
             let tag: String
             switch source.fetch {
+            case .commandPlan(let plan) where plan.cli == cli: tag = "commandPlan"
             case .cli(let call) where call.cli == cli: tag = "cli"
             case .jsonRpc(let call) where call.cli == cli: tag = "jsonRpc"
             default: return source

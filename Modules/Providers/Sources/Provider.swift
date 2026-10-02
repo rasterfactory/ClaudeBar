@@ -205,11 +205,19 @@ public final class Provider {
         }
         let config = ProviderAccountConfig(accountId: UUID().uuidString.lowercased(), label: "", probeConfig: values, madeBy: .form)
         let lineupId = config.toProviderAccount(providerId: id).id
-        for (name, value) in secrets { vault?.save(value, name, provider: lineupId) }
+        for (key, value) in secrets {
+            vault?.save(value, key, provider: lineupId)
+            guard vault?.secret(key, provider: lineupId) == value else {
+                for name in secrets.keys { vault?.delete(name, provider: lineupId) }
+                throw UsageError.executionFailed("ClaudeBar couldn't keep this key securely. The account wasn't added.")
+            }
+        }
         guard let account = add(config) else {
             for name in secrets.keys { vault?.delete(name, provider: lineupId) }
             throw UsageError.executionFailed("This \(name) account can't be added.")
         }
+        // Adding an authenticated form login is an explicit opt-in.
+        account.isEnabled = true
         return account
     }
 
@@ -388,6 +396,8 @@ public final class Provider {
     public func isAvailable(_ account: Account) async -> Bool {
         guard let active = startingDataSource(for: account) else { return false }
         if await active.isReady() { return true }
+        if !active.hasKey, let kind = active.definition.fallbackOn["authenticationRequired"],
+           let handOff = dataSource(kind, for: account), await handOff.isReady() { return true }
         guard let fallback = enabledFallback(of: active, for: account) else { return false }
         return await fallback.isReady()
     }

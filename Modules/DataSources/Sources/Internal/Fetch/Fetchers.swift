@@ -67,6 +67,9 @@ struct HTTPFetcher: Fetching {
             }
         }
 
+        if let error = request.errors?[String(http.statusCode)] {
+            throw HTTPStatusError(status: http.statusCode, reason: error.usageError)
+        }
         switch http.statusCode {
         case 200..<300:
             return Response(status: http.statusCode, headers: headers, body: data)

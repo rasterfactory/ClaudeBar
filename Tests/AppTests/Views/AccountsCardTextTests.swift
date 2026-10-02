@@ -105,5 +105,12 @@ struct AccountsCardTextTests {
         #expect(text.removeMessage(for:provider.accounts[1]) == "Removes Work from ClaudeBar. Its login and folder stay where they are.")
         #expect(text.reauthHelp(for:provider.accounts[1]) == "Sign in again in /tmp/work profile with your CLI, then refresh.")
     }
+    @Test func `desktop logins describe where the default account comes from and signs in again`() throws {
+        let json = #"{"profile":{"id":"example","name":"Example"},"defaultDataSource":"api","dataSources":[{"kind":"api","fetch":{"http":{"url":"https://example.test"}},"mapping":{"json":{"quotas":[]}}}],"accounts":{"defaultLoginDescription":"Your desktop app's current login","defaultReauthHelp":"Sign in again in the desktop app, then refresh.","form":[{"id":"token","label":"Access Token","secret":true}],"patch":{}}}"#
+        let provider=Providers.make(try ProviderDefinition.parse(Data(json.utf8)),settings:JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("desktop-card-\(UUID()).json"))))
+        let text=AccountsCardText(provider:provider)
+        #expect(text.defaultLoginDescription == "Your desktop app's current login")
+        #expect(text.reauthHelp(for:provider.defaultAccount) == "Sign in again in the desktop app, then refresh.")
+    }
 
 }

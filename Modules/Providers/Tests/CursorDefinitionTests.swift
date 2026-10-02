@@ -1,15 +1,48 @@
 import Foundation
 import Testing
-@testable import Infrastructure
-@testable import Domain
+import Providers
+import DataSources
+import Quotas
+import Mockable
 
-@Suite("CursorUsageProbe Parsing Tests")
-struct CursorUsageProbeParsingTests {
+
+@MainActor @Suite("CursorUsageProbe Parsing Tests")
+struct CursorDefinitionTests {
+    private final class CookieCapture: @unchecked Sendable {
+        let lock=NSLock(); private var value:String?
+        func set(_ value:String?) { lock.lock(); defer {lock.unlock()}; self.value=value }
+        func get() -> String? { lock.lock(); defer {lock.unlock()}; return value }
+    }
+    private func make(_ data:Data, token:String, capture:CookieCapture = CookieCapture()) throws -> Account {
+        let definition=try Providers.builtIn("cursor"), vault=MemoryVault(), network=MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            #expect(request.url?.absoluteString == "https://cursor.com/api/usage-summary")
+            #expect(request.httpMethod == "GET" && request.timeoutInterval == 15)
+            capture.set(request.value(forHTTPHeaderField:"Cookie"))
+            return (data,HTTPURLResponse(url:request.url!,statusCode:200,httpVersion:nil,headerFields:nil)!)
+        }
+        let provider=Provider(definition:definition,settings:InMemoryProviderSettings(),makeDataSource:{ source,login in
+            DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in nil},homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
+        },vault:vault)
+        return try provider.addAccount(filling:["accessToken":token])
+    }
+    private func parse(_ data:Data) async throws -> UsageSnapshot {
+        try await make(data,token:"header.eyJzdWIiOiJmaXh0dXJlLXVzZXIifQ.signature").refresh()
+    }
+    private func userID(_ token:String) async throws -> String {
+        let capture=CookieCapture()
+        _ = try await make(Data(#"{"isUnlimited":true}"#.utf8),token:token,capture:capture).refresh()
+        let cookie=try #require(capture.get())
+        #expect(cookie.hasPrefix("WorkosCursorSessionToken="))
+        #expect(cookie.hasSuffix("::"+token))
+        return String(cookie.dropFirst("WorkosCursorSessionToken=".count).dropLast(token.count+2))
+    }
+
 
     // MARK: - Real API Response
 
     @Test
-    func `parse real ultra plan response`() throws {
+    func `parse real ultra plan response`() async throws {
         // Actual response from cursor.com/api/usage-summary
         let json = """
         {
@@ -42,9 +75,9 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
-        #expect(snapshot.providerId == "cursor")
+        #expect(snapshot.providerId.hasPrefix("cursor."))
         #expect(snapshot.quotas.count == 3)
         #expect(snapshot.accountTier == .custom("ULTRA"))
 
@@ -74,7 +107,7 @@ struct CursorUsageProbeParsingTests {
     // MARK: - Plan Usage
 
     @Test
-    func `parse pro plan with plan usage`() throws {
+    func `parse pro plan with plan usage`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -92,9 +125,9 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
-        #expect(snapshot.providerId == "cursor")
+        #expect(snapshot.providerId.hasPrefix("cursor."))
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.accountTier == .custom("PRO"))
 
@@ -106,7 +139,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse plan with on-demand usage enabled`() throws {
+    func `parse plan with on-demand usage enabled`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -128,7 +161,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 2)
 
@@ -143,7 +176,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse depleted plan usage`() throws {
+    func `parse depleted plan usage`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -160,7 +193,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas[0].percentRemaining == 0)
@@ -168,7 +201,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse pro plan with bonus credits reports remaining from total capacity`() throws {
+    func `parse pro plan with bonus credits reports remaining from total capacity`() async throws {
         // Regression: a Pro user with bonus credits. The `used`/`limit` fields describe
         // only the *included* base (2000/2000 = maxed), but `breakdown.total` shows the
         // real capacity (9770 incl. 7770 bonus) and `totalPercentUsed` shows true usage
@@ -198,7 +231,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 3)
         let monthly = snapshot.quotas[0]
@@ -224,7 +257,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse over-limit usage clamps to zero`() throws {
+    func `parse over-limit usage clamps to zero`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -241,7 +274,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas[0].percentRemaining == 0)
@@ -250,7 +283,7 @@ struct CursorUsageProbeParsingTests {
     // MARK: - Unlimited & Special Cases
 
     @Test
-    func `parse unlimited plan`() throws {
+    func `parse unlimited plan`() async throws {
         let json = """
         {
             "membershipType": "business",
@@ -262,7 +295,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas[0].percentRemaining == 100)
@@ -271,7 +304,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse free plan`() throws {
+    func `parse free plan`() async throws {
         let json = """
         {
             "membershipType": "free",
@@ -288,7 +321,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.accountTier == .custom("FREE"))
         #expect(snapshot.quotas.count == 1)
@@ -298,7 +331,7 @@ struct CursorUsageProbeParsingTests {
     // MARK: - Enterprise Plan
 
     @Test
-    func `parse enterprise plan with team limitType`() throws {
+    func `parse enterprise plan with team limitType`() async throws {
         let json = """
         {
             "billingCycleStart": "2026-03-01T00:00:00.000Z",
@@ -341,9 +374,9 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
-        #expect(snapshot.providerId == "cursor")
+        #expect(snapshot.providerId.hasPrefix("cursor."))
         #expect(snapshot.accountTier == .custom("ENTERPRISE"))
 
         // Monthly + Auto (integer 0) + API + team on-demand
@@ -375,7 +408,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse enterprise plan individual usage falls back to breakdown total`() throws {
+    func `parse enterprise plan individual usage falls back to breakdown total`() async throws {
         let json = """
         {
             "membershipType": "enterprise",
@@ -402,7 +435,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         let quota = snapshot.quotas[0]
@@ -414,25 +447,25 @@ struct CursorUsageProbeParsingTests {
     // MARK: - Error Cases
 
     @Test
-    func `parse empty response throws error`() {
+    func `parse empty response throws error`() async {
         let json = "{}".data(using: .utf8)!
 
-        #expect(throws: UsageError.self) {
-            try CursorUsageProbe.parseUsageSummary(json)
+        await #expect(throws: UsageError.self) {
+            try await parse(json)
         }
     }
 
     @Test
-    func `parse invalid json throws error`() {
+    func `parse invalid json throws error`() async {
         let json = "not json".data(using: .utf8)!
 
-        #expect(throws: UsageError.self) {
-            try CursorUsageProbe.parseUsageSummary(json)
+        await #expect(throws: UsageError.self) {
+            try await parse(json)
         }
     }
 
     @Test
-    func `parse response with no individualUsage and not unlimited throws error`() {
+    func `parse response with no individualUsage and not unlimited throws error`() async {
         let json = """
         {
             "membershipType": "pro",
@@ -440,15 +473,15 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        #expect(throws: UsageError.self) {
-            try CursorUsageProbe.parseUsageSummary(json)
+        await #expect(throws: UsageError.self) {
+            try await parse(json)
         }
     }
 
     // MARK: - Billing Cycle
 
     @Test
-    func `parse billing cycle end with fractional seconds`() throws {
+    func `parse billing cycle end with fractional seconds`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -466,12 +499,12 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
         #expect(snapshot.quotas[0].resetsAt != nil)
     }
 
     @Test
-    func `parse billing cycle end without fractional seconds`() throws {
+    func `parse billing cycle end without fractional seconds`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -489,14 +522,14 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
         #expect(snapshot.quotas[0].resetsAt != nil)
     }
 
     // MARK: - Auto / API pool percents
 
     @Test
-    func `parse total-only response keeps a single monthly card`() throws {
+    func `parse total-only response keeps a single monthly card`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -516,7 +549,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
@@ -526,7 +559,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse integer zero auto percent as fully remaining`() throws {
+    func `parse integer zero auto percent as fully remaining`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -548,7 +581,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 3)
         #expect(snapshot.quotas[0].percentRemaining == 100)
@@ -560,7 +593,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse null auto and api percent omits those cards`() throws {
+    func `parse null auto and api percent omits those cards`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -580,7 +613,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
@@ -588,7 +621,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse non-numeric auto and api percent omits those cards`() throws {
+    func `parse non-numeric auto and api percent omits those cards`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -608,14 +641,14 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
     }
 
     @Test
-    func `parse boolean auto and api percent omits those cards`() throws {
+    func `parse boolean auto and api percent omits those cards`() async throws {
         // JSON true/false are CFBoolean and must not become 1.0 / 0.0. Integer 0
         // still has to produce a card (see parse integer zero auto percent).
         let json = """
@@ -637,7 +670,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
@@ -645,7 +678,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse auto and api percent over 100 clamps remaining to zero`() throws {
+    func `parse auto and api percent over 100 clamps remaining to zero`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -667,7 +700,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 3)
         #expect(snapshot.quotas[0].percentRemaining == 0)
@@ -678,7 +711,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse negative auto and api percent omits those cards`() throws {
+    func `parse negative auto and api percent omits those cards`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -698,7 +731,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas[0].quotaType == .timeLimit("Monthly"))
@@ -706,7 +739,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse billing cycle without start omits auto api reset pace`() throws {
+    func `parse billing cycle without start omits auto api reset pace`() async throws {
         // Existing fixtures sometimes only have billingCycleEnd (see parse pro plan with plan usage).
         let json = """
         {
@@ -728,7 +761,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 3)
 
@@ -754,7 +787,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `parse unusable billing cycle start omits auto api window duration`() throws {
+    func `parse unusable billing cycle start omits auto api window duration`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -776,7 +809,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 3)
         #expect(snapshot.quotas[0].resetsAt != nil)
@@ -787,7 +820,7 @@ struct CursorUsageProbeParsingTests {
     }
 
     @Test
-    func `first quota stays monthly so the default menu bar selection is unchanged`() throws {
+    func `first quota stays monthly so the default menu bar selection is unchanged`() async throws {
         let json = """
         {
             "membershipType": "ultra",
@@ -809,7 +842,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
         let first = try #require(snapshot.quotas.first)
 
         #expect(first.quotaType == .timeLimit("Monthly"))
@@ -820,19 +853,19 @@ struct CursorUsageProbeParsingTests {
     // MARK: - JWT Parsing
 
     @Test
-    func `extract user ID from valid JWT`() throws {
+    func `extract user ID from valid JWT`() async throws {
         // JWT with payload: {"sub": "user_abc123", "iat": 1234567890}
         let header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
         let payload = "eyJzdWIiOiJ1c2VyX2FiYzEyMyIsImlhdCI6MTIzNDU2Nzg5MH0"
         let signature = "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
         let jwt = "\(header).\(payload).\(signature)"
 
-        let userId = try CursorUsageProbe.extractUserIdFromJWT(jwt)
+        let userId = try await userID(jwt)
         #expect(userId == "user_abc123")
     }
 
     @Test
-    func `extract user ID with pipe character like real Cursor JWTs`() throws {
+    func `extract user ID with pipe character like real Cursor JWTs`() async throws {
         // Cursor JWTs have sub like "github|user_01J6BBEPT2KSQKPPRGXDY8M1F4"
         // Payload: {"sub": "github|user_01ABC", "type": "session"}
         // base64url of {"sub":"github|user_01ABC","type":"session"} =
@@ -843,42 +876,42 @@ struct CursorUsageProbeParsingTests {
             .replacingOccurrences(of: "=", with: "")
         let jwt = "eyJhbGciOiJIUzI1NiJ9.\(payloadBase64).sig"
 
-        let userId = try CursorUsageProbe.extractUserIdFromJWT(jwt)
+        let userId = try await userID(jwt)
         #expect(userId == "github|user_01ABC")
     }
 
     @Test
-    func `extract user ID from JWT with padding needed`() throws {
+    func `extract user ID from JWT with padding needed`() async throws {
         // Payload: {"sub": "u1"}
         let header = "eyJhbGciOiJIUzI1NiJ9"
         let payload = "eyJzdWIiOiJ1MSJ9"
         let jwt = "\(header).\(payload).sig"
 
-        let userId = try CursorUsageProbe.extractUserIdFromJWT(jwt)
+        let userId = try await userID(jwt)
         #expect(userId == "u1")
     }
 
     @Test
-    func `extract user ID from invalid JWT throws`() {
-        #expect(throws: UsageError.self) {
-            try CursorUsageProbe.extractUserIdFromJWT("not-a-jwt")
+    func `extract user ID from invalid JWT throws`() async {
+        await #expect(throws: UsageError.self) {
+            try await userID("not-a-jwt")
         }
     }
 
     @Test
-    func `extract user ID from JWT without sub claim throws`() {
+    func `extract user ID from JWT without sub claim throws`() async {
         // Payload: {"iat": 123} (no sub)
         let jwt = "eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjEyM30.sig"
 
-        #expect(throws: UsageError.self) {
-            try CursorUsageProbe.extractUserIdFromJWT(jwt)
+        await #expect(throws: UsageError.self) {
+            try await userID(jwt)
         }
     }
 
     // MARK: - Numeric Type Handling
 
     @Test
-    func `parse usage values as doubles`() throws {
+    func `parse usage values as doubles`() async throws {
         // Some API responses return numbers as doubles
         let json = """
         {
@@ -896,7 +929,7 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
 
         #expect(snapshot.quotas.count == 1)
         #expect(abs(snapshot.quotas[0].percentRemaining - 75.4) < 0.1)
@@ -905,7 +938,7 @@ struct CursorUsageProbeParsingTests {
     // MARK: - Account Tier Detection
 
     @Test
-    func `detect ultra tier`() throws {
+    func `detect ultra tier`() async throws {
         let json = """
         {
             "membershipType": "ultra",
@@ -917,7 +950,74 @@ struct CursorUsageProbeParsingTests {
         }
         """.data(using: .utf8)!
 
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
+        let snapshot = try await parse(json)
         #expect(snapshot.accountTier == .custom("ULTRA"))
+    }
+}
+
+@MainActor @Suite struct CursorAccountTests {
+    private func token(_ subject: String) throws -> String {
+        let data = try JSONSerialization.data(withJSONObject: ["sub":subject])
+        return "header." + data.base64EncodedString().replacingOccurrences(of:"+",with:"-").replacingOccurrences(of:"/",with:"_").replacingOccurrences(of:"=",with:"") + ".signature"
+    }
+    private func database(in root: URL, token: String?) throws -> URL {
+        let url=root.appendingPathComponent("Library/Application Support/Cursor/User/globalStorage/state.vscdb")
+        try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
+        let process=Process();process.executableURL=URL(fileURLWithPath:"/usr/bin/sqlite3")
+        let insert=token.map {" INSERT INTO ItemTable VALUES ('cursorAuth/accessToken','\($0)');"} ?? ""
+        process.arguments=[url.path,"CREATE TABLE ItemTable(key TEXT,value TEXT);"+insert]
+        try process.run();process.waitUntilExit();#expect(process.terminationStatus == 0)
+        return url
+    }
+    @Test func `desktop and saved accounts stay separate through rename relaunch removal and missing credentials`() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer {try? FileManager.default.removeItem(at:root)}
+        let personal=try token("personal|desktop"), work=try token("work|account"), other=try token("work|similar")
+        let db=try database(in:root,token:personal), bytes=try Data(contentsOf:db)
+        let settings=InMemoryProviderSettings(), vault=MemoryVault(), network=MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            let cookie=request.value(forHTTPHeaderField:"Cookie") ?? ""
+            let remaining=cookie.contains("personal|desktop::") ? 80 : cookie.contains("work|account::") ? 40 : cookie.contains("work|similar::") ? 20 : -1
+            #expect(remaining >= 0)
+            let data=Data("{\"individualUsage\":{\"plan\":{\"enabled\":true,\"limit\":100,\"used\":\(100-remaining)}}}".utf8)
+            return (data,HTTPURLResponse(url:request.url!,statusCode:200,httpVersion:nil,headerFields:nil)!)
+        }
+        let definition=try Providers.builtIn("cursor")
+        let make: @MainActor () -> Provider = {
+            Provider(definition:definition,settings:settings,accounts:settings.accounts(forProvider:"cursor"),makeDataSource:{source,login in
+                DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in personal},homeDirectory:root,now:{Date()})
+            },vault:vault)
+        }
+        let first=make()
+        #expect(first.defaultAccount.displayName == "Cursor")
+        let added=try first.addAccount(filling:["accessToken":work]), second=try first.addAccount(filling:["accessToken":other])
+        first.rename(added,to:"Work");first.rename(second,to:"Other work")
+        #expect(added.displayName == "Work" && second.displayName == "Other work")
+        #expect((try await first.defaultAccount.refresh()).quotas[0].percentRemaining == 80)
+        #expect((try await added.refresh()).quotas[0].percentRemaining == 40)
+        #expect((try await second.refresh()).quotas[0].percentRemaining == 20)
+        #expect(settings.accounts(forProvider:"cursor").allSatisfy {$0.probeConfig.isEmpty})
+        let relaunched=make(), saved=try #require(relaunched.accounts.first {$0.id == added.id})
+        #expect(saved.displayName == "Work")
+        #expect((try await saved.refresh()).quotas[0].percentRemaining == 40)
+        _ = vault.delete("accessToken",provider:saved.id)
+        await #expect(throws:UsageError.authenticationRequired) {try await saved.refresh()}
+        #expect((try await relaunched.defaultAccount.refresh()).quotas[0].percentRemaining == 80)
+        relaunched.remove(saved)
+        #expect(!settings.accounts(forProvider:"cursor").contains {$0.accountId == saved.accountId})
+        #expect(relaunched.accounts.count == 2)
+        #expect(try Data(contentsOf:db) == bytes)
+    }
+    @Test(arguments:[(401,UsageError.sessionExpired(hint:"Re-authenticate in Cursor settings.")),(403,.authenticationRequired),(201,.executionFailed("HTTP error: 201")),(429,.executionFailed("HTTP error: 429")),(500,.executionFailed("HTTP error: 500"))])
+    func `HTTP failures preserve Cursor recovery behavior`(_ fixture:(Int,UsageError)) async throws {
+        let vault=MemoryVault(), network=MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            (Data("{}".utf8),HTTPURLResponse(url:request.url!,statusCode:fixture.0,httpVersion:nil,headerFields:nil)!)
+        }
+        let provider=Provider(definition:try Providers.builtIn("cursor"),settings:InMemoryProviderSettings(),makeDataSource:{source,login in
+            DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in nil},homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
+        },vault:vault)
+        let account=try provider.addAccount(filling:["accessToken":token("test")])
+        await #expect(throws:fixture.1) {try await account.refresh()}
     }
 }

@@ -63,6 +63,8 @@ public struct DataSource: Sendable {
     /// *Configured*: the key answers (when one is needed), belongs to the
     /// expected account, and the CLI exists.
     public func isReady() async -> Bool {
+        guard requiredFiles.allSatisfy({ FileManager.default.fileExists(atPath: $0) }) else { return false }
+        if definition.availability == .files, definition.identity == nil { return fetcher.isReady() }
         var credential: Credential?
         if let credentials {
             guard let found = try? credentials.find() else { return false }
@@ -176,7 +178,7 @@ public struct DataSource: Sendable {
         for file in requiredFiles where !FileManager.default.fileExists(atPath: file) {
             // ClaudeBar never starts a login itself (#216).
             AppLog.probes.error("\(providerId) \(kind): no \(file) — refusing to run")
-            throw DataSourceError(.lookup, .authenticationRequired)
+            throw DataSourceError(.lookup, definition.missingFilesError?.usageError ?? .authenticationRequired)
         }
         var found = try lookUp()
         try checkIdentity(found?.credential)

@@ -8,8 +8,14 @@ Shows your Cursor plan's included usage for the current billing month as separat
 
 ## Setup
 
-1. Install [Cursor](https://cursor.com) and sign in to it. ClaudeBar reuses that sign-in; there is nothing to configure.
+1. Install [Cursor](https://cursor.com) and sign in to it. ClaudeBar reuses that sign-in; the default account needs no configuration.
 2. Settings → Providers → Cursor: turn it on (it is on by default).
+
+## Additional accounts
+
+Settings → Providers → Cursor → Add Account accepts an access token for another Cursor login. ClaudeBar keeps it in Keychain, independently of the desktop app's current login. Give the account a short name such as Personal or Work; accounts can be renamed and pinned separately. One account keeps the usual Cursor label.
+
+The desktop app continues to supply the default account. Added accounts never fall back to that login. Removing an added account deletes its saved key without changing Cursor's database. If an added token expires, remove that account and add it again with a current token.
 
 ## Gotchas
 

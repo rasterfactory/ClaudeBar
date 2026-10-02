@@ -1,12 +1,12 @@
 # Cursor probe research
 
-Contributor notes for the Cursor probe. User-facing setup is in [README.md](README.md).
+Contributor notes for the JSON Cursor definition. User-facing setup is in [README.md](README.md).
 
 ## Source
 
 Cursor has no CLI that reports usage, so the probe borrows the Cursor app's session:
 
-1. **Token.** `/usr/bin/sqlite3 ~/Library/Application Support/Cursor/User/globalStorage/state.vscdb "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"`. Empty output → signed out → authentication required.
+1. **Token.** The shared read-only SQLite credential reader uses the same query previously run with `/usr/bin/sqlite3 ~/Library/Application Support/Cursor/User/globalStorage/state.vscdb "SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'"`. Empty output → signed out → authentication required.
 2. **User id.** The access token is a JWT; its `sub` claim (base64url payload, padded before decoding) is the user id.
 3. **Request.** `GET https://cursor.com/api/usage-summary` with `Cookie: WorkosCursorSessionToken={sub}::{accessToken}`.
 
@@ -51,3 +51,9 @@ The probe is available only when `state.vscdb` exists, so a Mac without Cursor n
 - **Units.** The card text says "requests" (`2767/9770 requests`), but the values look like US cents: a Pro plan reports `limit: 2000` ($20 included) and an Ultra plan `limit: 40000`. Unconfirmed; don't build dollar maths on it without checking against the dashboard.
 - **Unlimited plus plan.** If a response had both `isUnlimited: true` and an enabled plan, two "Monthly" cards would be produced. No such response has been seen.
 - The endpoint and cookie are private to cursor.com and can change without notice. The first fix after launch (`822ebc4`) was exactly that: the real response nests usage under `individualUsage.plan` / `individualUsage.onDemand`, not the top-level `planUsage` / `onDemandUsage` first assumed.
+
+## Definition and validation
+
+`Modules/Providers/Resources/Providers/cursor.json` declares credentials, request, appearance and account overrides. `cursor-usage.js` maps response data. Added accounts replace the database lookup with their own vault token and retain the full JWT subject, including pipe characters.
+
+All 32 legacy parsing and JWT fixtures run through the real definition and generic engine. Additional fixtures exercise a temporary desktop database, simultaneous tokens, names, relaunch, removal, missing secrets and HTTP recovery. No live user credentials or accounts are used by these tests.

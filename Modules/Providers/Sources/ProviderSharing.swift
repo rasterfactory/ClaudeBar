@@ -47,8 +47,8 @@ extension ProviderDefinition {
         switch lookup {
         case .setting(let name): [name]
         case .firstOf(let lookups): lookups.flatMap(settings(in:))
-        case .refreshing(let base, _): settings(in: base)
-        case .environment, .jsonFile, .keychain: []
+        case .refreshing(let base, _), .claiming(let base, _): settings(in: base)
+        case .environment, .jsonFile, .keychain, .sqlite: []
         }
     }
 }

@@ -1,0 +1,125 @@
+{
+  "profile": {
+    "id": "cursor",
+    "name": "Cursor",
+    "links": {
+      "dashboard": "https://www.cursor.com/settings"
+    },
+    "look": {
+      "symbol": "cursorarrow.rays",
+      "icon": "CursorIcon",
+      "color": {
+        "light": [
+          0.12,
+          0.62,
+          0.66
+        ],
+        "dark": [
+          0.2,
+          0.78,
+          0.82
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.08,
+          0.45,
+          0.6
+        ],
+        "dark": [
+          0.15,
+          0.55,
+          0.75
+        ]
+      }
+    }
+  },
+  "enabledByDefault": true,
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "availability": "files",
+      "requiresFiles": [
+        "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
+      ],
+      "missingFilesError": {
+        "cliNotFound": "Cursor (database not found)"
+      },
+      "credential": {
+        "sqlite": {
+          "path": "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+          "query": "SELECT value AS token FROM ItemTable WHERE key = 'cursorAuth/accessToken'",
+          "fields": {
+            "token": "$.token"
+          }
+        },
+        "claims": {
+          "fields": {
+            "userId": "sub"
+          },
+          "required": [
+            "userId"
+          ]
+        }
+      },
+      "fetch": {
+        "http": {
+          "url": "https://cursor.com/api/usage-summary",
+          "headers": {
+            "Cookie": "WorkosCursorSessionToken={{userId}}::{{token}}",
+            "Content-Type": "application/json"
+          },
+          "timeout": 15,
+          "acceptedStatuses": [
+            200
+          ],
+          "errors": {
+            "401": {
+              "sessionExpired": "Re-authenticate in Cursor settings."
+            },
+            "403": "authenticationRequired",
+            "default": {
+              "executionFailed": "HTTP error: {{status}}"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "cursor-usage.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "defaultLoginDescription": "Your Cursor app's current login",
+    "defaultReauthHelp": "Sign in again in Cursor settings, then refresh.",
+    "form": [
+      {
+        "id": "accessToken",
+        "label": "Access Token",
+        "secret": true
+      }
+    ],
+    "patch": {
+      "api": {
+        "availability": "credentials",
+        "requiresFiles": [],
+        "missingFilesError": null,
+        "credential": {
+          "sqlite": null,
+          "setting": "accessToken",
+          "claims": {
+            "fields": {
+              "userId": "sub"
+            },
+            "required": [
+              "userId"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

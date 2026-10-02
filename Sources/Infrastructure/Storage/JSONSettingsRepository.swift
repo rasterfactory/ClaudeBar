@@ -326,6 +326,9 @@ public final class JSONSettingsRepository:
     }
 
     /// `<id>.<setting>` — e.g. `claude.cliFallbackEnabled`, the key the Claude card writes.
+    public func stringValue(_ setting: String, forProvider id: String) -> String? { store.read(key: "\(id).\(setting)") }
+    public func setStringValue(_ value: String?, _ setting: String, forProvider id: String) { store.write(value: value, key: "\(id).\(setting)") }
+
     public func isOn(_ setting: String, forProvider id: String) -> Bool? {
         store.read(key: "\(id).\(setting)")
     }
@@ -847,18 +850,19 @@ public final class JSONSettingsRepository:
         store.write(value: envVar, key: "minimax.authEnvVar")
     }
 
-    // MiniMax Credentials (UserDefaults for now)
+    // The default account and the legacy configuration card share one vault key.
+    private var minimaxCredentials: ProviderVault { ProviderVault(credentials: secureCredentials, legacyStore: credentials) }
 
     public func saveMinimaxApiKey(_ key: String) {
-        credentials.set(key, forKey: "com.claudebar.credentials.minimax-api-key")
+        minimaxCredentials.save(key, "apiKey", provider: "minimax")
     }
 
     public func getMinimaxApiKey() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.minimax-api-key")
+        minimaxCredentials.secret("apiKey", provider: "minimax")
     }
 
     public func deleteMinimaxApiKey() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.minimax-api-key")
+        _ = minimaxCredentials.delete("apiKey", provider: "minimax")
     }
 
     public func hasMinimaxApiKey() -> Bool {

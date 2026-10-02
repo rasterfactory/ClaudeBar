@@ -378,6 +378,8 @@ Each slice is one PR, green, with no change a user can see unless it says so.
 
 ## 8.1 · What Claude added
 
+MiniMax adds `SettingURL`: `http.urlBySetting` selects a fixed URL by a live named provider setting, or an explicit account value. Unknown or unset selections use the request URL. `links.dashboardBySetting` uses the same selector, with each account's saved values before the default provider setting. No arbitrary setting becomes a URL.
+
 Claude needed more than Codex, and each need became a generic piece, never a
 vendor type:
 

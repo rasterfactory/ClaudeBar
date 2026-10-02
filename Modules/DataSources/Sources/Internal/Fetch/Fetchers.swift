@@ -28,12 +28,14 @@ struct HTTPFetcher: Fetching {
     let network: any NetworkClient
     let now: @Sendable () -> Date
 
+    var settingValue: @Sendable (String) -> String? = { _ in nil }
+
     static let defaultRetryAfter: TimeInterval = 5 * 60
 
     func isReady() -> Bool { true }
 
     func fetch(with credential: Credential?) async throws -> Response {
-        guard let urlText = Template.fill(request.url, with: credential), let url = URL(string: urlText) else {
+        guard let urlText = Template.fill(request.urlBySetting?.resolve(value: request.urlBySetting?.setting.flatMap(settingValue)) ?? request.url, with: credential), let url = URL(string: urlText) else {
             throw UsageError.executionFailed("Invalid URL")
         }
         var urlRequest = URLRequest(url: url)

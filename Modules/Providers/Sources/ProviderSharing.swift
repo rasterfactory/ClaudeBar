@@ -19,9 +19,9 @@ extension ProviderDefinition {
 
     /// Where it sends a key — the host of every API that sends a credential.
     public var keyDestinations: [String] {
-        Array(Set(dataSources.compactMap { source -> String? in
-            guard source.credential != nil, case .http(let request) = source.fetch else { return nil }
-            return URL(string: request.url)?.host ?? request.url
+        Array(Set(dataSources.flatMap { source -> [String] in
+            guard source.credential != nil, case .http(let request) = source.fetch else { return [] }
+            return ([request.url] + Array(request.urlBySetting?.values.values ?? [:].values)).map { URL(string: $0)?.host ?? $0 }
         })).sorted()
     }
 

@@ -26,8 +26,8 @@ struct ClaudeBarApp: App {
         settings: any MultiAccountSettingsRepository,
         accounts: [ProviderAccountConfig] = [],
         secrets: (any SecretVault)? = nil,
-        guestPasses: GuestPasses? = nil,
-        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] },
+        guestPasses: GuestPasses? = nil
     ) -> Provider {
         do {
             return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, environment: environment)
@@ -131,6 +131,12 @@ struct ClaudeBarApp: App {
             let variable = name == "AI_GATEWAY_API_KEY" && !configured.isEmpty ? configured : name
             return ProcessInfo.processInfo.environment[variable]
         })
+        let minimax = Self.builtIn("minimax", settings: settingsRepository,
+            accounts: settingsRepository.accounts(forProvider: "minimax"), secrets: ProviderVault(),
+            environment: { name in
+                let override = settingsRepository.minimaxAuthEnvVar()
+                return ProcessInfo.processInfo.environment[name == "MINIMAX_API_KEY" && !override.isEmpty ? override : name]
+            })
 
         let deepseek = Self.builtIn("deepseek", settings: settingsRepository,
                                    accounts: settingsRepository.accounts(forProvider: "deepseek"), secrets: ProviderVault(),
@@ -169,10 +175,7 @@ struct ClaudeBarApp: App {
             ),
             KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
-            MiniMaxProvider(
-                probe: MiniMaxUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
+            minimax.defaultAccount,
             deepseek.defaultAccount,
             vercel.defaultAccount,
             AlibabaProvider(
@@ -201,7 +204,7 @@ struct ClaudeBarApp: App {
             ),
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

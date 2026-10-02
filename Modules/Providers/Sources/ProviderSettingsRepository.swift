@@ -31,6 +31,9 @@ public protocol ProviderSettingsRepository: Sendable {
 
     /// A provider's on/off setting by name — `claude.cliFallbackEnabled` is
     /// `isOn("cliFallbackEnabled", forProvider: "claude")`. `nil` when never set.
+    func stringValue(_ setting: String, forProvider id: String) -> String?
+    func setStringValue(_ value: String?, _ setting: String, forProvider id: String)
+
     func isOn(_ setting: String, forProvider id: String) -> Bool?
 
     /// Saves a provider's on/off setting by name.
@@ -53,6 +56,8 @@ public protocol ProviderSettingsRepository: Sendable {
 }
 
 public extension ProviderSettingsRepository {
+    func stringValue(_ setting: String, forProvider id: String) -> String? { nil }
+    func setStringValue(_ value: String?, _ setting: String, forProvider id: String) {}
     /// Default for conformers that keep no choice: the definition's default applies.
     func dataSourceKind(forProvider id: String) -> String? { nil }
 

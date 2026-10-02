@@ -5,6 +5,10 @@ import Foundation
 /// A settings repository that keeps everything in memory — the real behaviour
 /// a `Provider` relies on, without touching `~/.claudebar/settings.json`.
 final class InMemoryProviderSettings: MultiAccountSettingsRepository, @unchecked Sendable {
+    private var strings: [String: String] = [:]
+    func stringValue(_ setting: String, forProvider id: String) -> String? { strings["\(id).\(setting)"] }
+    func setStringValue(_ value: String?, _ setting: String, forProvider id: String) { strings["\(id).\(setting)"] = value }
+
     private var accountConfigs: [String: [ProviderAccountConfig]] = [:]
     private var defaultLabels: [String: String] = [:]
     private var enabled: [String: Bool] = [:]

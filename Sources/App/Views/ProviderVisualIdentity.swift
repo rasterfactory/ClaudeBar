@@ -319,31 +319,6 @@ extension CursorProvider: ProviderVisualIdentity {
 
 // MARK: - MiniMaxProvider Visual Identity
 
-extension MiniMaxProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "waveform" }
-
-    public var iconAssetName: String { "MiniMaxIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // MiniMax brand pink-orange
-        scheme == .dark
-            ? Color(red: 0.91, green: 0.27, blue: 0.42)
-            : Color(red: 0.82, green: 0.20, blue: 0.35)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.96, green: 0.53, blue: 0.24)
-                    : Color(red: 0.86, green: 0.43, blue: 0.14)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
 
 // MARK: - MistralProvider Visual Identity
 

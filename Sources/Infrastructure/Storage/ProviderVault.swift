@@ -20,8 +20,8 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
     }
 
     public func save(_ value: String, _ name: String, provider: String) {
-        if let migration = migration(name, provider: provider) { migration.save(value) }
-        else { credentials.save(value, forKey: Self.key(name, provider: provider)) }
+        if let migration = migration(name, provider: provider) { migration.save(value); return }
+        credentials.save(value, forKey: Self.key(name, provider: provider))
     }
 
     @discardableResult
@@ -42,7 +42,10 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
                 secureKey: Self.key(name, provider: provider), legacyKey: "com.claudebar.credentials.vercel-api-key",
                 legacySecureKey: CredentialKey.vercelApiKey)
         }
-        let legacyKeys = ["provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key"]
+        let legacyKeys = [
+            "provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key",
+            "provider.minimax.apiKey": "com.claudebar.credentials.minimax-api-key",
+        ]
         let key = Self.key(name, provider: provider)
         guard let legacyKey = legacyKeys[key] else { return nil }
         return SecureCredentialMigration(secureStore: credentials, legacyStore: legacyStore, secureKey: key, legacyKey: legacyKey)

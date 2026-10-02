@@ -20,10 +20,14 @@ public indirect enum CredentialLookup: Sendable, Equatable {
     case keychain(KeychainCredential)
     /// A key the person gave ClaudeBar (*API KEY*), kept in its vault.
     case setting(String)
+    case browserCookies(BrowserCookieCredential)
+    case bySetting(CredentialChoice)
+    case tagged(CredentialLookup, [String: String])
     /// The first lookup that answers wins.
     case firstOf([CredentialLookup])
     /// A lookup whose token is kept fresh by an OAuth 2 refresh.
     case refreshing(CredentialLookup, OAuth2Refresh)
+    case refreshingWithCLI(CredentialLookup, CLIRefresh)
 }
 
 /// What a lookup found: the token and the values that travel with it
@@ -79,19 +83,22 @@ public struct KeychainCredential: Sendable, Equatable, Codable {
 public struct JSONFileCredential: Sendable, Equatable, Codable {
     /// `~` expands to the home directory.
     public let path: String
+    public let strict: Bool
     /// Credential name → JSON path in the file. `token` is required.
     public let fields: [String: String]
 
-    public init(path: String, fields: [String: String]) {
+    public init(path: String, fields: [String: String], strict: Bool = false) {
         self.path = path
+        self.strict = strict
         self.fields = fields
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
         path = try container.decode(String.self, forKey: TagKey("path"))
+        strict = try container.decodeIfPresent(Bool.self, forKey: TagKey("strict")) ?? false
         var fields: [String: String] = [:]
-        for key in container.allKeys where key.stringValue != "path" {
+        for key in container.allKeys where !["path", "strict"].contains(key.stringValue) {
             fields[key.stringValue] = try container.decode(String.self, forKey: key)
         }
         self.fields = fields
@@ -100,6 +107,7 @@ public struct JSONFileCredential: Sendable, Equatable, Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: TagKey.self)
         try container.encode(path, forKey: TagKey("path"))
+        if strict { try container.encode(strict, forKey: TagKey("strict")) }
         for (name, path) in fields {
             try container.encode(path, forKey: TagKey(name))
         }
@@ -195,7 +203,7 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
 // MARK: - JSON
 
 extension CredentialLookup: Codable {
-    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf"]
+    private static let tags = ["environment", "jsonFile", "keychain", "setting", "firstOf", "browserCookies", "bySetting"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
@@ -207,16 +215,29 @@ extension CredentialLookup: Codable {
             base = .jsonFile(try container.decode(JSONFileCredential.self, forKey: TagKey("jsonFile")))
         case "keychain":
             base = .keychain(try container.decode(KeychainCredential.self, forKey: TagKey("keychain")))
+        case "bySetting":
+            base = .bySetting(try container.decode(CredentialChoice.self, forKey: TagKey("bySetting")))
+        case "browserCookies":
+            base = .browserCookies(try container.decode(BrowserCookieCredential.self, forKey: TagKey("browserCookies")))
         case "setting":
             base = .setting(try container.decode(String.self, forKey: TagKey("setting")))
         default:
             base = .firstOf(try container.decode([CredentialLookup].self, forKey: TagKey("firstOf")))
         }
+        let facts = try container.decodeIfPresent([String: String].self, forKey: TagKey("as")) ?? [:]
+        guard Set(facts.keys).isDisjoint(with: ["token", "refreshToken", "accessToken", "apiKey"]) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Credential tags cannot embed secret values"))
+        }
+        let tagged = facts.isEmpty ? base : .tagged(base, facts)
         if container.contains(TagKey("refresh")) {
             let refresh = try container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
-            self = .refreshing(base, try refresh.decode(OAuth2Refresh.self, forKey: TagKey("oauth2")))
+            if refresh.contains(TagKey("cli")) {
+                self = .refreshingWithCLI(tagged, try refresh.decode(CLIRefresh.self, forKey: TagKey("cli")))
+            } else {
+                self = .refreshing(tagged, try refresh.decode(OAuth2Refresh.self, forKey: TagKey("oauth2")))
+            }
         } else {
-            self = base
+            self = tagged
         }
     }
 
@@ -233,10 +254,21 @@ extension CredentialLookup: Codable {
             try container.encode(file, forKey: TagKey("jsonFile"))
         case .keychain(let item):
             try container.encode(item, forKey: TagKey("keychain"))
+        case .bySetting(let choice):
+            try container.encode(choice, forKey: TagKey("bySetting"))
+        case .tagged(let lookup, let facts):
+            try lookup.encodeBase(into: &container)
+            try container.encode(facts, forKey: TagKey("as"))
+        case .browserCookies(let query):
+            try container.encode(query, forKey: TagKey("browserCookies"))
         case .setting(let name):
             try container.encode(name, forKey: TagKey("setting"))
         case .firstOf(let lookups):
             try container.encode(lookups, forKey: TagKey("firstOf"))
+        case .refreshingWithCLI(let base, let refresh):
+            try base.encodeBase(into: &container)
+            var nested = container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
+            try nested.encode(refresh, forKey: TagKey("cli"))
         case .refreshing(let base, let refresh):
             try base.encodeBase(into: &container)
             var nested = container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
@@ -253,9 +285,12 @@ extension CredentialLookup {
         case .environment(let name): ["$\(name)"]
         case .jsonFile(let file): [file.path]
         case .keychain(let item): ["Keychain “\(item.service)”"]
+        case .bySetting(let choice): choice.values.keys.sorted().flatMap { choice.values[$0]?.lookupOrder ?? [] }
+        case .tagged(let base, _): base.lookupOrder
+        case .browserCookies: ["Signed-in browser cookies"]
         case .setting: ["API key saved in ClaudeBar"]
         case .firstOf(let lookups): lookups.flatMap(\.lookupOrder)
-        case .refreshing(let base, _): base.lookupOrder
+        case .refreshing(let base, _), .refreshingWithCLI(let base, _): base.lookupOrder
         }
     }
 
@@ -263,9 +298,34 @@ extension CredentialLookup {
     /// the refresh's hint ("Run `claude` in terminal to log in again.").
     public var hint: String? {
         switch self {
+        case .tagged(let base, _): base.hint
+        case .bySetting(let choice): choice.values.keys.sorted().lazy.compactMap { choice.values[$0]?.hint }.first
         case .refreshing(let base, let refresh): refresh.hint ?? base.hint
+        case .refreshingWithCLI(let base, _): base.hint
         case .firstOf(let lookups): lookups.lazy.compactMap(\.hint).first
-        case .environment, .jsonFile, .keychain, .setting: nil
+        case .environment, .jsonFile, .keychain, .setting, .browserCookies: nil
         }
     }
+}
+
+public struct BrowserCookieCredential: Codable, Sendable, Equatable {
+    public let domains: [String]
+    public let domainsBySetting: SettingValues<[String]>?
+    public let names: [String]
+    public let format: Format
+    public enum Format: String, Codable, Sendable { case value, header }
+}
+
+public struct CredentialChoice: Codable, Sendable, Equatable {
+    public let setting: String
+    public let `default`: String
+    public let values: [String: CredentialLookup]
+}
+
+/// Refresh through the CLI that owns a credential file, then reread that same lookup.
+public struct CLIRefresh: Sendable, Equatable, Codable {
+    public let call: CLICall
+    public let onStatus: [Int]
+    public let delaySeconds: TimeInterval?
+    public let missingError: ErrorRef?
 }

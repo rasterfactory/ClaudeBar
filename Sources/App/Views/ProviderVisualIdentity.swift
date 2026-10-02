@@ -66,33 +66,6 @@ extension ProviderLook {
     }
 }
 
-// MARK: - GeminiProvider Visual Identity
-
-extension GeminiProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "sparkles" }
-
-    public var iconAssetName: String { "GeminiIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        scheme == .dark
-            ? BaseTheme.goldenGlow
-            : Color(red: 0.92, green: 0.72, blue: 0.28)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.95, green: 0.55, blue: 0.35)
-                    : Color(red: 0.85, green: 0.45, blue: 0.25)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - CopilotProvider Visual Identity
 
 extension CopilotProvider: ProviderVisualIdentity {

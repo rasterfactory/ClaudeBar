@@ -40,7 +40,7 @@ struct GeminiUsageProbeParsingTests {
         let output = Self.sampleCLIOutput
 
         // When
-        let snapshot = try GeminiUsageProbe.parse(output)
+        let snapshot = try GeminiDefinitionFixtures.cli(output)
 
         // Then
         #expect(snapshot.quotas.count == 4)
@@ -53,7 +53,7 @@ struct GeminiUsageProbeParsingTests {
         let output = Self.partiallyUsedOutput
 
         // When
-        let snapshot = try GeminiUsageProbe.parse(output)
+        let snapshot = try GeminiDefinitionFixtures.cli(output)
 
         // Then
         let flashQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("gemini-2.5-flash") }
@@ -69,7 +69,7 @@ struct GeminiUsageProbeParsingTests {
         let output = Self.partiallyUsedOutput
 
         // When
-        let snapshot = try GeminiUsageProbe.parse(output)
+        let snapshot = try GeminiDefinitionFixtures.cli(output)
 
         // Then
         let flashQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("gemini-2.5-flash") }
@@ -82,7 +82,7 @@ struct GeminiUsageProbeParsingTests {
         let output = Self.exhaustedQuotaOutput
 
         // When
-        let snapshot = try GeminiUsageProbe.parse(output)
+        let snapshot = try GeminiDefinitionFixtures.cli(output)
 
         // Then
         let quota = snapshot.quotas.first
@@ -104,7 +104,7 @@ struct GeminiUsageProbeParsingTests {
 
         // When & Then
         #expect(throws: UsageError.self) {
-            try GeminiUsageProbe.parse(output)
+            try GeminiDefinitionFixtures.cli(output)
         }
     }
 
@@ -120,7 +120,7 @@ struct GeminiUsageProbeParsingTests {
 
         // When & Then
         #expect(throws: UsageError.self) {
-            try GeminiUsageProbe.parse(output)
+            try GeminiDefinitionFixtures.cli(output)
         }
     }
 
@@ -137,7 +137,7 @@ struct GeminiUsageProbeParsingTests {
         let output = Self.ansiColoredOutput
 
         // When
-        let snapshot = try GeminiUsageProbe.parse(output)
+        let snapshot = try GeminiDefinitionFixtures.cli(output)
 
         // Then
         #expect(snapshot.quotas.first?.percentRemaining == 75.0)

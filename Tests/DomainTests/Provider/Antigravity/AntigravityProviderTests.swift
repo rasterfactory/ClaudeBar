@@ -274,7 +274,7 @@ struct AntigravityProviderTests {
         let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
         let claude = StubClaudeProvider(probe: mockProbe, settingsRepository: settings)
         let codex = StubCodexProvider(probe: mockProbe, settingsRepository: settings)
-        let gemini = GeminiProvider(probe: mockProbe, settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: mockProbe, settingsRepository: settings)
         let copilot = CopilotProvider(probe: mockProbe, settingsRepository: copilotSettings)
 
         let ids = Set([antigravity.id, claude.id, codex.id, gemini.id, copilot.id])

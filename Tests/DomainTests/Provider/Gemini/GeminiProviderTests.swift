@@ -20,28 +20,28 @@ struct GeminiProviderTests {
     @Test
     func `gemini provider has correct id`() {
         let settings = makeSettingsRepository()
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         #expect(gemini.id == "gemini")
     }
 
     @Test
     func `gemini provider has correct name`() {
         let settings = makeSettingsRepository()
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         #expect(gemini.name == "Gemini")
     }
 
     @Test
     func `gemini provider has correct cliCommand`() {
         let settings = makeSettingsRepository()
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         #expect(gemini.cliCommand == "gemini")
     }
 
     @Test
     func `gemini provider has dashboard URL pointing to google`() {
         let settings = makeSettingsRepository()
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         #expect(gemini.dashboardURL != nil)
         #expect(gemini.dashboardURL?.host?.contains("google") == true)
     }
@@ -49,7 +49,7 @@ struct GeminiProviderTests {
     @Test
     func `gemini provider is enabled by default`() {
         let settings = makeSettingsRepository()
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         #expect(gemini.isEnabled == true)
     }
 }

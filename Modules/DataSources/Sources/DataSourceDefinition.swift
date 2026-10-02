@@ -34,6 +34,9 @@ public struct DataSourceDefinition: Sendable, Equatable, Codable {
     /// Files that must exist before anything runs — a CLI that finds no
     /// login may open a browser login on its own (#216). Missing: *Key needed*.
     public let requiresFiles: [String]
+    public enum Availability: String, Sendable, Codable { case credentials, files }
+    public let availability: Availability
+    public let missingFilesError: ErrorRef?
     /// The credential must belong to this account, before and after the fetch.
     public let identity: Identity?
     /// A background or popover-open refresh must not run this data source
@@ -57,6 +60,8 @@ public struct DataSourceDefinition: Sendable, Equatable, Codable {
         context: [String: JSONFileCredential] = [:],
         recover: [String: Recovery] = [:],
         requiresFiles: [String] = [],
+        availability: Availability = .credentials,
+        missingFilesError: ErrorRef? = nil,
         identity: Identity? = nil,
         verifyBeforeBackground: Bool = false,
         unverifiedMessage: String? = nil
@@ -75,6 +80,8 @@ public struct DataSourceDefinition: Sendable, Equatable, Codable {
         self.context = context
         self.recover = recover
         self.requiresFiles = requiresFiles
+        self.availability = availability
+        self.missingFilesError = missingFilesError
         self.identity = identity
         self.verifyBeforeBackground = verifyBeforeBackground
         self.unverifiedMessage = unverifiedMessage
@@ -96,6 +103,8 @@ public struct DataSourceDefinition: Sendable, Equatable, Codable {
         context = try container.decodeIfPresent([String: JSONFileCredential].self, forKey: .context) ?? [:]
         recover = try container.decodeIfPresent([String: Recovery].self, forKey: .recover) ?? [:]
         requiresFiles = try container.decodeIfPresent([String].self, forKey: .requiresFiles) ?? []
+        availability = try container.decodeIfPresent(Availability.self, forKey: .availability) ?? .credentials
+        missingFilesError = try container.decodeIfPresent(ErrorRef.self, forKey: .missingFilesError)
         identity = try container.decodeIfPresent(Identity.self, forKey: .identity)
         verifyBeforeBackground = try container.decodeIfPresent(Bool.self, forKey: .verifyBeforeBackground) ?? false
         unverifiedMessage = try container.decodeIfPresent(String.self, forKey: .unverifiedMessage)

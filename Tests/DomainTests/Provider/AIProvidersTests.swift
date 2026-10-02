@@ -25,7 +25,7 @@ struct AIProvidersTests {
         let providers = AIProviders(providers: [
             StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
             StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         ])
 
         #expect(providers.all.count == 3)
@@ -45,7 +45,7 @@ struct AIProvidersTests {
         let settings = makeSettingsRepository()
         let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
 
         // Disable gemini
         gemini.isEnabled = false

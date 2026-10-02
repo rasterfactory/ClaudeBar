@@ -26,8 +26,18 @@ struct JSONFileReader: CredentialFinding {
     }
 
     func find() throws -> FoundCredential? {
-        guard let document = readDocument() else { return nil }
-        let values = CredentialDocument.values(file.fields, in: document)
+        let document: [String: Any]
+        if file.strict {
+            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+            let decoded = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
+            guard let object = decoded as? [String: Any] else { throw UsageError.parseFailed("Invalid credentials file") }
+            document = object
+        } else {
+            guard let object = readDocument() else { return nil }
+            document = object
+        }
+        let fields = file.strict ? file.fields.filter { JSONScope(root: document).value($0.value) is String } : file.fields
+        let values = CredentialDocument.values(fields, in: document)
         guard values["token"] != nil else { return nil }
         let reader = self
         return FoundCredential(credential: Credential(values), save: { reader.write($0) })

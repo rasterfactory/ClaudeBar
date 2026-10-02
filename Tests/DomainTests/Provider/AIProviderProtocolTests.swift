@@ -22,7 +22,7 @@ struct AIProviderProtocolTests {
         let providers: [any AIProvider] = [
             StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
             StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         ]
 
         let ids = Set(providers.map(\.id))
@@ -35,7 +35,7 @@ struct AIProviderProtocolTests {
         let providers: [any AIProvider] = [
             StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
             StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         ]
 
         for provider in providers {
@@ -49,7 +49,7 @@ struct AIProviderProtocolTests {
         let providers: [any AIProvider] = [
             StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
             StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
         ]
 
         for provider in providers {
@@ -62,7 +62,7 @@ struct AIProviderProtocolTests {
         let settings = makeSettingsRepository()
         let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let gemini = StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
 
         #expect(claude.id != codex.id)
         #expect(claude.id != gemini.id)

@@ -507,10 +507,12 @@ struct AddProviderSheet: View {
 
     private static func usesSavedKey(_ lookup: CredentialLookup) -> Bool {
         switch lookup {
+        case .bySetting(let choice): choice.values.values.contains(where: usesSavedKey)
+        case .tagged(let base, _): usesSavedKey(base)
         case .setting: true
         case .firstOf(let lookups): lookups.contains(where: usesSavedKey)
-        case .refreshing(let base, _): usesSavedKey(base)
-        case .environment, .jsonFile, .keychain: false
+        case .refreshing(let base, _), .refreshingWithCLI(let base, _): usesSavedKey(base)
+        case .environment, .jsonFile, .keychain, .browserCookies: false
         }
     }
 

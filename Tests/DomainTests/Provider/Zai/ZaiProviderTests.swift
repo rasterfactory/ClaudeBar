@@ -267,7 +267,7 @@ struct ZaiProviderTests {
         let zai = ZaiProvider(probe: mockProbe, settingsRepository: zaiSettings)
         let claude = StubClaudeProvider(probe: mockProbe, settingsRepository: baseSettings)
         let codex = StubCodexProvider(probe: mockProbe, settingsRepository: baseSettings)
-        let gemini = GeminiProvider(probe: mockProbe, settingsRepository: baseSettings)
+        let gemini = StubGeminiProvider(probe: mockProbe, settingsRepository: baseSettings)
         let copilot = CopilotProvider(probe: mockProbe, settingsRepository: copilotSettings)
         let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: baseSettings)
 

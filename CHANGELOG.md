@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Gemini supports separate signed-in CLI homes and account names, with JSON quota mapping, project discovery and scoped token refresh. ([#344](https://github.com/tddworks/ClaudeBar/issues/344))
 - DeepSeek supports separate accounts with their own API keys, names and menu-bar pins, preserves existing sign-ins, and shows balances in their billing currency. ([#331](https://github.com/tddworks/ClaudeBar/issues/331))
 - Claude's daily cost and token cards load much faster when you open the popover: ClaudeBar reads only the session log lines written since the last open, instead of re-reading every log from today and yesterday. ([#378](https://github.com/tddworks/ClaudeBar/pull/378))
 

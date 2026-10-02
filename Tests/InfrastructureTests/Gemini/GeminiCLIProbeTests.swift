@@ -17,7 +17,7 @@ struct GeminiCLIProbeBehaviorTests {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.value("gemini")).willReturn(nil)
 
-        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+        let probe = GeminiDefinitionProbe(timeout: 30, cliExecutor: mockExecutor, kind: "cli")
 
         // When/Then
         await #expect(throws: UsageError.cliNotFound("gemini")) {
@@ -43,7 +43,7 @@ struct GeminiCLIProbeBehaviorTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: statsOutput))
 
-        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+        let probe = GeminiDefinitionProbe(timeout: 30, cliExecutor: mockExecutor, kind: "cli")
 
         // When
         let snapshot = try await probe.probe()
@@ -67,7 +67,7 @@ struct GeminiCLIProbeBehaviorTests {
             autoResponses: .any
         ).willThrow(InteractiveRunner.RunError.timedOut)
 
-        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+        let probe = GeminiDefinitionProbe(timeout: 30, cliExecutor: mockExecutor, kind: "cli")
 
         // When/Then
         await #expect(throws: UsageError.timeout) {
@@ -89,7 +89,7 @@ struct GeminiCLIProbeBehaviorTests {
             autoResponses: .any
         ).willThrow(InteractiveRunner.RunError.launchFailed("Permission denied"))
 
-        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+        let probe = GeminiDefinitionProbe(timeout: 30, cliExecutor: mockExecutor, kind: "cli")
 
         // When/Then
         await #expect(throws: UsageError.executionFailed("Permission denied")) {
@@ -111,7 +111,7 @@ struct GeminiCLIProbeBehaviorTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: "Please login with Google to continue"))
 
-        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+        let probe = GeminiDefinitionProbe(timeout: 30, cliExecutor: mockExecutor, kind: "cli")
 
         // When/Then
         await #expect(throws: UsageError.authenticationRequired) {
@@ -133,7 +133,7 @@ struct GeminiCLIProbeBehaviorTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: "Some random output without stats"))
 
-        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+        let probe = GeminiDefinitionProbe(timeout: 30, cliExecutor: mockExecutor, kind: "cli")
 
         // When/Then
         await #expect(throws: UsageError.self) {
@@ -161,7 +161,7 @@ struct GeminiCLIProbeBehaviorTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: statsOutput))
 
-        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+        let probe = GeminiDefinitionProbe(timeout: 30, cliExecutor: mockExecutor, kind: "cli")
 
         // When
         let snapshot = try await probe.probe()
@@ -218,7 +218,7 @@ struct GeminiCLIProbeParsingTests {
     @Test
     func `parses model quota from stats output`() throws {
         // When
-        let snapshot = try GeminiCLIProbe.parse(Self.sampleStatsOutput)
+        let snapshot = try GeminiDefinitionFixtures.cli(Self.sampleStatsOutput)
 
         // Then
         #expect(snapshot.providerId == "gemini")
@@ -228,7 +228,7 @@ struct GeminiCLIProbeParsingTests {
     @Test
     func `extracts correct percentage remaining for each model`() throws {
         // When
-        let snapshot = try GeminiCLIProbe.parse(Self.sampleStatsOutput)
+        let snapshot = try GeminiDefinitionFixtures.cli(Self.sampleStatsOutput)
 
         // Then
         let quotasByModel = Dictionary(uniqueKeysWithValues: snapshot.quotas.map { ($0.quotaType, $0.percentRemaining) })
@@ -241,7 +241,7 @@ struct GeminiCLIProbeParsingTests {
     @Test
     func `extracts reset text for each model`() throws {
         // When
-        let snapshot = try GeminiCLIProbe.parse(Self.sampleStatsOutput)
+        let snapshot = try GeminiDefinitionFixtures.cli(Self.sampleStatsOutput)
 
         // Then
         let proModel = snapshot.quotas.first { $0.quotaType == .modelSpecific("gemini-2.5-pro") }
@@ -254,7 +254,7 @@ struct GeminiCLIProbeParsingTests {
     @Test
     func `strips ANSI codes before parsing`() throws {
         // When
-        let snapshot = try GeminiCLIProbe.parse(Self.sampleOutputWithANSICodes)
+        let snapshot = try GeminiDefinitionFixtures.cli(Self.sampleOutputWithANSICodes)
 
         // Then
         #expect(snapshot.quotas.count == 1)
@@ -264,7 +264,7 @@ struct GeminiCLIProbeParsingTests {
     @Test
     func `sets provider ID to gemini`() throws {
         // When
-        let snapshot = try GeminiCLIProbe.parse(Self.sampleStatsOutput)
+        let snapshot = try GeminiDefinitionFixtures.cli(Self.sampleStatsOutput)
 
         // Then
         #expect(snapshot.providerId == "gemini")
@@ -277,7 +277,7 @@ struct GeminiCLIProbeParsingTests {
         let beforeParse = Date()
 
         // When
-        let snapshot = try GeminiCLIProbe.parse(Self.sampleStatsOutput)
+        let snapshot = try GeminiDefinitionFixtures.cli(Self.sampleStatsOutput)
 
         // Then
         let afterParse = Date()
@@ -291,7 +291,7 @@ struct GeminiCLIProbeParsingTests {
     func `throws authenticationRequired when login prompt detected`() {
         // When/Then
         #expect(throws: UsageError.authenticationRequired) {
-            try GeminiCLIProbe.parse(Self.loginRequiredOutput)
+            try GeminiDefinitionFixtures.cli(Self.loginRequiredOutput)
         }
     }
 
@@ -299,7 +299,7 @@ struct GeminiCLIProbeParsingTests {
     func `throws authenticationRequired when API key prompt detected`() {
         // When/Then
         #expect(throws: UsageError.authenticationRequired) {
-            try GeminiCLIProbe.parse(Self.apiKeyOutput)
+            try GeminiDefinitionFixtures.cli(Self.apiKeyOutput)
         }
     }
 
@@ -307,7 +307,7 @@ struct GeminiCLIProbeParsingTests {
     func `throws authenticationRequired when waiting for auth detected`() {
         // When/Then
         #expect(throws: UsageError.authenticationRequired) {
-            try GeminiCLIProbe.parse(Self.waitingForAuthOutput)
+            try GeminiDefinitionFixtures.cli(Self.waitingForAuthOutput)
         }
     }
 
@@ -320,7 +320,7 @@ struct GeminiCLIProbeParsingTests {
 
         // When/Then
         #expect(throws: UsageError.self) {
-            try GeminiCLIProbe.parse(emptyOutput)
+            try GeminiDefinitionFixtures.cli(emptyOutput)
         }
     }
 
@@ -328,7 +328,7 @@ struct GeminiCLIProbeParsingTests {
     func `throws parseFailed for completely empty output`() {
         // When/Then
         #expect(throws: UsageError.self) {
-            try GeminiCLIProbe.parse("")
+            try GeminiDefinitionFixtures.cli("")
         }
     }
 
@@ -342,7 +342,7 @@ struct GeminiCLIProbeParsingTests {
         """
 
         // When
-        let snapshot = try GeminiCLIProbe.parse(outputWithDecimals)
+        let snapshot = try GeminiDefinitionFixtures.cli(outputWithDecimals)
 
         // Then
         #expect(snapshot.quotas.first?.percentRemaining == 99.99)
@@ -356,7 +356,7 @@ struct GeminiCLIProbeParsingTests {
         """
 
         // When
-        let snapshot = try GeminiCLIProbe.parse(zeroOutput)
+        let snapshot = try GeminiDefinitionFixtures.cli(zeroOutput)
 
         // Then
         #expect(snapshot.quotas.first?.percentRemaining == 0.0)
@@ -372,7 +372,7 @@ struct GeminiCLIProbeParsingTests {
         """
 
         // When
-        let snapshot = try GeminiCLIProbe.parse(outputWithVersions)
+        let snapshot = try GeminiDefinitionFixtures.cli(outputWithVersions)
 
         // Then
         #expect(snapshot.quotas.count == 2)

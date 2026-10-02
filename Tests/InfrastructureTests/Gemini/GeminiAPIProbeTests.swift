@@ -39,7 +39,7 @@ struct GeminiAPIProbeTests {
         let homeDir = try makeTemporaryHomeDirectory()
         let mockService = MockNetworkClient()
         
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -79,7 +79,7 @@ struct GeminiAPIProbeTests {
 
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("loadCodeAssist") {
                     return (projectsResponse, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -88,7 +88,7 @@ struct GeminiAPIProbeTests {
                 }
             }
 
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -144,7 +144,7 @@ struct GeminiAPIProbeTests {
 
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("loadCodeAssist") {
                     return (projectsResponse, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -153,7 +153,7 @@ struct GeminiAPIProbeTests {
                 }
             }
 
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -206,7 +206,7 @@ struct GeminiAPIProbeTests {
 
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("loadCodeAssist") {
                     return (projectsResponse, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -215,7 +215,7 @@ struct GeminiAPIProbeTests {
                 }
             }
 
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -262,7 +262,7 @@ struct GeminiAPIProbeTests {
 
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("loadCodeAssist") {
                     return (projectsResponse, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -271,7 +271,7 @@ struct GeminiAPIProbeTests {
                 }
             }
 
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -319,7 +319,7 @@ struct GeminiAPIProbeTests {
 
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("loadCodeAssist") {
                     return (projectsResponse, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -328,7 +328,7 @@ struct GeminiAPIProbeTests {
                 }
             }
 
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -357,11 +357,11 @@ struct GeminiAPIProbeTests {
         
         given(mockService)
             .request(.any)
-            .willProduce { _ in
+            .willProduce { @Sendable _ in
                 (Data(), HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 500, httpVersion: nil, headerFields: nil)!)
             }
             
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -396,14 +396,14 @@ struct GeminiAPIProbeTests {
         }
         """.data(using: .utf8)!
 
-        var quotaCalls = 0
+        let quotaCalls = GeminiCallCounter()
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("retrieveUserQuota") {
-                    quotaCalls += 1
-                    if quotaCalls == 1 {
+                    let call = quotaCalls.increment()
+                    if call == 1 {
                         return (Data(), HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!)
                     }
                     return (quotaResponse, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -421,7 +421,7 @@ struct GeminiAPIProbeTests {
             autoResponses: .value([:])
         ).willReturn(CLIResult(output: ""))
 
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -457,7 +457,7 @@ struct GeminiAPIProbeTests {
 
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("retrieveUserQuota") {
                     return (Data(), HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!)
@@ -467,7 +467,7 @@ struct GeminiAPIProbeTests {
 
         given(mockExecutor).locate(.value("gemini")).willReturn(nil)
 
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -492,13 +492,13 @@ struct GeminiAPIProbeTests {
         { "cloudaicompanionProject": "gen-lang-client-123456" }
         """.data(using: .utf8)!
 
-        var quotaCalls = 0
+        let quotaCalls = GeminiCallCounter()
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("retrieveUserQuota") {
-                    quotaCalls += 1
+                    let call = quotaCalls.increment()
                     return (Data(), HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!)
                 }
                 return (projectsResponse, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -514,7 +514,7 @@ struct GeminiAPIProbeTests {
             autoResponses: .value([:])
         ).willReturn(CLIResult(output: ""))
 
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,
@@ -539,14 +539,14 @@ struct GeminiAPIProbeTests {
         { "cloudaicompanionProject": "gen-lang-client-123456" }
         """.data(using: .utf8)!
 
-        var quotaCalls = 0
+        let quotaCalls = GeminiCallCounter()
         given(mockService)
             .request(.any)
-            .willProduce { request in
+            .willProduce { @Sendable request in
                 let url = request.url?.absoluteString ?? ""
                 if url.contains("retrieveUserQuota") {
-                    quotaCalls += 1
-                    if quotaCalls == 1 {
+                    let call = quotaCalls.increment()
+                    if call == 1 {
                         return (Data(), HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!)
                     }
                     return (Data(), HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!)
@@ -564,7 +564,7 @@ struct GeminiAPIProbeTests {
             autoResponses: .value([:])
         ).willReturn(CLIResult(output: ""))
 
-        let probe = GeminiAPIProbe(
+        let probe = GeminiDefinitionProbe(
             homeDirectory: homeDir.path,
             timeout: 1.0,
             networkClient: mockService,

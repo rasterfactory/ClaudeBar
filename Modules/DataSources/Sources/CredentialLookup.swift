@@ -81,17 +81,23 @@ public struct JSONFileCredential: Sendable, Equatable, Codable {
     public let path: String
     /// Credential name → JSON path in the file. `token` is required.
     public let fields: [String: String]
+    public let select: RecordSelection?
+    public let defaults: [String: String]
 
-    public init(path: String, fields: [String: String]) {
+    public init(path: String, fields: [String: String], select: RecordSelection? = nil, defaults: [String: String] = [:]) {
         self.path = path
         self.fields = fields
+        self.select = select
+        self.defaults = defaults
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
         path = try container.decode(String.self, forKey: TagKey("path"))
+        select = try container.decodeIfPresent(RecordSelection.self, forKey: TagKey("select"))
+        defaults = try container.decodeIfPresent([String: String].self, forKey: TagKey("defaults")) ?? [:]
         var fields: [String: String] = [:]
-        for key in container.allKeys where key.stringValue != "path" {
+        for key in container.allKeys where !["path", "select", "defaults"].contains(key.stringValue) {
             fields[key.stringValue] = try container.decode(String.self, forKey: key)
         }
         self.fields = fields
@@ -100,6 +106,8 @@ public struct JSONFileCredential: Sendable, Equatable, Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: TagKey.self)
         try container.encode(path, forKey: TagKey("path"))
+        try container.encodeIfPresent(select, forKey: TagKey("select"))
+        if !defaults.isEmpty { try container.encode(defaults, forKey: TagKey("defaults")) }
         for (name, path) in fields {
             try container.encode(path, forKey: TagKey(name))
         }
@@ -111,6 +119,9 @@ public struct JSONFileCredential: Sendable, Equatable, Codable {
 public struct OAuth2Refresh: Sendable, Equatable, Codable {
     public let tokenURL: String
     public let clientId: String
+    public let tokenPath: String?
+    public let missingRefreshError: ErrorRef?
+    public let retryFailure: ErrorRef?
     /// Refresh when the credential's `refreshedAt` is older than this many seconds.
     public let every: TimeInterval?
     /// Refresh once, and fetch once more, when the fetch answers one of these.
@@ -136,16 +147,19 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
         public enum Unit: String, Sendable, Equatable, Codable {
             case seconds
             case milliseconds
+            case iso8601
         }
 
         public let expiresAt: String
         public let unit: Unit
         public let skew: TimeInterval
+        public let missingIsDue: Bool
 
-        public init(expiresAt: String = "expiresAt", unit: Unit = .seconds, skew: TimeInterval = 0) {
+        public init(expiresAt: String = "expiresAt", unit: Unit = .seconds, skew: TimeInterval = 0, missingIsDue: Bool = true) {
             self.expiresAt = expiresAt
             self.unit = unit
             self.skew = skew
+            self.missingIsDue = missingIsDue
         }
 
         public init(from decoder: Decoder) throws {
@@ -153,6 +167,7 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
             expiresAt = try container.decodeIfPresent(String.self, forKey: .expiresAt) ?? "expiresAt"
             unit = try container.decodeIfPresent(Unit.self, forKey: .unit) ?? .seconds
             skew = try container.decodeIfPresent(TimeInterval.self, forKey: .skew) ?? 0
+            missingIsDue = try container.decodeIfPresent(Bool.self, forKey: .missingIsDue) ?? true
         }
     }
 
@@ -165,7 +180,10 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
         hint: String? = nil,
         bodyFormat: BodyFormat = .form,
         scope: String? = nil,
-        dueWhen: Expiry? = nil
+        dueWhen: Expiry? = nil,
+        tokenPath: String? = nil,
+        missingRefreshError: ErrorRef? = nil,
+        retryFailure: ErrorRef? = nil
     ) {
         self.tokenURL = tokenURL
         self.clientId = clientId
@@ -176,6 +194,9 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
         self.bodyFormat = bodyFormat
         self.scope = scope
         self.dueWhen = dueWhen
+        self.tokenPath = tokenPath
+        self.missingRefreshError = missingRefreshError
+        self.retryFailure = retryFailure
     }
 
     public init(from decoder: Decoder) throws {
@@ -189,6 +210,9 @@ public struct OAuth2Refresh: Sendable, Equatable, Codable {
         bodyFormat = try container.decodeIfPresent(BodyFormat.self, forKey: .bodyFormat) ?? .form
         scope = try container.decodeIfPresent(String.self, forKey: .scope)
         dueWhen = try container.decodeIfPresent(Expiry.self, forKey: .dueWhen)
+        tokenPath = try container.decodeIfPresent(String.self, forKey: .tokenPath)
+        missingRefreshError = try container.decodeIfPresent(ErrorRef.self, forKey: .missingRefreshError)
+        retryFailure = try container.decodeIfPresent(ErrorRef.self, forKey: .retryFailure)
     }
 }
 
@@ -268,4 +292,14 @@ extension CredentialLookup {
         case .environment, .jsonFile, .keychain, .setting: nil
         }
     }
+}
+
+/// Select one credential record from a dictionary, preserving its exact key
+/// for refresh writes. Preference names refer to the mapped credential fields.
+public struct RecordSelection: Sendable, Equatable, Codable {
+    public let records: String
+    public let preferPresent: [String]
+    public let newest: String?
+    public let missingNewestIsFuture: Bool
+    public let keyAs: String?
 }

@@ -96,4 +96,14 @@ struct AccountsCardTextTests {
         #expect(text.reauthHelp(for: provider.accounts[1]) == nil)
         #expect(text.reauthHelp(for: provider.accounts[2]) == #"Sign in again yourself: CODEX_HOME=/Users/me/codex-b codex -c 'cli_auth_credentials_store="file"' login — then refresh."#)
     }
+    @Test func `a path form keeps its files and asks for CLI sign-in rather than a new key`() throws {
+        let json = #"{"profile":{"id":"example","name":"Example"},"cli":"example","defaultDataSource":"file","dataSources":[{"kind":"file","fetch":{"file":{"path":"/tmp/example.json"}},"mapping":{"json":{"quotas":[]}}}],"accounts":{"form":[{"id":"home","label":"Home Folder","absolutePath":true}],"patch":{}}}"#
+        let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL:FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
+        let account = ProviderAccountConfig(accountId:"work",label:"Work",probeConfig:["home":"/tmp/work profile"],madeBy:.form)
+        let provider = Providers.make(try ProviderDefinition.parse(Data(json.utf8)),settings:settings,accounts:[account])
+        let text = AccountsCardText(provider:provider)
+        #expect(text.removeMessage(for:provider.accounts[1]) == "Removes Work from ClaudeBar. Its login and folder stay where they are.")
+        #expect(text.reauthHelp(for:provider.accounts[1]) == "Sign in again in /tmp/work profile with your CLI, then refresh.")
+    }
+
 }

@@ -73,6 +73,8 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         /// …or by filling in the account's own settings — an API key, a
         /// region. A secret field is kept in the vault, under the account.
         public let form: [Field]
+        public let defaultLoginDescription: String?
+        public let defaultReauthHelp: String?
 
         /// One setting *Add Account*'s form asks for.
         public struct Field: Sendable, Equatable, Codable {
@@ -81,12 +83,14 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             public let secret: Bool
             /// The only values it takes, when it is a choice.
             public let choices: [String]?
+            public let absolutePath: Bool
 
-            public init(id: String, label: String, secret: Bool = false, choices: [String]? = nil) {
+            public init(id: String, label: String, secret: Bool = false, choices: [String]? = nil, absolutePath: Bool = false) {
                 self.id = id
                 self.label = label
                 self.secret = secret
                 self.choices = choices
+                self.absolutePath = absolutePath
             }
 
             public init(from decoder: Decoder) throws {
@@ -95,6 +99,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 label = try container.decode(String.self, forKey: .label)
                 secret = try container.decodeIfPresent(Bool.self, forKey: .secret) ?? false
                 choices = try container.decodeIfPresent([String].self, forKey: .choices)
+                absolutePath = try container.decodeIfPresent(Bool.self, forKey: .absolutePath) ?? false
             }
         }
         /// By data source kind, what an added login changes — its own folder,
@@ -187,7 +192,9 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             [signIn.map { _ in .signIn }, folder.map { _ in .folder }, form.isEmpty ? nil : .form].compactMap { $0 }
         }
 
-        public init(folder: Folder? = nil, signIn: SignInCall? = nil, form: [Field] = [], patch: [String: JSONValue] = [:]) {
+        public init(folder: Folder? = nil, signIn: SignInCall? = nil, form: [Field] = [], defaultLoginDescription: String? = nil, defaultReauthHelp: String? = nil, patch: [String: JSONValue] = [:]) {
+            self.defaultLoginDescription = defaultLoginDescription
+            self.defaultReauthHelp = defaultReauthHelp
             self.signIn = signIn
             self.form = form
             self.folder = folder
@@ -196,6 +203,8 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
 
         public init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
+            defaultLoginDescription = try container.decodeIfPresent(String.self, forKey: .defaultLoginDescription)
+            defaultReauthHelp = try container.decodeIfPresent(String.self, forKey: .defaultReauthHelp)
             folder = try container.decodeIfPresent(Folder.self, forKey: .folder)
             signIn = try container.decodeIfPresent(SignInCall.self, forKey: .signIn)
             form = try container.decodeIfPresent([Field].self, forKey: .form) ?? []
@@ -311,6 +320,8 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 signIn: SignInCall(cli: binary, args: signIn.args, homeVariable: signIn.homeVariable,
                                    unset: signIn.unset, timeout: signIn.timeout, alsoAt: signIn.alsoAt),
                 form: accounts?.form ?? [],
+                defaultLoginDescription: accounts?.defaultLoginDescription,
+                defaultReauthHelp: accounts?.defaultReauthHelp,
                 patch: accounts?.patch ?? [:]
             )
         }

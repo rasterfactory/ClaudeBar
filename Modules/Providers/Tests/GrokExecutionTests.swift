@@ -1,11 +1,25 @@
 import Testing
 import Foundation
 import Mockable
-@testable import Infrastructure
-@testable import Domain
+import Providers
+import DataSources
+import Quotas
 
-@Suite("GrokUsageProbe Tests")
-struct GrokUsageProbeTests {
+@MainActor @Suite("Grok definition execution")
+struct GrokExecutionTests {
+
+    private func make(home:URL,network:any NetworkClient = MockNetworkClient()) throws -> Account {
+        let provider=Provider(definition:try Providers.builtIn("grok"),settings:InMemoryProviderSettings(),makeDataSource:{source,_ in
+            DataSources.make(source,providerId:"grok",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,environment:{_ in nil},homeDirectory:home,now:{Date()})
+        })
+        return provider.defaultAccount
+    }
+    private func saved(_ key:String,in home:URL) throws -> String? {
+        let data=try Data(contentsOf:home.appendingPathComponent(".grok/auth.json"))
+        let json=try JSONSerialization.jsonObject(with:data) as? [String:[String:Any]]
+        return json?["https://auth.x.ai::client-123"]?[key] as? String
+    }
+
 
     // MARK: - Test Helpers
 
@@ -42,7 +56,7 @@ struct GrokUsageProbeTests {
         try data.write(to: grokDir.appendingPathComponent("auth.json"))
     }
 
-    private static let billingJSON = """
+    private nonisolated static let billingJSON = """
     {
       "config": {
         "currentPeriod": {
@@ -58,7 +72,7 @@ struct GrokUsageProbeTests {
     }
     """.data(using: .utf8)!
 
-    private func httpResponse(_ statusCode: Int) -> HTTPURLResponse {
+    private nonisolated func httpResponse(_ statusCode: Int) -> HTTPURLResponse {
         HTTPURLResponse(
             url: URL(string: "https://cli-chat-proxy.grok.com/v1/billing")!,
             statusCode: statusCode,
@@ -76,8 +90,7 @@ struct GrokUsageProbeTests {
 
         try createAuthFile(at: tempDir)
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader)
+        let probe = try make(home:tempDir)
 
         #expect(await probe.isAvailable() == true)
     }
@@ -87,8 +100,7 @@ struct GrokUsageProbeTests {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader)
+        let probe = try make(home:tempDir)
 
         #expect(await probe.isAvailable() == false)
     }
@@ -100,11 +112,10 @@ struct GrokUsageProbeTests {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader)
+        let probe = try make(home:tempDir)
 
         await #expect(throws: UsageError.authenticationRequired) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -118,10 +129,9 @@ struct GrokUsageProbeTests {
         let mockNetwork = MockNetworkClient()
         given(mockNetwork).request(.any).willReturn((Self.billingJSON, httpResponse(200)))
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        let probe = try make(home:tempDir,network:mockNetwork)
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         #expect(snapshot.providerId == "grok")
         #expect(snapshot.accountEmail == "user@example.com")
@@ -129,8 +139,8 @@ struct GrokUsageProbeTests {
         #expect(snapshot.quota(for: .modelSpecific("Build"))?.percentRemaining == 16.0)
     }
 
-    @Test
-    func `probe refreshes token on 401 and retries`() async throws {
+    @Test(arguments: [401,403])
+    func `probe refreshes rejected tokens and retries`(_ rejectedStatus: Int) async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -141,7 +151,7 @@ struct GrokUsageProbeTests {
         {"access_token": "fresh-token", "refresh_token": "fresh-refresh-token", "expires_in": 3600}
         """.data(using: .utf8)!
 
-        given(mockNetwork).request(.any).willProduce { request in
+        given(mockNetwork).request(.any).willProduce { @Sendable request in
             let url = request.url?.absoluteString ?? ""
             if url.contains("oauth2/token") {
                 return (refreshResponse, self.httpResponse(200))
@@ -150,18 +160,17 @@ struct GrokUsageProbeTests {
             if token.contains("fresh-token") {
                 return (Self.billingJSON, self.httpResponse(200))
             }
-            return (Data(), self.httpResponse(401))
+            return (Data(), self.httpResponse(rejectedStatus))
         }
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        let probe = try make(home:tempDir,network:mockNetwork)
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         #expect(snapshot.quota(for: .weekly)?.percentRemaining == 4.0)
         // The refreshed token was written back for the next probe
-        #expect(loader.loadCredentials()?.accessToken == "fresh-token")
-        #expect(loader.loadCredentials()?.refreshToken == "fresh-refresh-token")
+        #expect(try saved("key",in:tempDir) == "fresh-token")
+        #expect(try saved("refresh_token",in:tempDir) == "fresh-refresh-token")
     }
 
     @Test
@@ -176,7 +185,7 @@ struct GrokUsageProbeTests {
         {"access_token": "fresh-token", "expires_in": 3600}
         """.data(using: .utf8)!
 
-        given(mockNetwork).request(.any).willProduce { request in
+        given(mockNetwork).request(.any).willProduce { @Sendable request in
             let url = request.url?.absoluteString ?? ""
             if url.contains("oauth2/token") {
                 return (refreshResponse, self.httpResponse(200))
@@ -184,13 +193,12 @@ struct GrokUsageProbeTests {
             return (Self.billingJSON, self.httpResponse(200))
         }
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        let probe = try make(home:tempDir,network:mockNetwork)
 
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe.refresh()
 
         #expect(snapshot.quotas.count == 2)
-        #expect(loader.loadCredentials()?.accessToken == "fresh-token")
+        #expect(try saved("key",in:tempDir) == "fresh-token")
     }
 
     @Test
@@ -207,11 +215,10 @@ struct GrokUsageProbeTests {
         """.data(using: .utf8)!
         given(mockNetwork).request(.any).willReturn((errorResponse, httpResponse(400)))
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        let probe = try make(home:tempDir,network:mockNetwork)
 
         await #expect(throws: UsageError.sessionExpired()) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -227,7 +234,7 @@ struct GrokUsageProbeTests {
         {"access_token": "fresh-token", "expires_in": 3600}
         """.data(using: .utf8)!
 
-        given(mockNetwork).request(.any).willProduce { request in
+        given(mockNetwork).request(.any).willProduce { @Sendable request in
             let url = request.url?.absoluteString ?? ""
             if url.contains("oauth2/token") {
                 return (refreshResponse, self.httpResponse(200))
@@ -235,11 +242,10 @@ struct GrokUsageProbeTests {
             return (Data(), self.httpResponse(401))
         }
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        let probe = try make(home:tempDir,network:mockNetwork)
 
         await #expect(throws: UsageError.sessionExpired()) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -253,11 +259,10 @@ struct GrokUsageProbeTests {
         let mockNetwork = MockNetworkClient()
         given(mockNetwork).request(.any).willThrow(URLError(.notConnectedToInternet))
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        let probe = try make(home:tempDir,network:mockNetwork)
 
         await #expect(throws: UsageError.self) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
 
@@ -271,11 +276,82 @@ struct GrokUsageProbeTests {
         let mockNetwork = MockNetworkClient()
         given(mockNetwork).request(.any).willReturn((Data(), httpResponse(500)))
 
-        let loader = GrokCredentialLoader(homeDirectory: tempDir.path)
-        let probe = GrokUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        let probe = try make(home:tempDir,network:mockNetwork)
 
         await #expect(throws: UsageError.executionFailed("HTTP error: 500")) {
-            try await probe.probe()
+            try await probe.refresh()
         }
     }
+    @Test func `independent auth folders never borrow the default login and keep their names`() async throws {
+        let personal = try makeTemporaryDirectory(), work = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at:personal); try? FileManager.default.removeItem(at:work) }
+        try createAuthFile(at:personal,accessToken:"personal-token")
+        try createAuthFile(at:work,accessToken:"work-token")
+        let network=MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            let token=request.value(forHTTPHeaderField:"Authorization")
+            #expect(token == "Bearer personal-token" || token == "Bearer work-token")
+            let used=token == "Bearer personal-token" ? 10 : 60
+            return (Data("{\"creditUsagePercent\":\(used)}".utf8),self.httpResponse(200))
+        }
+        let definition=try Providers.builtIn("grok"), settings=InMemoryProviderSettings()
+        let factory: @MainActor () -> Provider = {
+            Provider(definition:definition,settings:settings,accounts:settings.accounts(forProvider:"grok"),makeDataSource:{source,_ in
+                DataSources.make(source,providerId:"grok",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,environment:{_ in nil},homeDirectory:personal,now:{Date()})
+            })
+        }
+        let provider=factory()
+        #expect(provider.defaultAccount.displayName == "Grok")
+        #expect(throws:UsageError.self) { try provider.addAccount(filling:["directory":"relative/path"]) }
+        let account=try provider.addAccount(filling:["directory":work.appendingPathComponent(".grok").path])
+        provider.rename(account,to:"Work")
+        #expect((try await provider.defaultAccount.refresh()).quotas[0].percentRemaining == 90)
+        #expect((try await account.refresh()).quotas[0].percentRemaining == 40)
+        let restored=factory(), restoredWork=try #require(restored.accounts.first {$0.id == account.id})
+        #expect(restoredWork.displayName == "Work")
+        #expect((try await restoredWork.refresh()).quotas[0].percentRemaining == 40)
+        try FileManager.default.removeItem(at:work.appendingPathComponent(".grok/auth.json"))
+        await #expect(throws:UsageError.authenticationRequired) { try await restoredWork.refresh() }
+        #expect((try await restored.defaultAccount.refresh()).quotas[0].percentRemaining == 90)
+        restored.remove(restoredWork)
+        #expect(FileManager.default.fileExists(atPath:work.path))
+        #expect(settings.accounts(forProvider:"grok").isEmpty)
+    }
+
+    @Test func `refresh uses the selected record issuer and optional client and retains an omitted refresh token`() async throws {
+        let root=try makeTemporaryDirectory()
+        defer {try? FileManager.default.removeItem(at:root)}
+        try createAuthFile(at:root,accessToken:"old",refreshToken:"refresh&a+b",expiresAt:"2020-01-01T00:00:00Z")
+        let file=root.appendingPathComponent(".grok/auth.json")
+        var document=try #require(try JSONSerialization.jsonObject(with:Data(contentsOf:file)) as? [String:[String:Any]])
+        document["https://auth.x.ai::client-123"]?["oidc_issuer"]="https://tenant.test/base/"
+        document["https://auth.x.ai::client-123"]?["oidc_client_id"]=nil
+        try JSONSerialization.data(withJSONObject:document).write(to:file)
+        let network=MockNetworkClient()
+        given(network).request(.any).willProduce { @Sendable request in
+            if request.httpMethod == "POST" {
+                #expect(request.url?.absoluteString == "https://tenant.test/base/oauth2/token")
+                #expect(request.value(forHTTPHeaderField:"Content-Type") == "application/x-www-form-urlencoded")
+                let body=String(decoding:request.httpBody ?? Data(),as:UTF8.self)
+                #expect(body.contains("refresh_token=refresh%26a%2Bb"))
+                #expect(!body.contains("client_id="))
+                return (Data(#"{"access_token":"fresh","refresh_token":"","expires_in":3600}"#.utf8),self.httpResponse(200))
+            }
+            #expect(request.value(forHTTPHeaderField:"Authorization") == "Bearer fresh")
+            return (Self.billingJSON,self.httpResponse(200))
+        }
+        _ = try await make(home:root,network:network).refresh()
+        #expect(try saved("key",in:root) == "fresh")
+        #expect(try saved("refresh_token",in:root) == "refresh&a+b")
+    }
+    @Test func `an API login without a refresh token gives the sign-in hint when rejected`() async throws {
+        let root=try makeTemporaryDirectory()
+        defer {try? FileManager.default.removeItem(at:root)}
+        try createAuthFile(at:root,refreshToken:nil)
+        let network=MockNetworkClient()
+        given(network).request(.any).willReturn((Data(),httpResponse(401)))
+        let account=try make(home:root,network:network)
+        await #expect(throws:UsageError.sessionExpired(hint:"Run `grok login` in terminal to log in again.")) {try await account.refresh()}
+    }
+
 }

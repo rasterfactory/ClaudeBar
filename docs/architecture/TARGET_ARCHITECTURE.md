@@ -396,6 +396,11 @@ vendor type:
 | today's usage and guest passes | `UsageHistory` beside the providers (read with the popover open, never in the background; keyed by the login whose logs it reads) and the `GuestPasses` capability |
 | Claude logins in their own config folders | `accounts.folder` with `email` and `accountId.field` as an `IdentityField` (`$context.account.email`), `derived` values (the Keychain service, from a sha256 of the folder), `identity` read from a context file; today's usage and guest passes stay with the default login |
 
+| Dictionary login files | `jsonFile.select` selects by mapped-field presence and expiry and writes back into the exact selected record; defaults are request companions |
+| OAuth issuer/client and ISO expiry | Templates in `oauth2.tokenURL` and `clientId`, optional `tokenPath`, ISO-8601 `dueWhen`, and configurable missing-token and retry errors |
+| Separate signed-in folders | Absolute-path account form fields and per-account credential paths, with recovery/removal text that leaves external login files intact |
+| HTTP response contracts | Optional `acceptedStatuses` and error maps preserve status handling and OAuth retry |
+
 ## 9 · Open
 
 - **The mapping language's ceiling.** Slices 1, 2 and 5 will find what it must

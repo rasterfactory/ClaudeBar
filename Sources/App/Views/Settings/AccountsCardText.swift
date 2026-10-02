@@ -18,7 +18,7 @@ struct AccountsCardText {
     }
 
     var defaultLoginDescription: String {
-        provider.definition.cli == nil ? "Default account" : "Your \(provider.name) CLI's own login"
+        provider.definition.accounts?.defaultLoginDescription ?? (provider.definition.cli == nil ? "Default account" : "Your \(provider.name) CLI's own login")
     }
 
     /// *Add Account*'s choices — what the definition says, easiest first.
@@ -42,7 +42,7 @@ struct AccountsCardText {
     }
 
     func removeMessage(for account: Account) -> String {
-        if account.madeBy == .form {
+        if account.madeBy == .form && fields.contains(where: \.secret) {
             return "Removes \(account.displayName) from ClaudeBar and deletes its saved keys."
         }
         if account.folder?.goesWithAccount == true {
@@ -60,7 +60,11 @@ struct AccountsCardText {
     /// `nil` when the card can sign in again itself — a folder ClaudeBar
     /// made; otherwise how the person does it in their own folder.
     func reauthHelp(for account: Account) -> String? {
+        if account.isDefault, let help = provider.definition.accounts?.defaultReauthHelp { return help }
         if account.madeBy == .form {
+            if let field = fields.first(where: \.absolutePath), let path = account.values[field.id] {
+                return "Sign in again in \(path) with your CLI, then refresh."
+            }
             return "Remove this account and add it again with a valid key."
         }
         if account.isDefault, provider.definition.cli == nil {

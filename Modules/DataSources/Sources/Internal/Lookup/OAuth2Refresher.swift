@@ -10,13 +10,21 @@ struct OAuth2Refresher: CredentialRefreshing {
     let now: @Sendable () -> Date
 
     var retryStatuses: [Int] { refresh.onStatus }
+    var retryFailure: UsageError? { refresh.retryFailure?.usageError }
 
     /// Never without a refresh token: there is nothing to trade.
     func isDue(_ credential: Credential) -> Bool {
         guard credential["refreshToken"] != nil else { return false }
         if let expiry = refresh.dueWhen {
-            guard let raw = credential[expiry.expiresAt], let value = Double(raw) else { return true }
-            let expiresAt = expiry.unit == .milliseconds ? value / 1000 : value
+            guard let raw = credential[expiry.expiresAt] else { return expiry.missingIsDue }
+            let expiresAt: TimeInterval
+            if expiry.unit == .iso8601 {
+                guard let date = Self.parseDate(raw) else { return expiry.missingIsDue }
+                expiresAt = date.timeIntervalSince1970
+            } else {
+                guard let value = Double(raw) else { return expiry.missingIsDue }
+                expiresAt = expiry.unit == .milliseconds ? value / 1000 : value
+            }
             return now().timeIntervalSince1970 + expiry.skew >= expiresAt
         }
         guard let every = refresh.every else { return false }
@@ -25,9 +33,12 @@ struct OAuth2Refresher: CredentialRefreshing {
     }
 
     func refresh(_ credential: Credential) async throws -> Credential {
-        guard let refreshToken = credential["refreshToken"], let url = URL(string: refresh.tokenURL) else {
-            throw UsageError.authenticationRequired
+        guard let refreshToken = credential["refreshToken"] else {
+            throw refresh.missingRefreshError?.usageError ?? UsageError.authenticationRequired
         }
+        guard var urlText = Template.fill(refresh.tokenURL, with: credential) else { throw UsageError.executionFailed("Invalid token URL") }
+        if let path = refresh.tokenPath { urlText = urlText.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/" + path }
+        guard let url = URL(string: urlText) else { throw UsageError.executionFailed("Invalid token URL") }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -35,8 +46,8 @@ struct OAuth2Refresher: CredentialRefreshing {
         var fields = [
             ("grant_type", "refresh_token"),
             ("refresh_token", refreshToken),
-            ("client_id", refresh.clientId),
         ]
+        if let clientId = Template.fill(refresh.clientId, with: credential) { fields.append(("client_id", clientId)) }
         if let scope = refresh.scope { fields.append(("scope", scope)) }
         switch refresh.bodyFormat {
         case .form:
@@ -68,7 +79,7 @@ struct OAuth2Refresher: CredentialRefreshing {
 
         var renewed = credential
         renewed["token"] = token
-        if let newRefreshToken = body["refresh_token"] as? String {
+        if let newRefreshToken = body["refresh_token"] as? String, !newRefreshToken.isEmpty {
             renewed["refreshToken"] = newRefreshToken
         }
         if let idToken = body["id_token"] as? String {
@@ -76,7 +87,10 @@ struct OAuth2Refresher: CredentialRefreshing {
         }
         if let expiry = refresh.dueWhen, let expiresIn = JSONPath.number(body["expires_in"]) {
             let expiresAt = now().timeIntervalSince1970 + expiresIn
-            renewed[expiry.expiresAt] = String(Int64(expiry.unit == .milliseconds ? expiresAt * 1000 : expiresAt))
+            if expiry.unit == .iso8601 {
+                let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                renewed[expiry.expiresAt] = formatter.string(from: Date(timeIntervalSince1970: expiresAt))
+            } else { renewed[expiry.expiresAt] = String(Int64(expiry.unit == .milliseconds ? expiresAt * 1000 : expiresAt)) }
         }
         renewed["refreshedAt"] = ISO8601DateFormatter().string(from: now())
         AppLog.probes.info("Token refreshed")

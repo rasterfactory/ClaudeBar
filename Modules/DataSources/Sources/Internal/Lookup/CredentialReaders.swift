@@ -27,20 +27,33 @@ struct JSONFileReader: CredentialFinding {
 
     func find() throws -> FoundCredential? {
         guard let document = readDocument() else { return nil }
-        let values = CredentialDocument.values(file.fields, in: document)
+        let selected = selectedRecord(in: document)
+        guard let selected else { return nil }
+        var values = file.defaults.merging(CredentialDocument.values(file.fields, in: selected.document)) { _, value in value }
+        if let keyAs = file.select?.keyAs, let key = selected.key { values[keyAs] = key }
         guard values["token"] != nil else { return nil }
         let reader = self
-        return FoundCredential(credential: Credential(values), save: { reader.write($0) })
+        let selectedKey = selected.key
+        return FoundCredential(credential: Credential(values), save: { reader.write($0, selectedKey: selectedKey) })
     }
 
     /// The fields without requiring a token — what a context file supplies.
     func fields() -> [String: String] {
-        readDocument().map { CredentialDocument.values(file.fields, in: $0) } ?? [:]
+        guard let document = readDocument(), let selected = selectedRecord(in: document) else { return [:] }
+        return file.defaults.merging(CredentialDocument.values(file.fields, in: selected.document)) { _, value in value }
     }
 
-    func write(_ credential: Credential) {
+    func write(_ credential: Credential, selectedKey: String? = nil) {
         guard let document = readDocument() else { return }
-        let updated = CredentialDocument.updated(document, with: credential, fields: file.fields)
+        let persisted = Credential(credential.values.filter { file.defaults[$0.key] != $0.value })
+        let updated: [String: Any]
+        if let selection = file.select, let selectedKey,
+           var records = JSONScope(root: document).value(selection.records) as? [String: Any],
+           let entry = records[selectedKey] as? [String: Any] {
+            records[selectedKey] = CredentialDocument.updated(entry, with: persisted, fields: file.fields)
+            updated = selection.records == "$" ? records : JSONPath.set(records, at: selection.records, in: document)
+        } else if file.select != nil { return }
+        else { updated = CredentialDocument.updated(document, with: persisted, fields: file.fields) }
         do {
             let data = try JSONSerialization.data(withJSONObject: updated, options: [.prettyPrinted, .sortedKeys])
             try data.write(to: url, options: .atomic)
@@ -48,6 +61,30 @@ struct JSONFileReader: CredentialFinding {
         } catch {
             AppLog.credentials.error("Failed to save refreshed credentials to \(file.path): \(error.localizedDescription)")
         }
+    }
+
+    private func selectedRecord(in document: [String: Any]) -> (document: [String: Any], key: String?)? {
+        guard let selection = file.select else { return (document, nil) }
+        guard let records = JSONScope(root: document).value(selection.records) as? [String: Any] else { return nil }
+        let candidates = records.compactMap { key, value -> (String, [String: Any], [String: String])? in
+            guard let entry = value as? [String: Any] else { return nil }
+            guard let tokenPath = file.fields["token"], JSONScope(root: entry).value(tokenPath) is String else { return nil }
+            let values = CredentialDocument.values(file.fields, in: entry)
+            guard values["token"] != nil else { return nil }
+            return (key, entry, values)
+        }
+        let selected = candidates.max { lhs, rhs in
+            for name in selection.preferPresent {
+                let left = lhs.2[name] != nil, right = rhs.2[name] != nil
+                if left != right { return right }
+            }
+            guard let newest = selection.newest else { return lhs.0 < rhs.0 }
+            let absent = selection.missingNewestIsFuture ? Date.distantFuture : Date.distantPast
+            let left = lhs.2[newest].flatMap(OAuth2Refresher.parseDate) ?? absent
+            let right = rhs.2[newest].flatMap(OAuth2Refresher.parseDate) ?? absent
+            return left == right ? lhs.0 < rhs.0 : left < right
+        }
+        return selected.map { ($0.1, $0.0) }
     }
 
     private func readDocument() -> [String: Any]? {

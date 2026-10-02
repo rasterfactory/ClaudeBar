@@ -9,7 +9,7 @@ Shows what's left of your Amp credit: the **Free** allowance as a percentage (e.
 ## Setup
 
 1. Install the Amp CLI so `amp` is on your PATH, and sign in with it. Check that `amp usage` prints your balance in Terminal.
-2. Settings → Providers → Amp. It is on by default and has nothing to configure; it shows data as soon as `amp` is found.
+2. Settings → Providers → Amp. It is on by default. An existing CLI login needs no additional setup.
 
 ## Gotchas
 
@@ -22,3 +22,9 @@ Shows what's left of your Amp credit: the **Free** allowance as a percentage (e.
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+## Separate accounts
+
+Settings → Providers → Amp → Accounts → Add Account accepts an access token from [Amp Security Settings](https://ampcode.com/settings). Use an access token beginning with `sgamp_`, rather than a short-lived token copied from the CLI login file. Name each login Work or Personal. ClaudeBar keeps its token securely and passes it to that account's `amp usage` process as `AMP_API_KEY`; it never changes your active CLI account.
+
+The default account still uses `amp login` or your existing `AMP_API_KEY`. You can also save an access token for it in Accounts. An environment key takes precedence over the saved default key. Removing an added account does not sign out the CLI or revoke the token.

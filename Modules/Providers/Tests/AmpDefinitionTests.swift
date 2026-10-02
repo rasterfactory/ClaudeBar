@@ -1,10 +1,33 @@
 import Testing
 import Foundation
-@testable import Infrastructure
-@testable import Domain
+import Mockable
+import Providers
+import DataSources
+import Quotas
 
-@Suite
-struct AmpCodeUsageProbeParsingTests {
+@MainActor @Suite
+struct AmpDefinitionTests {
+
+    private func make(_ output: String, exitCode: Int32 = 0, executionError: UsageError? = nil, located: Bool = true, vault: MemoryVault = MemoryVault()) throws -> Provider {
+        let definition = try Providers.builtIn("ampcode")
+        let cli = MockCLIExecutor()
+        given(cli).locate(.any).willReturn(located ? "/usr/local/bin/amp" : nil)
+        given(cli).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { @Sendable _, args, input, timeout, directory, _ in
+                #expect(args == ["usage", "--no-color"])
+                #expect(timeout == 8)
+                #expect(input == nil)
+                #expect(directory == nil)
+                if let executionError { throw executionError }
+                return CLIResult(output: output, exitCode: exitCode)
+            }
+        return Provider(definition: definition, settings: InMemoryProviderSettings(), makeDataSource: { source, login in
+            DataSources.make(source, providerId: definition.id, cliExecutor: cli, network: MockNetworkClient(),
+                makeTransport: { _,_,_,_ in MockRPCTransport() }, scripts: Providers.builtInScripts,
+                secrets: vault.scoped(to: login), environment: { _ in nil }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
+        }, vault: vault)
+    }
+    private func parse(_ output: String) async throws -> UsageSnapshot { try await make(output).defaultAccount.refresh() }
 
     // MARK: - Sample Data
 
@@ -35,12 +58,12 @@ struct AmpCodeUsageProbeParsingTests {
     // MARK: - Parsing Tests
 
     @Test
-    func `parses free tier credits into percentage`() throws {
+    func `parses free tier credits into percentage`() async throws {
         // Given
         let text = Self.sampleOutput
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then - $17.59/$20 = 87.95%
         let freeQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Free") }
@@ -49,24 +72,24 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `extracts account email`() throws {
+    func `extracts account email`() async throws {
         // Given
         let text = Self.sampleOutput
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then
         #expect(snapshot.accountEmail == "user@example.com")
     }
 
     @Test
-    func `handles zero remaining with total`() throws {
+    func `handles zero remaining with total`() async throws {
         // Given
         let text = Self.sampleOutputZeroRemaining
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then - $0/$20 = 0%
         let freeQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Free") }
@@ -75,12 +98,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `parses both free and individual credits as separate quotas`() throws {
+    func `parses both free and individual credits as separate quotas`() async throws {
         // Given - both lines present with non-zero values
         let text = Self.sampleOutputWithIndividualCredits
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then - both quotas parsed
         #expect(snapshot.quotas.count == 2)
@@ -91,12 +114,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `individual credits has dollarRemaining set`() throws {
+    func `individual credits has dollarRemaining set`() async throws {
         // Given
         let text = Self.sampleOutputWithIndividualCredits
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then - $50 remaining with no cap
         let creditsQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Individual") }
@@ -105,12 +128,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `individual credits zero remaining has dollarRemaining zero`() throws {
+    func `individual credits zero remaining has dollarRemaining zero`() async throws {
         // Given - "$0 remaining" with no denominator
         let text = Self.sampleOutput
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then
         let creditsQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Individual") }
@@ -119,12 +142,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `free tier quota has dollar breakdown in resetText`() throws {
+    func `free tier quota has dollar breakdown in resetText`() async throws {
         // Given
         let text = Self.sampleOutput
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then - shows $remaining/$total like Copilot shows x/y requests
         let freeQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Free") }
@@ -132,12 +155,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `zero remaining quota has dollar breakdown in resetText`() throws {
+    func `zero remaining quota has dollar breakdown in resetText`() async throws {
         // Given
         let text = Self.sampleOutputZeroRemaining
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then
         let freeQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Free") }
@@ -145,12 +168,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `individual credits has no resetText`() throws {
+    func `individual credits has no resetText`() async throws {
         // Given - balance-only line has no total, so no breakdown
         let text = Self.sampleOutputWithIndividualCredits
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then
         let creditsQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Individual") }
@@ -158,12 +181,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `free tier quota has nil dollarRemaining`() throws {
+    func `free tier quota has nil dollarRemaining`() async throws {
         // Given
         let text = Self.sampleOutput
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then - percentage-based quota should not have dollarRemaining
         let freeQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Free") }
@@ -171,12 +194,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `individual credits only is valid snapshot`() throws {
+    func `individual credits only is valid snapshot`() async throws {
         // Given - no free tier line, only individual credits
         let text = Self.sampleOutputIndividualCreditsOnly
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then
         #expect(snapshot.quotas.count == 1)
@@ -186,12 +209,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `maps to correct QuotaType`() throws {
+    func `maps to correct QuotaType`() async throws {
         // Given
         let text = Self.sampleOutput
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then
         let freeQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("Free") }
@@ -203,12 +226,12 @@ struct AmpCodeUsageProbeParsingTests {
     }
 
     @Test
-    func `sets providerId correctly`() throws {
+    func `sets providerId correctly`() async throws {
         // Given
         let text = Self.sampleOutput
 
         // When
-        let snapshot = try AmpCodeUsageProbe.parse(text)
+        let snapshot = try await parse(text)
 
         // Then
         #expect(snapshot.providerId == "ampcode")
@@ -218,24 +241,51 @@ struct AmpCodeUsageProbeParsingTests {
     // MARK: - Error Handling Tests
 
     @Test
-    func `throws parseFailed on empty output`() throws {
+    func `throws parseFailed on empty output`() async throws {
         // Given
         let text = ""
 
         // When/Then
-        #expect(throws: UsageError.self) {
-            try AmpCodeUsageProbe.parse(text)
+        await #expect(throws: UsageError.self) {
+            try await parse(text)
         }
     }
 
     @Test
-    func `throws parseFailed on garbage output`() throws {
+    func `throws parseFailed on garbage output`() async throws {
         // Given
         let text = "some random text that is not amp usage output"
 
         // When/Then
-        #expect(throws: UsageError.self) {
-            try AmpCodeUsageProbe.parse(text)
+        await #expect(throws: UsageError.self) {
+            try await parse(text)
         }
     }
+    @Test func `missing binary keeps the legacy error`() async throws {
+        let account = try make(Self.sampleOutput, located: false).defaultAccount
+        #expect(!(await account.isAvailable()))
+        await #expect(throws: UsageError.cliNotFound("AmpCode")) { try await account.refresh() }
+    }
+    @Test func `nonzero exit cannot become usage`() async throws {
+        await #expect(throws: UsageError.executionFailed("amp usage exited with code 1")) {
+            try await make(Self.sampleOutput, exitCode: 1).defaultAccount.refresh()
+        }
+    }
+    @Test func `added account cannot use a default CLI login without its own key`() async throws {
+        let vault = MemoryVault()
+        let provider = try make(Self.sampleOutput, vault: vault)
+        let work = try provider.addAccount(filling: ["apiKey": "work-key"])
+        #expect(work.isEnabled)
+        #expect(try await work.refresh().quotas.count == 2)
+        vault.secrets["\(work.id).apiKey"] = nil
+        await #expect(throws: UsageError.authenticationRequired) { try await work.refresh() }
+        #expect(try await provider.defaultAccount.refresh().quotas.count == 2)
+    }
+
+    @Test func `launch failure preserves the CLI hint`() async throws {
+        await #expect(throws: UsageError.executionFailed("amp usage failed: timeout")) {
+            try await make(Self.sampleOutput, executionError: .executionFailed("timeout")).defaultAccount.refresh()
+        }
+    }
+
 }

@@ -205,34 +205,6 @@ extension BedrockProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - AmpCodeProvider Visual Identity
-
-extension AmpCodeProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "bolt.fill" }
-
-    public var iconAssetName: String { "AmpCodeIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // AmpCode orange color #F34E3F
-        scheme == .dark
-            ? Color(red: 0.95, green: 0.30, blue: 0.25)
-            : Color(red: 0.90, green: 0.25, blue: 0.20)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        let primaryColor = themeColor(for: scheme)
-        let secondaryColor = scheme == .dark
-            ? Color(red: 0.85, green: 0.20, blue: 0.15)
-            : Color(red: 0.80, green: 0.15, blue: 0.10)
-
-        return LinearGradient(
-            colors: [primaryColor, secondaryColor],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - KimiProvider Visual Identity
 
 extension KimiProvider: ProviderVisualIdentity {

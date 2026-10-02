@@ -377,6 +377,8 @@ Each slice is one PR, green, with no change a user can see unless it says so.
 
 ## 8.1 · What Claude added
 
+CLI environment additions may contain credential placeholders, resolved only for the process being launched. Missing placeholders fail authentication; they never inherit another account's login. Optional `cli.errors` names a missing program and supplies nonzero-exit or launch-failure messages. Without these rules, existing interactive terminal behavior stays unchanged. Mapping scripts can also return typed money balances, including an optional ceiling.
+
 Claude needed more than Codex, and each need became a generic piece, never a
 vendor type:
 

@@ -205,6 +205,14 @@ public struct CLICall: Sendable, Equatable, Codable {
     public let screen: Screen
     /// Run in one session instead of a fresh one per run (#132).
     public let session: Session?
+    /// Optional exit and launch errors; absent rules preserve terminal-screen behavior.
+    public let errors: Errors?
+
+    public struct Errors: Sendable, Equatable, Codable {
+        public let missing: String?
+        public let nonzero: String?
+        public let failed: String?
+    }
 
     public init(
         cli: String,
@@ -216,7 +224,8 @@ public struct CLICall: Sendable, Equatable, Codable {
         environment: Environment = Environment(),
         readyWhen: [ReadyMarker] = [],
         screen: Screen = .raw,
-        session: Session? = nil
+        session: Session? = nil,
+        errors: Errors? = nil
     ) {
         self.cli = cli
         self.args = args
@@ -228,6 +237,7 @@ public struct CLICall: Sendable, Equatable, Codable {
         self.readyWhen = readyWhen
         self.screen = screen
         self.session = session
+        self.errors = errors
     }
 
     public init(from decoder: Decoder) throws {
@@ -242,10 +252,11 @@ public struct CLICall: Sendable, Equatable, Codable {
         readyWhen = try container.decodeIfPresent([ReadyMarker].self, forKey: .readyWhen) ?? []
         screen = try container.decodeIfPresent(Screen.self, forKey: .screen) ?? .raw
         session = try container.decodeIfPresent(Session.self, forKey: .session)
+        errors = try container.decodeIfPresent(Errors.self, forKey: .errors)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case cli, args, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session
+        case cli, args, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session, errors
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -260,6 +271,7 @@ public struct CLICall: Sendable, Equatable, Codable {
         try container.encode(readyWhen, forKey: .readyWhen)
         try container.encode(screen, forKey: .screen)
         try container.encodeIfPresent(session, forKey: .session)
+        try container.encodeIfPresent(errors, forKey: .errors)
     }
 }
 

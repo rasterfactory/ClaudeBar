@@ -25,7 +25,8 @@ public enum DataSources {
         _ definition: DataSourceDefinition,
         providerId: String,
         scripts: @escaping ScriptSource = { _ in nil },
-        secrets: (any SecretStore)? = nil
+        secrets: (any SecretStore)? = nil,
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> DataSource {
         make(
             definition,
@@ -38,7 +39,7 @@ public enum DataSources {
             security: KeychainReader.system,
             scripts: scripts,
             secrets: secrets,
-            environment: { ProcessInfo.processInfo.environment[$0] },
+            environment: environment,
             homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
             now: { Date() }
         )

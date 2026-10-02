@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Amp accounts now use the shared account settings: add and name separate access tokens while keeping the current CLI login and credit displays. ([#341](https://github.com/tddworks/ClaudeBar/issues/341))
 - Claude's daily cost and token cards load much faster when you open the popover: ClaudeBar reads only the session log lines written since the last open, instead of re-reading every log from today and yesterday. ([#378](https://github.com/tddworks/ClaudeBar/pull/378))
 
 ---

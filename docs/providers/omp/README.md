@@ -12,7 +12,7 @@ Oh My Pi is a coding-agent harness that holds sign-ins for several upstream prov
 2. Check that `omp usage --json` prints your accounts in a terminal.
 3. Settings → Providers → Oh My Pi → make sure the switch is on (it is on by default).
 
-There are no Oh My Pi-specific settings. ClaudeBar reads only what `omp usage` reports; it never touches the upstream credentials.
+The default account needs no Oh My Pi-specific settings. ClaudeBar reads only what `omp usage` reports; it never touches the upstream credentials.
 
 ## Gotchas
 
@@ -25,3 +25,17 @@ There are no Oh My Pi-specific settings. ClaudeBar reads only what `omp usage` r
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · the dedicated Claude, Codex or Z.ai providers if you'd rather track one account directly
+
+## Additional accounts
+
+The default account keeps your CLI's current profile and environment. For another account or credential pool, sign in with Oh My Pi using a separate agent directory, then choose **Settings → Providers → Oh My Pi → Add Account → Enter Signed-in Agent Folder**. Enter its full absolute path and give it a short name such as Work or Personal.
+
+ClaudeBar explicitly selects the default profile with `PI_CODING_AGENT_DIR` pointing to that directory. Named profiles ignore that override, so an inherited `OMP_PROFILE` cannot choose another account. The command runs in the chosen directory with a separate HOME; inherited XDG paths, auth-broker routing and known provider credential variables are cleared. A missing directory fails without retrying the default login. Remove an account to stop monitoring it; its login and files remain in place.
+
+The directory must already contain its own signed-in credential pool. An empty directory is not a login. A pool may contain several upstream accounts, and the same account groups and no-usage notes are displayed within it. To sign in again, run the CLI against that same agent directory, then refresh.
+
+See [Oh My Pi's profile and directory rules](https://github.com/can1357/oh-my-pi/blob/main/docs/settings.md) for setup. This does not switch the accounts used by your other apps.
+
+## Definition
+
+`Modules/Providers/Resources/Providers/omp.json` declares command execution, appearance, the five-minute background refresh floor, and account profiles. `omp-usage.js` maps all report groups, quota meters, capped/uncapped spending and unmatched account notes. The shared engine retains decimal number tokens before money rounding; manual refresh remains uncached.

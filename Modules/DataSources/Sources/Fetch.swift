@@ -52,9 +52,25 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
 
 /// Where a CLI runs. `dedicated` is ClaudeBar's own trusted directory, so a
 /// CLI's folder-trust prompt never blocks a fetch.
-public enum WorkingDirectory: String, Sendable, Equatable, Codable {
-    /// ClaudeBar's own folder, so a CLI's folder-trust prompt never blocks it.
+public enum WorkingDirectory: Sendable, Equatable, Codable {
     case dedicated
+    case path(String)
+    private enum CodingKeys: String, CodingKey { case path }
+    public init(from decoder: Decoder) throws {
+        if let value = try? decoder.singleValueContainer().decode(String.self), value == "dedicated" {
+            self = .dedicated
+        } else {
+            self = .path(try decoder.container(keyedBy: CodingKeys.self).decode(String.self, forKey: .path))
+        }
+    }
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .dedicated:
+            var container = encoder.singleValueContainer(); try container.encode("dedicated")
+        case .path(let value):
+            var container = encoder.container(keyedBy: CodingKeys.self); try container.encode(value, forKey: .path)
+        }
+    }
 }
 
 /// Starts `cli args…`, sends the `handshake` in order, then `call`, and answers
@@ -205,6 +221,17 @@ public struct CLICall: Sendable, Equatable, Codable {
     public let screen: Screen
     /// Run in one session instead of a fresh one per run (#132).
     public let session: Session?
+    /// Optional exit and launch errors; absent rules preserve terminal-screen behavior.
+    public let errors: Errors?
+    /// Pipes for ordinary commands; terminal preserves the existing TUI behavior.
+    public let mode: Mode
+    public enum Mode: String, Sendable, Equatable, Codable { case terminal, pipes }
+
+    public struct Errors: Sendable, Equatable, Codable {
+        public let missing: String?
+        public let nonzero: String?
+        public let failed: String?
+    }
 
     public init(
         cli: String,
@@ -216,7 +243,9 @@ public struct CLICall: Sendable, Equatable, Codable {
         environment: Environment = Environment(),
         readyWhen: [ReadyMarker] = [],
         screen: Screen = .raw,
-        session: Session? = nil
+        session: Session? = nil,
+        errors: Errors? = nil,
+        mode: Mode = .terminal
     ) {
         self.cli = cli
         self.args = args
@@ -228,6 +257,8 @@ public struct CLICall: Sendable, Equatable, Codable {
         self.readyWhen = readyWhen
         self.screen = screen
         self.session = session
+        self.errors = errors
+        self.mode = mode
     }
 
     public init(from decoder: Decoder) throws {
@@ -242,10 +273,12 @@ public struct CLICall: Sendable, Equatable, Codable {
         readyWhen = try container.decodeIfPresent([ReadyMarker].self, forKey: .readyWhen) ?? []
         screen = try container.decodeIfPresent(Screen.self, forKey: .screen) ?? .raw
         session = try container.decodeIfPresent(Session.self, forKey: .session)
+        errors = try container.decodeIfPresent(Errors.self, forKey: .errors)
+        mode = try container.decodeIfPresent(Mode.self, forKey: .mode) ?? .terminal
     }
 
     private enum CodingKeys: String, CodingKey {
-        case cli, args, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session
+        case cli, args, input, timeout, workingDirectory, autoResponses, environment, readyWhen, screen, session, errors, mode
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -260,6 +293,8 @@ public struct CLICall: Sendable, Equatable, Codable {
         try container.encode(readyWhen, forKey: .readyWhen)
         try container.encode(screen, forKey: .screen)
         try container.encodeIfPresent(session, forKey: .session)
+        try container.encodeIfPresent(errors, forKey: .errors)
+        try container.encode(mode, forKey: .mode)
     }
 }
 

@@ -378,6 +378,10 @@ Each slice is one PR, green, with no change a user can see unless it says so.
 
 ## 8.1 · What Claude added
 
+Script reports can carry `group`, `compactTitle`, and `menuBarTitle` on quotas and `metrics` for observations that are not quotas. Interim `spend: {used, limit}` metadata preserves a server's authoritative reported percentage alongside exact dollars in the existing UI. It is not accepted on an uncapped balance. Pure `jsonDecimal(text)` and `decimalCents(value)` helpers retain original JSON monetary number tokens and round half away from zero without binary floating point. `backgroundRefreshSeconds` sets a generic provider-level background floor without caching or delaying manual refresh.
+
+`cli.mode: "pipes"` selects the reusable plain-process runner, preserving timeout/cancellation, combined stdout/stderr, working directory and PATH augmentation. The terminal remains the default. CLI credential environment placeholders and optional exit error rules use the same per-process isolation in either mode. Account form fields may require an absolute filesystem path (`absolutePath`) so a profile root cannot silently resolve against the default home.
+
 Claude needed more than Codex, and each need became a generic piece, never a
 vendor type:
 

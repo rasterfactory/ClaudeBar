@@ -55,6 +55,8 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
     /// The CLI a person would run (`codex`), when there is one.
     public let cli: String?
     public let enabledByDefault: Bool
+    /// Minimum spacing between background refreshes; manual refresh is unaffected.
+    public let backgroundRefreshSeconds: TimeInterval?
     public let dataSources: [DataSourceDefinition]
     public let defaultDataSource: String
     /// Logins added beside the default one, and how they differ.
@@ -81,12 +83,15 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             public let secret: Bool
             /// The only values it takes, when it is a choice.
             public let choices: [String]?
+            /// An account profile root must be an absolute filesystem path.
+            public let absolutePath: Bool
 
-            public init(id: String, label: String, secret: Bool = false, choices: [String]? = nil) {
+            public init(id: String, label: String, secret: Bool = false, choices: [String]? = nil, absolutePath: Bool = false) {
                 self.id = id
                 self.label = label
                 self.secret = secret
                 self.choices = choices
+                self.absolutePath = absolutePath
             }
 
             public init(from decoder: Decoder) throws {
@@ -95,6 +100,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 label = try container.decode(String.self, forKey: .label)
                 secret = try container.decodeIfPresent(Bool.self, forKey: .secret) ?? false
                 choices = try container.decodeIfPresent([String].self, forKey: .choices)
+                absolutePath = try container.decodeIfPresent(Bool.self, forKey: .absolutePath) ?? false
             }
         }
         /// By data source kind, what an added login changes — its own folder,
@@ -211,6 +217,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         profile: ProviderProfile,
         cli: String? = nil,
         enabledByDefault: Bool = true,
+        backgroundRefreshSeconds: TimeInterval? = nil,
         dataSources: [DataSourceDefinition],
         defaultDataSource: String,
         accounts: Accounts? = nil
@@ -218,6 +225,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         self.profile = profile
         self.cli = cli
         self.enabledByDefault = enabledByDefault
+        self.backgroundRefreshSeconds = backgroundRefreshSeconds
         self.dataSources = dataSources
         self.defaultDataSource = defaultDataSource
         self.accounts = accounts
@@ -228,13 +236,14 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         profile = try container.decode(ProviderProfile.self, forKey: .profile)
         cli = try container.decodeIfPresent(String.self, forKey: .cli)
         enabledByDefault = try container.decodeIfPresent(Bool.self, forKey: .enabledByDefault) ?? true
+        backgroundRefreshSeconds = try container.decodeIfPresent(TimeInterval.self, forKey: .backgroundRefreshSeconds)
         dataSources = try container.decode([DataSourceDefinition].self, forKey: .dataSources)
         defaultDataSource = try container.decode(String.self, forKey: .defaultDataSource)
         accounts = try container.decodeIfPresent(Accounts.self, forKey: .accounts)
     }
 
     enum CodingKeys: String, CodingKey {
-        case profile, cli, enabledByDefault, dataSources, defaultDataSource, accounts
+        case profile, cli, enabledByDefault, backgroundRefreshSeconds, dataSources, defaultDataSource, accounts
     }
 
     /// Decodes and checks the laws: at least one data source, kinds unique,
@@ -318,6 +327,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             profile: profile,
             cli: cli,
             enabledByDefault: enabledByDefault,
+            backgroundRefreshSeconds: backgroundRefreshSeconds,
             dataSources: sources,
             defaultDataSource: defaultDataSource,
             accounts: accounts

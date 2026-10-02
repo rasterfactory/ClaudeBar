@@ -1,0 +1,134 @@
+{
+  "profile": {
+    "id": "omp",
+    "name": "Oh My Pi",
+    "links": {
+      "dashboard": "https://omp.sh"
+    },
+    "look": {
+      "symbol": "terminal.fill",
+      "icon": "OmpIcon",
+      "color": {
+        "light": [
+          0.16,
+          0.62,
+          0.38
+        ],
+        "dark": [
+          0.3,
+          0.85,
+          0.55
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.1,
+          0.48,
+          0.3
+        ],
+        "dark": [
+          0.16,
+          0.62,
+          0.42
+        ]
+      }
+    }
+  },
+  "cli": "omp",
+  "enabledByDefault": true,
+  "backgroundRefreshSeconds": 300,
+  "defaultDataSource": "cli",
+  "dataSources": [
+    {
+      "kind": "cli",
+      "fetch": {
+        "cli": {
+          "cli": "omp",
+          "mode": "pipes",
+          "args": [
+            "usage",
+            "--json"
+          ],
+          "timeout": 30,
+          "errors": {
+            "missing": "omp",
+            "nonzero": "omp usage exited with code {{exitCode}}"
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "omp-usage.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "form": [
+      {
+        "id": "directory",
+        "label": "Signed-in Agent Folder",
+        "absolutePath": true
+      }
+    ],
+    "patch": {
+      "cli": {
+        "fetch": {
+          "cli": {
+            "workingDirectory": {
+              "path": "{{account.directory}}"
+            },
+            "environment": {
+              "set": {
+                "HOME": "{{account.directory}}",
+                "PI_CONFIG_DIR": ".omp",
+                "PI_CODING_AGENT_DIR": "{{account.directory}}",
+                "OMP_PROFILE": "default",
+                "PI_PROFILE": "default"
+              },
+              "unset": [
+                "OMP_CONFIG_DIR",
+                "OMP_CODING_AGENT_DIR",
+                "XDG_DATA_HOME",
+                "XDG_STATE_HOME",
+                "XDG_CACHE_HOME",
+                "OMP_AUTH_BROKER_URL",
+                "OMP_AUTH_BROKER_TOKEN",
+                "PI_AUTH_BROKER_URL",
+                "PI_AUTH_BROKER_TOKEN",
+                "ANTHROPIC_OAUTH_TOKEN",
+                "ANTHROPIC_API_KEY",
+                "OPENAI_CODEX_OAUTH_TOKEN",
+                "OPENAI_API_KEY",
+                "GEMINI_API_KEY",
+                "GOOGLE_API_KEY",
+                "GITHUB_TOKEN",
+                "GH_TOKEN",
+                "COPILOT_TOKEN",
+                "ZAI_API_KEY",
+                "ZHIPU_API_KEY",
+                "KIMI_API_KEY",
+                "MOONSHOT_API_KEY",
+                "MINIMAX_API_KEY",
+                "MINIMAX_CODE_API_KEY",
+                "MINIMAX_CODE_CN_API_KEY",
+                "OPENCODE_API_KEY",
+                "CURSOR_ACCESS_TOKEN",
+                "CURSOR_API_KEY",
+                "XAI_API_KEY",
+                "XAI_OAUTH_TOKEN",
+                "COMMAND_CODE_API_KEY",
+                "COMMANDCODE_API_KEY",
+                "AI_GATEWAY_API_KEY",
+                "VERCEL_AI_GATEWAY_API_KEY"
+              ]
+            }
+          }
+        },
+        "requiresFiles": [
+          "{{account.directory}}"
+        ]
+      }
+    }
+  }
+}

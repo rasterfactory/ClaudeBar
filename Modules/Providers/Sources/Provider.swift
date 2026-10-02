@@ -198,6 +198,9 @@ public final class Provider {
             if let choices = field.choices, !choices.contains(value) {
                 throw UsageError.executionFailed("Choose a \(field.label) from the list.")
             }
+            if field.absolutePath && !value.hasPrefix("/") {
+                throw UsageError.executionFailed("Enter an absolute path for \(field.label).")
+            }
             if field.secret { secrets[field.id] = value } else { values[field.id] = value }
         }
         guard secrets.isEmpty || vault != nil else {
@@ -205,13 +208,18 @@ public final class Provider {
         }
         let config = ProviderAccountConfig(accountId: UUID().uuidString.lowercased(), label: "", probeConfig: values, madeBy: .form)
         let lineupId = config.toProviderAccount(providerId: id).id
-        for (name, value) in secrets { vault?.save(value, name, provider: lineupId) }
+        for (key, value) in secrets {
+            vault?.save(value, key, provider: lineupId)
+            guard vault?.secret(key, provider: lineupId) == value else {
+                for name in secrets.keys { vault?.delete(name, provider: lineupId) }
+                throw UsageError.executionFailed("ClaudeBar couldn't keep this key securely. The account wasn't added.")
+            }
+        }
         guard let account = add(config) else {
             for name in secrets.keys { vault?.delete(name, provider: lineupId) }
             throw UsageError.executionFailed("This \(name) account can't be added.")
         }
-        // Supplying this login's key is an explicit opt-in, even when the
-        // product's unconfigured default login starts disabled.
+        // Adding an authenticated form login is an explicit opt-in.
         account.isEnabled = true
         return account
     }
@@ -381,7 +389,8 @@ public final class Provider {
     /// A data source that serves cached usage sets how often the background
     /// may ask (Claude's API: 15 minutes, #204).
     public var backgroundRefreshFloor: Duration? {
-        definition.dataSource(activeKind)?.cache.map { .seconds($0.ttl) }
+        let seconds = [definition.dataSource(activeKind)?.cache?.ttl, definition.backgroundRefreshSeconds].compactMap { $0 }.filter { $0.isFinite && $0 > 0 }.max()
+        return seconds.map { .seconds($0) }
     }
 
     // MARK: - Refresh — one login at a time
@@ -391,6 +400,8 @@ public final class Provider {
     public func isAvailable(_ account: Account) async -> Bool {
         guard let active = startingDataSource(for: account) else { return false }
         if await active.isReady() { return true }
+        if !active.hasKey, let kind = active.definition.fallbackOn["authenticationRequired"],
+           let handOff = dataSource(kind, for: account), await handOff.isReady() { return true }
         guard let fallback = enabledFallback(of: active, for: account) else { return false }
         return await fallback.isReady()
     }

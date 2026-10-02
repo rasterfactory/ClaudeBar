@@ -429,34 +429,6 @@ extension OpenCodeProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - OmpProvider Visual Identity
-
-extension OmpProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "terminal.fill" }
-
-    public var iconAssetName: String { "OmpIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Oh My Pi green
-        scheme == .dark
-            ? Color(red: 0.30, green: 0.85, blue: 0.55)
-            : Color(red: 0.16, green: 0.62, blue: 0.38)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.16, green: 0.62, blue: 0.42)
-                    : Color(red: 0.10, green: 0.48, blue: 0.30)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - ExtensionProvider Visual Identity
 
 extension ExtensionProvider: ProviderVisualIdentity {

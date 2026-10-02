@@ -136,6 +136,9 @@ struct ClaudeBarApp: App {
             return ProcessInfo.processInfo.environment[variable]
         })
 
+        let omp = Self.builtIn("omp", settings: settingsRepository,
+            accounts: settingsRepository.accounts(forProvider: "omp"))
+
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
@@ -186,10 +189,7 @@ struct ClaudeBarApp: App {
                 probe: OpenCodeAPIUsageProbe(fallback: OpenCodeUsageProbe()),
                 settingsRepository: settingsRepository
             ),
-            OmpProvider(
-                probe: OmpUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
+            omp.defaultAccount,
             GrokProvider(
                 probe: GrokUsageProbe(),
                 settingsRepository: settingsRepository
@@ -200,7 +200,7 @@ struct ClaudeBarApp: App {
             ),
         ])
         // Added logins follow the built-in lineup, as they always have.
-        for account in (claude.accounts + codex.accounts + deepseek.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + deepseek.accounts + omp.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

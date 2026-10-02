@@ -2,7 +2,7 @@
 
 Rules for AI coding agents (Claude Code, Codex, Cursor, …) in this repo. This is the only agent-instructions file; there is no `CLAUDE.md`. Everything else is one link away: [docs index](docs/README.md) · [architecture](docs/architecture/ARCHITECTURE.md) · [contributing](CONTRIBUTING.md) · [docs design](docs/documentation-design/README.md).
 
-ClaudeBar is a macOS menu bar app that shows AI coding quotas. It reads them from CLIs, APIs and local files for 20 built-in providers, registered in `ClaudeBarApp.init()`, plus user extensions from `~/.claudebar/extensions/`. The code is moving from three layers to modules ([MODULAR_DESIGN.md](docs/architecture/MODULAR_DESIGN.md)): Claude, Codex and Command Code are already JSON definitions in `Modules/Providers/Resources/Providers/`, run by one generic `Provider`; the other providers are still a folder each in `Sources/Domain/Provider/`.
+ClaudeBar is a macOS menu bar app that shows AI coding quotas. It reads them from CLIs, APIs and local files for 20 built-in providers, registered in `ClaudeBarApp.init()`, plus user extensions from `~/.claudebar/extensions/`. The code is moving from three layers to modules ([MODULAR_DESIGN.md](docs/architecture/MODULAR_DESIGN.md)): Claude, Codex, DeepSeek and Command Code are already JSON definitions in `Modules/Providers/Resources/Providers/`, run by one generic `Provider`; the other providers are still a folder each in `Sources/Domain/Provider/`.
 
 ## Build & test
 

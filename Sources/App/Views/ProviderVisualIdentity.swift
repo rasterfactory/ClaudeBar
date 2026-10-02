@@ -345,34 +345,6 @@ extension MiniMaxProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - DeepSeekProvider Visual Identity
-
-extension DeepSeekProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "d.square.fill" }
-
-    public var iconAssetName: String { "DeepSeekIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // DeepSeek brand blue
-        scheme == .dark
-            ? Color(red: 0.42, green: 0.52, blue: 1.0)
-            : Color(red: 0.23, green: 0.35, blue: 0.92)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.22, green: 0.28, blue: 0.85)
-                    : Color(red: 0.15, green: 0.20, blue: 0.75)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - VercelProvider Visual Identity
 
 extension VercelProvider: ProviderVisualIdentity {
@@ -613,10 +585,6 @@ enum ProviderVisualIdentityLookup {
             return scheme == .dark
                 ? Color(red: 0.91, green: 0.27, blue: 0.42)
                 : Color(red: 0.82, green: 0.20, blue: 0.35)
-        case "deepseek":
-            return scheme == .dark
-                ? Color(red: 0.42, green: 0.52, blue: 1.0)
-                : Color(red: 0.23, green: 0.35, blue: 0.92)
         case "cursor":
             return scheme == .dark
                 ? Color(red: 0.20, green: 0.78, blue: 0.82)
@@ -695,10 +663,6 @@ enum ProviderVisualIdentityLookup {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.96, green: 0.53, blue: 0.24)
                 : Color(red: 0.86, green: 0.43, blue: 0.14)
-        case "deepseek":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.22, green: 0.28, blue: 0.85)
-                : Color(red: 0.15, green: 0.20, blue: 0.75)
         case "cursor":
             secondaryColor = scheme == .dark
                 ? Color(red: 0.15, green: 0.55, blue: 0.75)
@@ -756,7 +720,6 @@ enum ProviderVisualIdentityLookup {
         case "kimi": return "KimiIcon"
         case "kiro": return "KiroIcon"
         case "minimax": return "MiniMaxIcon"
-        case "deepseek": return "DeepSeekIcon"
         case "cursor": return "CursorIcon"
         case "mistral": return "MistralIcon"
         case "opencode-go": return "OpenCodeIcon"
@@ -781,7 +744,6 @@ enum ProviderVisualIdentityLookup {
         case "kimi": return "Kimi"
         case "kiro": return "Kiro"
         case "minimax": return "MiniMax"
-        case "deepseek": return "DeepSeek"
         case "cursor": return "Cursor"
         case "mistral": return "Mistral"
         case "opencode-go": return "OpenCode Go"
@@ -806,7 +768,6 @@ enum ProviderVisualIdentityLookup {
         case "kimi": return "k.square.fill"
         case "kiro": return "wand.and.stars.inverse"
         case "minimax": return "waveform"
-        case "deepseek": return "d.square.fill"
         case "cursor": return "cursorarrow.rays"
         case "mistral": return "cat.fill"
         case "opencode-go": return "square.stack.3d.up.fill"

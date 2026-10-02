@@ -9,6 +9,7 @@ public enum Fetch: Sendable, Equatable {
     case httpFlow(HTTPFlow)
     case workflow(Workflow)
     case directory(DirectoryCall)
+    case cloudWatch(CloudWatchQuery)
     /// An HTTP request — the *API* choice.
     case http(HTTPRequest)
     /// Ordered JSON HTTP responses; later query values come from earlier responses.
@@ -458,7 +459,7 @@ extension CLICall {
 // MARK: - JSON
 
 extension Fetch: Codable {
-    private static let tags = ["http", "jsonRpc", "cli", "file", "commandPlan", "httpSequence", "httpFlow", "workflow", "directory"]
+    private static let tags = ["http", "jsonRpc", "cli", "file", "commandPlan", "httpSequence", "httpFlow", "workflow", "directory", "cloudWatch"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
@@ -467,6 +468,7 @@ extension Fetch: Codable {
         case "httpSequence": self = .httpSequence(try container.decode(HTTPSequence.self, forKey: TagKey("httpSequence")))
         case "workflow": self = .workflow(try container.decode(Workflow.self, forKey: TagKey("workflow")))
         case "directory": self = .directory(try container.decode(DirectoryCall.self, forKey: TagKey("directory")))
+        case "cloudWatch": self = .cloudWatch(try container.decode(CloudWatchQuery.self, forKey: TagKey("cloudWatch")))
         case "httpFlow": self = .httpFlow(try container.decode(HTTPFlow.self, forKey: TagKey("httpFlow")))
         case "http": self = .http(try container.decode(HTTPRequest.self, forKey: TagKey("http")))
         case "jsonRpc": self = .jsonRpc(try container.decode(JSONRPCCall.self, forKey: TagKey("jsonRpc")))
@@ -482,6 +484,7 @@ extension Fetch: Codable {
         case .httpSequence(let sequence): try container.encode(sequence, forKey: TagKey("httpSequence"))
         case .workflow(let flow): try container.encode(flow, forKey: TagKey("workflow"))
         case .directory(let call): try container.encode(call, forKey: TagKey("directory"))
+        case .cloudWatch(let query): try container.encode(query, forKey: TagKey("cloudWatch"))
         case .httpFlow(let flow): try container.encode(flow, forKey: TagKey("httpFlow"))
         case .http(let request): try container.encode(request, forKey: TagKey("http"))
         case .jsonRpc(let call): try container.encode(call, forKey: TagKey("jsonRpc"))

@@ -220,6 +220,25 @@ struct ScriptOutput: Decodable {
         }
     }
 
+    struct TokenSpend: Decodable {
+        let lines:[Line]
+        let region:String
+        let capturedAt:Double
+        let periodStart:Double
+        let periodEnd:Double
+        let dailyBudget:Money?
+        struct Line:Decodable {
+            let id:String;let name:String;let vendor:String
+            let inputPrice:Money;let outputPrice:Money
+            let inputTokens:Int;let outputTokens:Int;let invocations:Int
+        }
+        var summary:BedrockUsageSummary {
+            BedrockUsageSummary(modelUsages:lines.map {
+                BedrockModelUsage(model:BedrockModel(id:$0.id,displayName:$0.name,vendor:$0.vendor,inputPricePer1M:$0.inputPrice.value,outputPricePer1M:$0.outputPrice.value),invocations:$0.invocations,inputTokens:$0.inputTokens,outputTokens:$0.outputTokens)
+            },region:region,capturedAt:Date(timeIntervalSince1970:capturedAt),periodStart:Date(timeIntervalSince1970:periodStart),periodEnd:Date(timeIntervalSince1970:periodEnd),dailyBudget:dailyBudget?.value)
+        }
+    }
+    let tokenSpend:TokenSpend?
     let quotas: [Quota]?
     let metrics: [ExtensionMetric]?
     let dailyUsageReport: DailyReport?
@@ -270,6 +289,7 @@ struct ScriptOutput: Decodable {
             loginMethod: account?.loginMethod,
             accountTier: plan.map(Self.tier),
             costUsage: costUsage,
+            bedrockUsage: tokenSpend?.summary,
             dailyUsageReport: dailyUsageReport?.report,
             extensionMetrics: metrics
         )

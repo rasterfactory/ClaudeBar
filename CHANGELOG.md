@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Mistral uses a JSON definition and supports independent Vibe session-log folders while preserving daily costs and token totals. ([#397](https://github.com/tddworks/ClaudeBar/pull/397))
+- AWS Bedrock uses JSON and supports separate AWS profiles, regions and daily budgets while retaining per-model spend and token reporting. ([#398](https://github.com/tddworks/ClaudeBar/pull/398))
 
 ### Changed
 - Vercel AI Gateway supports separately named accounts with secure API keys, preserving existing credentials and environment settings. ([#381](https://github.com/tddworks/ClaudeBar/pull/381))

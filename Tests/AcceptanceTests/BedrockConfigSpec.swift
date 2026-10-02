@@ -119,7 +119,7 @@ struct BedrockConfigSpec {
             let defaults = UserDefaults(suiteName: suiteName)!
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
 
-            let bedrock = BedrockProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let bedrock = try! Providers.make("bedrock", settings: settings).defaultAccount
 
             // Then — disabled by default (requires AWS profile setup)
             #expect(bedrock.isEnabled == false)

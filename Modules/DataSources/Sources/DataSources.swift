@@ -27,6 +27,7 @@ public enum DataSources {
         scripts: @escaping ScriptSource = { _ in nil },
         settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
         browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
+        cloudWatch: (any CloudWatchClient)? = nil,
         secrets: (any SecretStore)? = nil,
         settings: (any SettingStore)? = nil,
         environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
@@ -43,6 +44,7 @@ public enum DataSources {
             scripts: scripts,
             settingValue: settingValue,
             browserCookies: browserCookies,
+            cloudWatch: cloudWatch,
             secrets: secrets,
             settings: settings,
             environment: environment,
@@ -65,6 +67,7 @@ public enum DataSources {
         scripts: @escaping ScriptSource = { _ in nil },
         settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
         browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
+        cloudWatch: (any CloudWatchClient)? = nil,
         secrets: (any SecretStore)? = nil,
         settings: (any SettingStore)? = nil,
         environment: @escaping @Sendable (String) -> String?,
@@ -85,6 +88,7 @@ public enum DataSources {
             scripts: scripts,
             settingValue: settingValue,
             browserCookies: browserCookies,
+            cloudWatch: cloudWatch,
             secrets: secrets,
             settings: settings,
             environment: environment,
@@ -104,6 +108,7 @@ public enum DataSources {
         scripts: @escaping ScriptSource,
         settingValue: @escaping @Sendable (String) -> String? = { _ in nil },
         browserCookies: any BrowserCookieReading = SystemBrowserCookies(),
+        cloudWatch: (any CloudWatchClient)? = nil,
         secrets: (any SecretStore)?,
         settings: (any SettingStore)? = nil,
         environment: @escaping @Sendable (String) -> String?,
@@ -124,6 +129,8 @@ public enum DataSources {
             WorkflowFetcher(flow: flow, network: network, loopbackNetwork: loopbackNetwork, makeExecutor: makeCLIExecutor, script: scripts(flow.script), now: now, settingValue: settingValue)
         case .directory(let call):
             DirectoryFetcher(call: call, reader: directoryReader, homeDirectory: homeDirectory, environment: environment, calendar: calendar, now: now)
+        case .cloudWatch(let query):
+            CloudWatchFetcher(query:query,client:cloudWatch,settingValue:settingValue,calendar:.current,now:now)
         case .http(let request):
             HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue)
         case .jsonRpc(let call):

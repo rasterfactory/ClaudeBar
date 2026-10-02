@@ -1,0 +1,269 @@
+{
+  "profile": {
+    "id": "bedrock",
+    "name": "AWS Bedrock",
+    "links": {
+      "dashboard": "https://console.aws.amazon.com/bedrock/home",
+      "status": "https://health.aws.amazon.com/health/status"
+    },
+    "look": {
+      "symbol": "cloud.fill",
+      "icon": "BedrockIcon",
+      "color": {
+        "light": [
+          0.92,
+          0.5,
+          0.15
+        ],
+        "dark": [
+          1,
+          0.6,
+          0.2
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.75,
+          0.35,
+          0.1
+        ],
+        "dark": [
+          0.85,
+          0.45,
+          0.15
+        ]
+      }
+    }
+  },
+  "cli": "aws",
+  "enabledByDefault": false,
+  "defaultDataSource": "cloudwatch",
+  "dataSources": [
+    {
+      "kind": "cloudwatch",
+      "label": "CloudWatch",
+      "summary": "Reads today\u2019s per-model tokens and estimated spend using the account\u2019s AWS profile.",
+      "fetch": {
+        "cloudWatch": {
+          "namespace": "AWS/Bedrock",
+          "dimension": "ModelId",
+          "inputMetric": "InputTokenCount",
+          "outputMetric": "OutputTokenCount",
+          "countMetric": "Invocations",
+          "serviceCode": "AmazonBedrock",
+          "productFilter": "modelId",
+          "profileSetting": "awsProfile",
+          "regionsSetting": "regions",
+          "budgetSetting": "dailyBudget",
+          "emptyRegionsError": "No AWS regions configured for Bedrock monitoring",
+          "normalizePattern": "^(us|eu|ap|sa|ca|me|af)\\.",
+          "vendors": {
+            "anthropic": "Anthropic",
+            "amazon": "Amazon",
+            "meta": "Meta",
+            "mistral": "Mistral AI",
+            "cohere": "Cohere",
+            "ai21": "AI21 Labs",
+            "stability": "Stability AI"
+          },
+          "prices": {
+            "anthropic.claude-opus-4-5-20251101-v1:0": {
+              "id": "anthropic.claude-opus-4-5-20251101-v1:0",
+              "displayName": "Claude Opus 4.5",
+              "vendor": "Anthropic",
+              "inputPricePer1M": 15.0,
+              "outputPricePer1M": 75.0
+            },
+            "anthropic.claude-haiku-4-5-20251001-v1:0": {
+              "id": "anthropic.claude-haiku-4-5-20251001-v1:0",
+              "displayName": "Claude Haiku 4.5",
+              "vendor": "Anthropic",
+              "inputPricePer1M": 1.0,
+              "outputPricePer1M": 5.0
+            },
+            "anthropic.claude-sonnet-4-20250514-v1:0": {
+              "id": "anthropic.claude-sonnet-4-20250514-v1:0",
+              "displayName": "Claude Sonnet 4",
+              "vendor": "Anthropic",
+              "inputPricePer1M": 3.0,
+              "outputPricePer1M": 15.0
+            },
+            "anthropic.claude-3-5-sonnet-20241022-v2:0": {
+              "id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+              "displayName": "Claude 3.5 Sonnet v2",
+              "vendor": "Anthropic",
+              "inputPricePer1M": 3.0,
+              "outputPricePer1M": 15.0
+            },
+            "anthropic.claude-3-5-sonnet-20240620-v1:0": {
+              "id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+              "displayName": "Claude 3.5 Sonnet",
+              "vendor": "Anthropic",
+              "inputPricePer1M": 3.0,
+              "outputPricePer1M": 15.0
+            },
+            "anthropic.claude-3-5-haiku-20241022-v1:0": {
+              "id": "anthropic.claude-3-5-haiku-20241022-v1:0",
+              "displayName": "Claude 3.5 Haiku",
+              "vendor": "Anthropic",
+              "inputPricePer1M": 0.8,
+              "outputPricePer1M": 4.0
+            },
+            "anthropic.claude-3-opus-20240229-v1:0": {
+              "id": "anthropic.claude-3-opus-20240229-v1:0",
+              "displayName": "Claude 3 Opus",
+              "vendor": "Anthropic",
+              "inputPricePer1M": 15.0,
+              "outputPricePer1M": 75.0
+            },
+            "anthropic.claude-3-sonnet-20240229-v1:0": {
+              "id": "anthropic.claude-3-sonnet-20240229-v1:0",
+              "displayName": "Claude 3 Sonnet",
+              "vendor": "Anthropic",
+              "inputPricePer1M": 3.0,
+              "outputPricePer1M": 15.0
+            },
+            "anthropic.claude-3-haiku-20240307-v1:0": {
+              "id": "anthropic.claude-3-haiku-20240307-v1:0",
+              "displayName": "Claude 3 Haiku",
+              "vendor": "Anthropic",
+              "inputPricePer1M": 0.25,
+              "outputPricePer1M": 1.25
+            },
+            "amazon.titan-text-premier-v1:0": {
+              "id": "amazon.titan-text-premier-v1:0",
+              "displayName": "Titan Text Premier",
+              "vendor": "Amazon",
+              "inputPricePer1M": 0.5,
+              "outputPricePer1M": 1.5
+            },
+            "amazon.titan-text-express-v1": {
+              "id": "amazon.titan-text-express-v1",
+              "displayName": "Titan Text Express",
+              "vendor": "Amazon",
+              "inputPricePer1M": 0.2,
+              "outputPricePer1M": 0.6
+            },
+            "amazon.titan-text-lite-v1": {
+              "id": "amazon.titan-text-lite-v1",
+              "displayName": "Titan Text Lite",
+              "vendor": "Amazon",
+              "inputPricePer1M": 0.15,
+              "outputPricePer1M": 0.2
+            },
+            "meta.llama3-2-90b-instruct-v1:0": {
+              "id": "meta.llama3-2-90b-instruct-v1:0",
+              "displayName": "Llama 3.2 90B",
+              "vendor": "Meta",
+              "inputPricePer1M": 0.72,
+              "outputPricePer1M": 0.72
+            },
+            "meta.llama3-2-11b-instruct-v1:0": {
+              "id": "meta.llama3-2-11b-instruct-v1:0",
+              "displayName": "Llama 3.2 11B",
+              "vendor": "Meta",
+              "inputPricePer1M": 0.16,
+              "outputPricePer1M": 0.16
+            },
+            "meta.llama3-2-3b-instruct-v1:0": {
+              "id": "meta.llama3-2-3b-instruct-v1:0",
+              "displayName": "Llama 3.2 3B",
+              "vendor": "Meta",
+              "inputPricePer1M": 0.1,
+              "outputPricePer1M": 0.1
+            },
+            "meta.llama3-2-1b-instruct-v1:0": {
+              "id": "meta.llama3-2-1b-instruct-v1:0",
+              "displayName": "Llama 3.2 1B",
+              "vendor": "Meta",
+              "inputPricePer1M": 0.1,
+              "outputPricePer1M": 0.1
+            },
+            "meta.llama3-1-405b-instruct-v1:0": {
+              "id": "meta.llama3-1-405b-instruct-v1:0",
+              "displayName": "Llama 3.1 405B",
+              "vendor": "Meta",
+              "inputPricePer1M": 2.4,
+              "outputPricePer1M": 2.4
+            },
+            "meta.llama3-1-70b-instruct-v1:0": {
+              "id": "meta.llama3-1-70b-instruct-v1:0",
+              "displayName": "Llama 3.1 70B",
+              "vendor": "Meta",
+              "inputPricePer1M": 0.72,
+              "outputPricePer1M": 0.72
+            },
+            "meta.llama3-1-8b-instruct-v1:0": {
+              "id": "meta.llama3-1-8b-instruct-v1:0",
+              "displayName": "Llama 3.1 8B",
+              "vendor": "Meta",
+              "inputPricePer1M": 0.22,
+              "outputPricePer1M": 0.22
+            },
+            "mistral.mistral-large-2407-v1:0": {
+              "id": "mistral.mistral-large-2407-v1:0",
+              "displayName": "Mistral Large",
+              "vendor": "Mistral AI",
+              "inputPricePer1M": 3.0,
+              "outputPricePer1M": 9.0
+            },
+            "mistral.mistral-small-2402-v1:0": {
+              "id": "mistral.mistral-small-2402-v1:0",
+              "displayName": "Mistral Small",
+              "vendor": "Mistral AI",
+              "inputPricePer1M": 0.1,
+              "outputPricePer1M": 0.3
+            },
+            "mistral.mixtral-8x7b-instruct-v0:1": {
+              "id": "mistral.mixtral-8x7b-instruct-v0:1",
+              "displayName": "Mixtral 8x7B",
+              "vendor": "Mistral AI",
+              "inputPricePer1M": 0.45,
+              "outputPricePer1M": 0.7
+            }
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "bedrock-usage.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "form": [
+      {
+        "id": "profile",
+        "label": "AWS profile",
+        "pattern": "^[A-Za-z0-9_.@+-]+$"
+      },
+      {
+        "id": "regions",
+        "label": "AWS regions (comma separated)",
+        "defaultValue": "us-east-1",
+        "pattern": "^[a-z]{2}(?:-[a-z]+)+-[0-9]+(?:\\s*,\\s*[a-z]{2}(?:-[a-z]+)+-[0-9]+)*$"
+      },
+      {
+        "id": "budget",
+        "label": "Daily budget in USD (0 for none)",
+        "defaultValue": "0",
+        "pattern": "^[0-9]+(?:\\.[0-9]+)?$"
+      }
+    ],
+    "patch": {
+      "cloudwatch": {
+        "fetch": {
+          "cloudWatch": {
+            "profileSetting": null,
+            "regionsSetting": null,
+            "budgetSetting": null,
+            "profile": "{{account.profile}}",
+            "regionsText": "{{account.regions}}",
+            "budget": "{{account.budget}}"
+          }
+        }
+      }
+    }
+  }
+}

@@ -81,7 +81,7 @@ struct BedrockUsageProbeTests {
         cloudWatch.credentialsValid = true
         let pricing = MockPricingService()
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings
@@ -98,7 +98,7 @@ struct BedrockUsageProbeTests {
         cloudWatch.credentialsValid = false
         let pricing = MockPricingService()
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings
@@ -118,7 +118,7 @@ struct BedrockUsageProbeTests {
         cloudWatch.metricsToReturn = []
         let pricing = MockPricingService()
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings
@@ -152,7 +152,7 @@ struct BedrockUsageProbeTests {
             outputPricePer1M: 1.25  // $1.25 per 1M output
         )
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings
@@ -201,7 +201,7 @@ struct BedrockUsageProbeTests {
             outputPricePer1M: 1.25
         )
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings
@@ -241,7 +241,7 @@ struct BedrockUsageProbeTests {
         ]
         let pricing = MockPricingService()
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings
@@ -258,7 +258,7 @@ struct BedrockUsageProbeTests {
         let cloudWatch = MockCloudWatchClient()
         let pricing = MockPricingService()
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings
@@ -293,7 +293,7 @@ struct BedrockUsageProbeTests {
             outputPricePer1M: 0
         )
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings
@@ -322,7 +322,7 @@ struct BedrockUsageProbeTests {
         ]
         let pricing = MockPricingService()
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings
@@ -356,7 +356,7 @@ struct BedrockUsageProbeTests {
             outputPricePer1M: 0
         )
 
-        let probe = BedrockUsageProbe(
+        let probe = BedrockDefinitionProbe(
             cloudWatchClient: cloudWatch,
             pricingService: pricing,
             settingsRepository: settings

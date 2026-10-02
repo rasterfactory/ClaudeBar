@@ -1,3 +1,4 @@
+import AWSClients
 import SwiftUI
 import Domain
 import Infrastructure
@@ -30,7 +31,7 @@ struct ClaudeBarApp: App {
         guestPasses: GuestPasses? = nil
     ) -> Provider {
         do {
-            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, environment: environment)
+            return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, cloudWatch: SDKCloudWatchClient(), environment: environment)
         } catch {
             preconditionFailure("Built-in provider '\(id)' failed to load: \(error.localizedDescription)")
         }
@@ -176,6 +177,7 @@ struct ClaudeBarApp: App {
         let gemini = Self.builtIn("gemini", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "gemini"))
         let antigravity = Self.builtIn("antigravity", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "antigravity"), secrets: vault)
         let mistral = Self.builtIn("mistral", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "mistral"))
+        let bedrock = Self.builtIn("bedrock", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "bedrock"))
 
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
@@ -205,6 +207,8 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             amp.defaultAccount,
+            bedrock.defaultAccount,
+            AmpCodeProvider(probe: AmpCodeUsageProbe(), settingsRepository: settingsRepository),
             KimiProvider(
                 cliProbe: KimiCLIUsageProbe(),
                 apiProbe: KimiUsageProbe(settingsRepository: settingsRepository),
@@ -247,7 +251,7 @@ struct ClaudeBarApp: App {
                 probe: OmpUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts + gemini.accounts + antigravity.accounts + mistral.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts + gemini.accounts + antigravity.accounts + mistral.accounts + bedrock.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

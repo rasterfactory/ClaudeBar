@@ -75,6 +75,14 @@ let project = Project(
             )
         ),
 
+        .target(
+            name: "AWSClients", destinations: .macOS, product: .staticFramework,
+            bundleId: "com.tddworks.claudebar.awsclients", deploymentTargets: .macOS("15.0"),
+            sources: ["Modules/AWSClients/Sources/**"],
+            dependencies: [.target(name:"DataSources"), .external(name:"AWSCloudWatch"), .external(name:"AWSPricing"), .external(name:"AWSSDKIdentity")],
+            settings: .settings(base:["SWIFT_STRICT_CONCURRENCY":"complete"])
+        ),
+
         // DataSources — DataSource, its definition, the closed sums and their
         // workers, and the ports for what lies outside (CLI, network, RPC).
         .target(
@@ -175,12 +183,6 @@ let project = Project(
                 .target(name: "DataSources"),
                 .external(name: "Mockable"),
                 .external(name: "SwiftTerm"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
                 .external(name: "SweetCookieKit"),
                 .external(name: "Subprocess"),
             ],
@@ -205,6 +207,7 @@ let project = Project(
             ],
             entitlements: .file(path: "Sources/App/entitlements.plist"),
             dependencies: [
+                .target(name: "AWSClients"),
                 .target(name: "Domain"),
                 .target(name: "Diagnostics"),
                 .target(name: "DataSources"),

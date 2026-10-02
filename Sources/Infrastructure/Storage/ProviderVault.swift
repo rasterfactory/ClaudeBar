@@ -5,13 +5,11 @@ import Foundation
 /// store, under `provider.<id>.<name>`. A definition names the key; the value
 /// lives only here.
 public struct ProviderVault: SecretVault, @unchecked Sendable {
-    private let legacyStore: UserDefaults
     private let credentials: any CredentialRepository
     /// UserDefaults is thread-safe. Only the default login can read a legacy key.
     private let legacyStore: UserDefaults
 
     public init(credentials: any CredentialRepository = KeychainCredentialRepository.shared, legacyStore: UserDefaults = .standard) {
-        self.legacyStore = legacyStore
         self.credentials = credentials
         self.legacyStore = legacyStore
     }
@@ -32,12 +30,6 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
         return credentials.delete(forKey: Self.key(name, provider: provider))
     }
 
-    private func migration(_ name: String, provider: String) -> SecureCredentialMigration? {
-        guard provider == "minimax", name == "apiKey" else { return nil }
-        return SecureCredentialMigration(secureStore: credentials, legacyStore: legacyStore,
-            secureKey: Self.key(name, provider: provider), legacyKey: "com.claudebar.credentials.minimax-api-key")
-    }
-
     static func key(_ name: String, provider: String) -> String {
         "provider.\(provider).\(name)"
     }
@@ -45,7 +37,10 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
     private func migration(_ name: String, provider: String) -> SecureCredentialMigration? {
         // Compatibility lives at storage's boundary, never in the provider runtime.
         // Exact default-login keys only: an added login never inherits this entry.
-        let legacyKeys = ["provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key"]
+        let legacyKeys = [
+            "provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key",
+            "provider.minimax.apiKey": "com.claudebar.credentials.minimax-api-key",
+        ]
         let key = Self.key(name, provider: provider)
         guard let legacyKey = legacyKeys[key] else { return nil }
         return SecureCredentialMigration(secureStore: credentials, legacyStore: legacyStore, secureKey: key, legacyKey: legacyKey)

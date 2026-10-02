@@ -69,20 +69,25 @@ struct AddAccountSheet: View {
             HStack { Spacer(); Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
 
         case .form:
-            ForEach(text.fields, id: \.id) { field in
+            ForEach(text.fields.filter { field in
+                let defaults = Dictionary(uniqueKeysWithValues: text.fields.compactMap { item in item.defaultValue.map { (item.id, $0) } })
+                return field.isShown(values: defaults.merging(entered) { _, supplied in supplied })
+            }, id: \.id) { field in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(field.label).font(.callout).foregroundStyle(theme.textSecondary)
                     if let choices = field.choices {
-                        Picker(field.label, selection: Binding(get: { entered[field.id] ?? choices.first ?? "" },
+                        Picker(field.label, selection: Binding(get: { entered[field.id] ?? field.defaultValue ?? choices.first ?? "" },
                                                                set: { entered[field.id] = $0 })) {
-                            ForEach(choices, id: \.self) { Text($0).tag($0) }
+                            ForEach(choices, id: \.self) { choice in
+                                Text(field.id == provider.definition.accounts?.dataSourceField ? provider.definition.dataSource(choice)?.label ?? choice : choice).tag(choice)
+                            }
                         }
                         .labelsHidden()
                     } else if field.secret {
-                        SecureField(field.label, text: Binding(get: { entered[field.id] ?? "" }, set: { entered[field.id] = $0 }))
+                        SecureField(field.label, text: Binding(get: { entered[field.id] ?? field.defaultValue ?? "" }, set: { entered[field.id] = $0 }))
                             .textFieldStyle(.roundedBorder)
                     } else {
-                        TextField(field.label, text: Binding(get: { entered[field.id] ?? "" }, set: { entered[field.id] = $0 }))
+                        TextField(field.label, text: Binding(get: { entered[field.id] ?? field.defaultValue ?? "" }, set: { entered[field.id] = $0 }))
                             .textFieldStyle(.roundedBorder)
                     }
                 }
@@ -190,7 +195,7 @@ struct AddAccountSheet: View {
 
     private func addFromForm() {
         var values = entered
-        for field in text.fields where values[field.id] == nil { values[field.id] = field.choices?.first }
+        for field in text.fields where values[field.id] == nil { values[field.id] = field.defaultValue ?? field.choices?.first }
         do {
             added(try provider.addAccount(filling: values))
         } catch {

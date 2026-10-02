@@ -3,7 +3,7 @@ import DataSources
 import Providers
 import Foundation
 
-/// The mode used by CopilotProvider to fetch usage data.
+/// The saved GitHub Copilot data source selection.
 /// Users can switch between Billing API (default) and Copilot Internal API in Settings.
 public enum CopilotProbeMode: String, Sendable, Equatable, CaseIterable {
     /// Use the GitHub Billing API to fetch premium request usage.

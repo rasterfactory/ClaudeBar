@@ -165,9 +165,11 @@ public final class Provider {
         if let folder = account.folder, folder.goesWithAccount {
             folders.delete(folder.url)
         }
-        for field in definition.accounts?.form ?? [] where field.secret {
+        for field in definition.accounts?.form ?? [] where field.secret || field.vault {
             vault?.delete(field.id, provider: account.id)
         }
+        let keys = Set((bound[account.id] ?? []).flatMap { $0.definition.settings.values.compactMap(\.key) })
+        for key in keys { settings.setValue(nil, key, forProvider: account.id) }
         accounts.removeAll { $0.id == account.id }
         bound[account.id] = nil
         refreshTasks[account.id]?.cancel()
@@ -192,8 +194,10 @@ public final class Provider {
         guard !fields.isEmpty else { throw UsageError.executionFailed("\(name) has no account form.") }
         var values: [String: String] = [:]
         var secrets: [String: String] = [:]
-        for field in fields {
-            let value = (entered[field.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let defaults = Dictionary(uniqueKeysWithValues: fields.compactMap { field in field.defaultValue.map { (field.id, $0) } })
+        let formValues = defaults.merging(entered) { _, supplied in supplied }
+        for field in fields where field.isShown(values: formValues) {
+            let value = (entered[field.id] ?? field.defaultValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             guard !value.isEmpty else { throw UsageError.executionFailed("Fill in \(field.label).") }
             if let choices = field.choices, !choices.contains(value) {
                 throw UsageError.executionFailed("Choose a \(field.label) from the list.")
@@ -201,7 +205,10 @@ public final class Provider {
             if field.absolutePath && !value.hasPrefix("/") {
                 throw UsageError.executionFailed("Enter an absolute path for \(field.label).")
             }
-            if field.secret { secrets[field.id] = value } else { values[field.id] = value }
+            if let pattern = field.pattern, value.range(of: pattern, options: .regularExpression) == nil {
+                throw UsageError.executionFailed("Enter a valid value for \(field.label).")
+            }
+            if field.secret || field.vault { secrets[field.id] = value } else { values[field.id] = value }
         }
         guard secrets.isEmpty || vault != nil else {
             throw UsageError.executionFailed("ClaudeBar can't keep this key securely here.")
@@ -352,6 +359,13 @@ public final class Provider {
         return definition.defaultDataSource
     }
 
+    /// An added login may select its own source through a declared form field.
+    public func dataSourceKind(for account: Account) -> String {
+        if !account.isDefault, let field = definition.accounts?.dataSourceField,
+           let kind = account.values[field], definition.dataSource(kind) != nil { return kind }
+        return activeKind
+    }
+
     /// Switches the data source. `false` when the provider has no such one.
     @discardableResult
     public func use(_ kind: String) -> Bool {
@@ -441,7 +455,7 @@ public final class Provider {
     /// a CLI session the way an explicit refresh does (#216).
     public func testConnection(_ account: Account? = nil) async -> Result<Response, DataSourceError> {
         let account = account ?? defaultAccount
-        guard let active = dataSource(activeKind, for: account) else {
+        guard let active = dataSource(dataSourceKind(for: account), for: account) else {
             return .failure(DataSourceError(.fetch, .noData))
         }
         do {
@@ -466,7 +480,7 @@ public final class Provider {
     /// Where a login's refresh starts: the active data source — or, when the
     /// login's patch left it out, the next one along its fallback chain.
     private func startingDataSource(for account: Account) -> DataSource? {
-        var kind: String? = activeKind
+        var kind: String? = dataSourceKind(for: account)
         var seen: Set<String> = []
         while let current = kind, seen.insert(current).inserted {
             if let source = dataSource(current, for: account) { return source }

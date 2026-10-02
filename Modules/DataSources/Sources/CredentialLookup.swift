@@ -26,6 +26,7 @@ public indirect enum CredentialLookup: Sendable, Equatable {
     case firstOf([CredentialLookup])
     /// A lookup whose token is kept fresh by an OAuth 2 refresh.
     case refreshing(CredentialLookup, OAuth2Refresh)
+    case accompanying(CredentialLookup, CompanionLookups)
 }
 
 /// What a lookup found: the token and the values that travel with it
@@ -243,6 +244,9 @@ extension CredentialLookup: Codable {
         if let claims = try container.decodeIfPresent(CredentialClaims.self, forKey: TagKey("claims")) {
             base = .claiming(base, claims)
         }
+        if let companions = try container.decodeIfPresent(CompanionLookups.self, forKey: TagKey("companions")) {
+            base = .accompanying(base, companions)
+        }
         if container.contains(TagKey("refresh")) {
             let refresh = try container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
             self = .refreshing(base, try refresh.decode(OAuth2Refresh.self, forKey: TagKey("oauth2")))
@@ -273,6 +277,9 @@ extension CredentialLookup: Codable {
             try container.encode(name, forKey: TagKey("setting"))
         case .firstOf(let lookups):
             try container.encode(lookups, forKey: TagKey("firstOf"))
+        case .accompanying(let base, let companions):
+            try base.encodeBase(into: &container)
+            try container.encode(companions, forKey: TagKey("companions"))
         case .refreshing(let base, let refresh):
             try base.encodeBase(into: &container)
             var nested = container.nestedContainer(keyedBy: TagKey.self, forKey: TagKey("refresh"))
@@ -293,7 +300,7 @@ extension CredentialLookup {
         case .keychain(let item): ["Keychain “\(item.service)”"]
         case .setting: ["API key saved in ClaudeBar"]
         case .firstOf(let lookups): lookups.flatMap(\.lookupOrder)
-        case .refreshing(let base, _): base.lookupOrder
+        case .refreshing(let base, _), .accompanying(let base, _): base.lookupOrder
         }
     }
 
@@ -303,6 +310,7 @@ extension CredentialLookup {
         switch self {
         case .refreshing(let base, let refresh): refresh.hint ?? base.hint
         case .claiming(let base, _): base.hint
+        case .accompanying(let base, _): base.hint
         case .firstOf(let lookups): lookups.lazy.compactMap(\.hint).first
         case .environment, .jsonFile, .keychain, .setting, .sqlite: nil
         }
@@ -328,4 +336,21 @@ public struct RecordSelection: Sendable, Equatable, Codable {
     public let newest: String?
     public let missingNewestIsFuture: Bool
     public let keyAs: String?
+}
+
+/// Request companions, found after the primary token. The primary token
+/// never falls back to a companion, and companions cannot replace secrets.
+public struct CompanionLookups: Sendable, Equatable, Codable {
+    public let fields: [String: CredentialLookup]
+    public let required: [String]
+    public let missing: ErrorRef?
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        fields = try container.decode([String: CredentialLookup].self, forKey: .fields)
+        required = try container.decodeIfPresent([String].self, forKey: .required) ?? []
+        missing = try container.decodeIfPresent(ErrorRef.self, forKey: .missing)
+        guard Set(fields.keys).isDisjoint(with: ["token", "refreshToken", "idToken"]), Set(required).isSubset(of: Set(fields.keys)) else {
+            throw DecodingError.dataCorruptedError(forKey: .fields, in: container, debugDescription: "Companions must name non-secret fields; every required field must be declared")
+        }
+    }
 }

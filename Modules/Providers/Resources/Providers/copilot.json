@@ -1,0 +1,236 @@
+{
+  "profile": {
+    "id": "copilot",
+    "name": "Copilot",
+    "links": {
+      "dashboard": "https://github.com/settings/copilot/features",
+      "status": "https://www.githubstatus.com"
+    },
+    "look": {
+      "symbol": "chevron.left.forwardslash.chevron.right",
+      "icon": "CopilotIcon",
+      "color": {
+        "light": [
+          0.26,
+          0.43,
+          0.82
+        ],
+        "dark": [
+          0.38,
+          0.55,
+          0.93
+        ]
+      },
+      "gradientEnd": {
+        "light": [
+          0.45,
+          0.3,
+          0.8
+        ],
+        "dark": [
+          0.55,
+          0.4,
+          0.9
+        ]
+      }
+    },
+    "notificationName": "GitHub Copilot"
+  },
+  "cli": "gh",
+  "enabledByDefault": false,
+  "defaultDataSource": "billing",
+  "dataSources": [
+    {
+      "kind": "billing",
+      "label": "Billing",
+      "summary": "Uses GitHub Billing API with a fine-grained PAT with Plan: read permission.",
+      "credential": {
+        "firstOf": [
+          {
+            "environment": "COPILOT_TOKEN"
+          },
+          {
+            "setting": "apiKey"
+          }
+        ],
+        "companions": {
+          "fields": {
+            "username": {
+              "setting": "username"
+            }
+          },
+          "required": [
+            "username"
+          ],
+          "missing": {
+            "executionFailed": "GitHub username not configured"
+          }
+        }
+      },
+      "settings": {
+        "monthlyLimit": {
+          "key": "monthlyLimit",
+          "writable": false,
+          "default": 50
+        },
+        "manualOverrideEnabled": {
+          "key": "manualOverrideEnabled",
+          "writable": false,
+          "default": false
+        },
+        "manualUsageValue": {
+          "key": "manualUsageValue",
+          "writable": true
+        },
+        "manualUsageIsPercent": {
+          "key": "manualUsageIsPercent",
+          "writable": false,
+          "default": false
+        },
+        "apiReturnedEmpty": {
+          "key": "apiReturnedEmpty",
+          "writable": true
+        },
+        "lastUsagePeriodMonth": {
+          "key": "lastUsagePeriodMonth",
+          "writable": true
+        },
+        "lastUsagePeriodYear": {
+          "key": "lastUsagePeriodYear",
+          "writable": true
+        }
+      },
+      "fetch": {
+        "http": {
+          "url": "https://api.github.com/users/{{username}}/settings/billing/premium_request/usage",
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+          },
+          "timeout": 30,
+          "acceptedStatuses": [
+            200
+          ],
+          "errors": {
+            "401": "authenticationRequired",
+            "403": {
+              "executionFailed": "Forbidden - ensure PAT has 'Plan: read' permission"
+            },
+            "404": {
+              "executionFailed": "User not found or no billing access"
+            },
+            "default": {
+              "executionFailed": "HTTP error: {{status}}"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "copilot-billing.js",
+          "credential": [
+            "username"
+          ]
+        }
+      }
+    },
+    {
+      "kind": "copilotAPI",
+      "label": "Copilot API",
+      "summary": "Uses Copilot Internal API with a Classic PAT with copilot scope.",
+      "credential": {
+        "firstOf": [
+          {
+            "environment": "COPILOT_TOKEN"
+          },
+          {
+            "setting": "apiKey"
+          }
+        ]
+      },
+      "fetch": {
+        "http": {
+          "url": "https://api.github.com/copilot_internal/user",
+          "headers": {
+            "Authorization": "Bearer {{token}}",
+            "Accept": "application/json"
+          },
+          "timeout": 30,
+          "acceptedStatuses": [
+            200
+          ],
+          "errors": {
+            "401": "authenticationRequired",
+            "403": {
+              "executionFailed": "Forbidden - ensure Classic PAT has 'copilot' scope"
+            },
+            "404": {
+              "executionFailed": "No Copilot subscription found"
+            },
+            "default": {
+              "executionFailed": "HTTP error: {{status}}"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "script": {
+          "file": "copilot-internal.js"
+        }
+      }
+    }
+  ],
+  "accounts": {
+    "dataSourceField": "source",
+    "form": [
+      {
+        "id": "apiKey",
+        "label": "GitHub Token",
+        "secret": true
+      },
+      {
+        "id": "username",
+        "label": "GitHub Username",
+        "vault": true,
+        "when": {
+          "source": "billing"
+        }
+      },
+      {
+        "id": "source",
+        "label": "Usage Source",
+        "choices": [
+          "billing",
+          "copilotAPI"
+        ],
+        "defaultValue": "billing"
+      },
+      {
+        "id": "monthlyLimit",
+        "label": "Billing Monthly Limit",
+        "defaultValue": "50",
+        "pattern": "^[1-9][0-9]*$"
+      }
+    ],
+    "patch": {
+      "billing": {
+        "credential": {
+          "firstOf": null,
+          "setting": "apiKey"
+        },
+        "settings": {
+          "monthlyLimit": {
+            "default": "{{account.monthlyLimit}}"
+          }
+        }
+      },
+      "copilotAPI": {
+        "credential": {
+          "firstOf": null,
+          "setting": "apiKey"
+        }
+      }
+    }
+  }
+}

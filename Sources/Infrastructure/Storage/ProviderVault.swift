@@ -45,6 +45,8 @@ public struct ProviderVault: SecretVault, @unchecked Sendable {
         let legacyKeys = [
             "provider.deepseek.apiKey": "com.claudebar.credentials.deepseek-api-key",
             "provider.minimax.apiKey": "com.claudebar.credentials.minimax-api-key",
+            "provider.copilot.apiKey": "com.claudebar.credentials.github-copilot-token",
+            "provider.copilot.username": "com.claudebar.credentials.github-username",
         ]
         let key = Self.key(name, provider: provider)
         guard let legacyKey = legacyKeys[key] else { return nil }

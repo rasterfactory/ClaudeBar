@@ -48,6 +48,8 @@ extension ProviderDefinition {
         case .setting(let name): [name]
         case .firstOf(let lookups): lookups.flatMap(settings(in:))
         case .refreshing(let base, _), .claiming(let base, _): settings(in: base)
+        
+        case .accompanying(let base, let rule): settings(in: base) + rule.fields.values.flatMap { settings(in: $0) }
         case .environment, .jsonFile, .keychain, .sqlite: []
         }
     }
@@ -94,7 +96,7 @@ extension ProviderDefinition {
     /// The same definition under another id, as custom.
     func renamed(id: String) -> ProviderDefinition {
         ProviderDefinition(
-            profile: ProviderProfile(id: id, name: profile.name, links: profile.links, look: profile.look, origin: .custom),
+            profile: ProviderProfile(id: id, name: profile.name, notificationName: profile.notificationName, links: profile.links, look: profile.look, origin: .custom),
             cli: cli,
             enabledByDefault: enabledByDefault,
             dataSources: dataSources,

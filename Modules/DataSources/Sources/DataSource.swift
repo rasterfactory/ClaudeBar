@@ -17,6 +17,7 @@ public struct DataSource: Sendable {
     private let fetcher: any Fetching
     private let mapper: any Reading
     private let contextFiles: [String: JSONFileReader]
+    private let settings: (any SettingStore)?
     private let recoveries: [String: any Recovering]
     private let requiredFiles: [String]
     private let memory: UsageMemory
@@ -32,6 +33,7 @@ public struct DataSource: Sendable {
         contextFiles: [String: JSONFileReader],
         recoveries: [String: any Recovering],
         requiredFiles: [String] = [],
+        settings: (any SettingStore)? = nil,
         now: @escaping @Sendable () -> Date
     ) {
         self.definition = definition
@@ -41,6 +43,7 @@ public struct DataSource: Sendable {
         self.fetcher = fetcher
         self.mapper = mapper
         self.contextFiles = contextFiles
+        self.settings = settings
         self.recoveries = recoveries
         self.requiredFiles = requiredFiles
         self.memory = UsageMemory()
@@ -110,7 +113,7 @@ public struct DataSource: Sendable {
 
     /// *Map fields*' live card: reads a response already fetched.
     public func read(_ response: Response) throws -> UsageSnapshot {
-        try read(response, credential: nil)
+        try read(response, credential: nil, applySettings: false)
     }
 
     // MARK: - Private
@@ -126,13 +129,25 @@ public struct DataSource: Sendable {
         }
     }
 
-    private func read(_ response: Response, credential: Credential?) throws -> UsageSnapshot {
+    private func read(_ response: Response, credential: Credential?, applySettings: Bool = true) throws -> UsageSnapshot {
         let facts = MappingFacts(
             credential: visibleCredential(credential),
-            context: contextFiles.mapValues { $0.fields() }
+            context: contextFiles.mapValues { $0.fields() },
+            settings: definition.settings.compactMapValues { binding in
+                let key = binding.key
+                let value = key.flatMap { settings?.value($0) }
+                return value == .null ? binding.default : value ?? binding.default
+            }
         )
         do {
-            return try mapper.read(response, facts: facts, providerId: providerId)
+            let result = try mapper.readResult(response, facts: facts, providerId: providerId)
+            if applySettings {
+                for (name, value) in result.settings {
+                    guard let binding = definition.settings[name], binding.writable, let key = binding.key else { continue }
+                    settings?.setValue(value == .null ? nil : value, for: key)
+                }
+            }
+            return try result.value()
         } catch {
             throw DataSourceError.wrap(error, as: .mapping)
         }
@@ -314,6 +329,7 @@ struct FoundCredential: Sendable {
 struct MappingFacts: Sendable {
     var credential: [String: String] = [:]
     var context: [String: [String: String]] = [:]
+    var settings: [String: JSONValue] = [:]
 }
 
 protocol CredentialFinding: Sendable {
@@ -337,6 +353,24 @@ protocol Fetching: Sendable {
 
 protocol Reading: Sendable {
     func read(_ response: Response, facts: MappingFacts, providerId: String) throws -> UsageSnapshot
+    func readResult(_ response: Response, facts: MappingFacts, providerId: String) throws -> ReadingResult
+}
+
+extension Reading {
+    func readResult(_ response: Response, facts: MappingFacts, providerId: String) throws -> ReadingResult {
+        ReadingResult(usage: try read(response, facts: facts, providerId: providerId), error: nil, settings: [:])
+    }
+}
+
+struct ReadingResult: Sendable {
+    let usage: UsageSnapshot?
+    let error: UsageError?
+    let settings: [String: JSONValue]
+    func value() throws -> UsageSnapshot {
+        if let error { throw error }
+        guard let usage else { throw UsageError.noData }
+        return usage
+    }
 }
 
 /// A fix tried once when the mapping reports a failure. `true` when it changed

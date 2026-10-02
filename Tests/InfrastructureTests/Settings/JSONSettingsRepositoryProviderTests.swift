@@ -1,4 +1,5 @@
 import Testing
+import DataSources
 import Foundation
 @testable import Infrastructure
 @testable import Domain
@@ -451,4 +452,17 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.kimiRegion() == .international)
     }
 
+
+    @Test func `JSON setting values preserve types isolate accounts and remove nulls`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        #expect(repo.value("count", forProvider: "test") == nil)
+        for value in [JSONValue.number(4.5), .bool(true), .string("value")] {
+            repo.setValue(value, "count", forProvider: "test")
+            #expect(repo.value("count", forProvider: "test") == value)
+            #expect(repo.value("count", forProvider: "test.work") == nil)
+        }
+        repo.setValue(.null, "count", forProvider: "test")
+        #expect(repo.value("count", forProvider: "test") == nil)
+    }
 }

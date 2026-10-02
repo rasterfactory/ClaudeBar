@@ -38,3 +38,17 @@ Billing mode counts the Copilot items in your monthly billing usage and compares
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+
+## Multiple accounts
+
+Use **Add account** in Settings to save a separate GitHub token, select Billing
+or Copilot API, and enter a short label such as Personal or Work. Billing needs
+the GitHub username and a positive monthly allowance; Copilot API reads its
+allowance from GitHub. Saved tokens and usernames stay in the secure credential
+store. Added accounts never fall back to the default account's credentials.
+
+A single account remains labeled **Copilot**. Account labels distinguish multiple
+logins in the menu bar; the full account identity remains available in details.
+The default account's existing configuration and manual billing controls remain
+in the Copilot settings card.

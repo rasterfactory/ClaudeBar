@@ -1,4 +1,5 @@
 import Testing
+import Providers
 import Foundation
 import Mockable
 @testable import Domain
@@ -269,13 +270,12 @@ struct AntigravityProviderTests {
     @Test
     func `antigravity provider has unique id compared to other providers`() {
         let settings = makeSettingsRepository()
-        let copilotSettings = MockRepositoryFactory.makeCopilotSettingsRepository()
         let mockProbe = MockUsageProbe()
         let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: settings)
         let claude = StubClaudeProvider(probe: mockProbe, settingsRepository: settings)
         let codex = StubCodexProvider(probe: mockProbe, settingsRepository: settings)
         let gemini = GeminiProvider(probe: mockProbe, settingsRepository: settings)
-        let copilot = CopilotProvider(probe: mockProbe, settingsRepository: copilotSettings)
+        let copilot = Providers.make(try! Providers.builtIn("copilot"), settings: JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")))).defaultAccount
 
         let ids = Set([antigravity.id, claude.id, codex.id, gemini.id, copilot.id])
         #expect(ids.count == 5) // All unique

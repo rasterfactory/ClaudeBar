@@ -25,7 +25,8 @@ public final class JSONSettingsStore: @unchecked Sendable {
     /// Returns nil if key doesn't exist, file is missing, or type doesn't match.
     public func read<T>(key: String) -> T? {
         let dict = readFile()
-        return resolveRead(dict: dict, keyPath: key.split(separator: ".").map(String.init)) as? T
+        guard let value = resolveRead(dict: dict, keyPath: key.split(separator: ".").map(String.init)) else { return nil }
+        return value as? T
     }
 
     /// Writes a value for the given key path (dot-notation supported).

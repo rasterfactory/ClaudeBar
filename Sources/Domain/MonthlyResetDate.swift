@@ -1,6 +1,3 @@
-import Quotas
-import DataSources
-import Providers
 import Foundation
 
 /// Computes the next monthly reset instant for GitHub Copilot AI Credits.

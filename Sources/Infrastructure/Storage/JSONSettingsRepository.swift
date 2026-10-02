@@ -301,6 +301,20 @@ public final class JSONSettingsRepository:
         store.write(value: receive, key: "app.receiveBetaUpdates")
     }
 
+    public func value(_ setting: String, forProvider id: String) -> JSONValue? {
+        let stored: Any? = store.read(key: "\(id).\(setting)")
+        guard let raw = stored,
+              let data = try? JSONSerialization.data(withJSONObject: raw, options: [.fragmentsAllowed]) else { return nil }
+        return try? JSONDecoder().decode(JSONValue.self, from: data)
+    }
+
+    public func setValue(_ value: JSONValue?, _ setting: String, forProvider id: String) {
+        guard let value, value != .null else { store.write(value: nil, key: "\(id).\(setting)"); return }
+        guard let data = try? JSONEncoder().encode(value),
+              let raw = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) else { return }
+        store.write(value: raw, key: "\(id).\(setting)")
+    }
+
     // MARK: - ProviderSettingsRepository
 
     public func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool {
@@ -543,18 +557,22 @@ public final class JSONSettingsRepository:
         store.write(value: year, key: "copilot.lastUsagePeriodYear")
     }
 
-    // Credentials (UserDefaults for now, Keychain migration later)
+    // Credentials share the default account vault, with verified legacy migration.
+
+    private var copilotVault: ProviderVault {
+        ProviderVault(credentials: secureCredentials, legacyStore: credentials)
+    }
 
     public func saveGithubToken(_ token: String) {
-        credentials.set(token, forKey: "com.claudebar.credentials.github-copilot-token")
+        copilotVault.save(token, "apiKey", provider: "copilot")
     }
 
     public func getGithubToken() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.github-copilot-token")
+        copilotVault.secret("apiKey", provider: "copilot")
     }
 
     public func deleteGithubToken() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.github-copilot-token")
+        copilotVault.delete("apiKey", provider: "copilot")
     }
 
     public func hasGithubToken() -> Bool {
@@ -562,15 +580,15 @@ public final class JSONSettingsRepository:
     }
 
     public func saveGithubUsername(_ username: String) {
-        credentials.set(username, forKey: "com.claudebar.credentials.github-username")
+        copilotVault.save(username, "username", provider: "copilot")
     }
 
     public func getGithubUsername() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.github-username")
+        copilotVault.secret("username", provider: "copilot")
     }
 
     public func deleteGithubUsername() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.github-username")
+        copilotVault.delete("username", provider: "copilot")
     }
 
     // MARK: - BedrockSettingsRepository

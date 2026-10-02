@@ -1,4 +1,5 @@
 import Testing
+import Providers
 import Foundation
 import Mockable
 import Providers
@@ -55,7 +56,7 @@ struct ActionBarSpec {
             let suiteName = "com.claudebar.test.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suiteName)!
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            let copilot = CopilotProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let copilot = Providers.make(try! Providers.builtIn("copilot"), settings: settings).defaultAccount
             #expect(copilot.dashboardURL?.absoluteString == "https://github.com/settings/copilot/features")
         }
 

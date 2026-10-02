@@ -375,11 +375,9 @@ Each slice is one PR, green, with no change a user can see unless it says so.
 | 6 ✅ | *Add Provider* (#354), *Export*, *Import* (#355) — the screens of [USER_JOURNEYS.md](USER_JOURNEYS.md) moments 5–11, outer loop from its §5 scenarios | a person adds, shares and imports a provider without a restart, and no exported file contains a key |
 | 7 | Claude (PTY CLI, multi-account, guest passes, budget); the renames (`Usage`, `Plan`, `Cost`, `DataSourceError`) | `AIProvider` folds into `Provider` |
 
-## 8.1 · Shared capabilities added during migrations
+## 8.1 · What Claude added
 
 OpenCode adds `Fetch.commandPlan`: a fixed CLI and a bundled pure `next(responses, context)` JavaScript planner produce at most eight argv commands, each exit-checked before its response is passed back. The planner receives prior stdout and one fixed clock; it has no host I/O and cannot change the executable. `done` becomes the mapping response. Settings' CLI location applies to this fetch too, and import review names the CLI and planner. HTTP requests may declare per-status `errors`; the status remains available for OAuth retry logic.
-
-### What Claude added
 
 Claude needed more than Codex, and each need became a generic piece, never a
 vendor type:

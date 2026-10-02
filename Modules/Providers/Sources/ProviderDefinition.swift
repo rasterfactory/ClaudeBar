@@ -130,6 +130,10 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 when?.allSatisfy { values[$0.key] == $0.value } ?? true
             }
 
+            public func isShown(values: [String: String]) -> Bool {
+                when?.allSatisfy { values[$0.key] == $0.value } ?? true
+            }
+
             public init(from decoder: Decoder) throws {
                 let container = try decoder.container(keyedBy: CodingKeys.self)
                 id = try container.decode(String.self, forKey: .id)

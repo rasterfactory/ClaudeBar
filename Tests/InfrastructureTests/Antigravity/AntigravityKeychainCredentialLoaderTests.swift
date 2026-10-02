@@ -19,7 +19,7 @@ struct AntigravityKeychainCredentialLoaderTests {
 
     @Test
     func `parses go-keyring-base64 wrapped token JSON`() {
-        let creds = AntigravityKeychainCredentialLoader.parse(raw: Self.goKeyringWrapped)
+        let creds = AntigravityDefinitionFixtures.credential(raw: Self.goKeyringWrapped)
 
         #expect(creds?.accessToken == "ya29.access")
         #expect(creds?.refreshToken == "1//refresh")
@@ -28,7 +28,7 @@ struct AntigravityKeychainCredentialLoaderTests {
 
     @Test
     func `parses bare JSON with nested token object`() {
-        let creds = AntigravityKeychainCredentialLoader.parse(raw: Self.tokenJSON)
+        let creds = AntigravityDefinitionFixtures.credential(raw: Self.tokenJSON)
 
         #expect(creds?.accessToken == "ya29.access")
         #expect(creds?.refreshToken == "1//refresh")
@@ -38,7 +38,7 @@ struct AntigravityKeychainCredentialLoaderTests {
     func `parses JSON with tokens at the root`() {
         let raw = #"{"access_token":"root-access","refresh_token":"root-refresh"}"#
 
-        let creds = AntigravityKeychainCredentialLoader.parse(raw: raw)
+        let creds = AntigravityDefinitionFixtures.credential(raw: raw)
 
         #expect(creds?.accessToken == "root-access")
         #expect(creds?.refreshToken == "root-refresh")
@@ -47,14 +47,14 @@ struct AntigravityKeychainCredentialLoaderTests {
 
     @Test
     func `returns nil for non-JSON keychain content`() {
-        #expect(AntigravityKeychainCredentialLoader.parse(raw: "12345 /path/to/some_other_binary") == nil)
-        #expect(AntigravityKeychainCredentialLoader.parse(raw: "") == nil)
-        #expect(AntigravityKeychainCredentialLoader.parse(raw: "go-keyring-base64:not-base64!!") == nil)
+        #expect(AntigravityDefinitionFixtures.credential(raw: "12345 /path/to/some_other_binary") == nil)
+        #expect(AntigravityDefinitionFixtures.credential(raw: "") == nil)
+        #expect(AntigravityDefinitionFixtures.credential(raw: "go-keyring-base64:not-base64!!") == nil)
     }
 
     @Test
     func `returns nil when JSON has neither access nor refresh token`() {
-        #expect(AntigravityKeychainCredentialLoader.parse(raw: #"{"email":"x@y.z"}"#) == nil)
+        #expect(AntigravityDefinitionFixtures.credential(raw: #"{"email":"x@y.z"}"#) == nil)
     }
 
     // MARK: - Credential behavior
@@ -63,11 +63,11 @@ struct AntigravityKeychainCredentialLoaderTests {
     func `access token is usable only when expiry is absent or in the future`() {
         let now = Date(timeIntervalSince1970: 1_000_000)
 
-        let fresh = AntigravityOAuthCredentials(accessToken: "a", refreshToken: nil, expiresAt: now.addingTimeInterval(3600))
-        let expiringSoon = AntigravityOAuthCredentials(accessToken: "a", refreshToken: nil, expiresAt: now.addingTimeInterval(30))
-        let expired = AntigravityOAuthCredentials(accessToken: "a", refreshToken: nil, expiresAt: now.addingTimeInterval(-10))
-        let unknown = AntigravityOAuthCredentials(accessToken: "a", refreshToken: nil, expiresAt: nil)
-        let noAccess = AntigravityOAuthCredentials(accessToken: nil, refreshToken: "r", expiresAt: nil)
+        let fresh = AntigravityFixtureCredentials(accessToken: "a", refreshToken: nil, expiresAt: now.addingTimeInterval(3600))
+        let expiringSoon = AntigravityFixtureCredentials(accessToken: "a", refreshToken: nil, expiresAt: now.addingTimeInterval(30))
+        let expired = AntigravityFixtureCredentials(accessToken: "a", refreshToken: nil, expiresAt: now.addingTimeInterval(-10))
+        let unknown = AntigravityFixtureCredentials(accessToken: "a", refreshToken: nil, expiresAt: nil)
+        let noAccess = AntigravityFixtureCredentials(accessToken: nil, refreshToken: "r", expiresAt: nil)
 
         #expect(fresh.hasUsableAccessToken(at: now))
         #expect(!expiringSoon.hasUsableAccessToken(at: now))
@@ -85,7 +85,7 @@ struct AntigravityKeychainCredentialLoaderTests {
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: Self.goKeyringWrapped + "\n", exitCode: 0))
 
-        let loader = AntigravityKeychainCredentialLoader(cliExecutor: mockExecutor)
+        let loader = AntigravityDefinitionCredentialLoader(cliExecutor: mockExecutor)
 
         #expect(await loader.load()?.accessToken == "ya29.access")
     }
@@ -97,7 +97,7 @@ struct AntigravityKeychainCredentialLoaderTests {
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: "security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.", exitCode: 44))
 
-        let loader = AntigravityKeychainCredentialLoader(cliExecutor: mockExecutor)
+        let loader = AntigravityDefinitionCredentialLoader(cliExecutor: mockExecutor)
 
         #expect(await loader.load() == nil)
     }

@@ -7,6 +7,7 @@ public enum Fetch: Sendable, Equatable {
     /// An exit-checked CLI sequence whose arguments depend on prior responses.
     case commandPlan(CommandPlan)
     case httpFlow(HTTPFlow)
+    case workflow(Workflow)
     /// An HTTP request — the *API* choice.
     case http(HTTPRequest)
     /// Ordered JSON HTTP responses; later query values come from earlier responses.
@@ -456,13 +457,14 @@ extension CLICall {
 // MARK: - JSON
 
 extension Fetch: Codable {
-    private static let tags = ["http", "jsonRpc", "cli", "file", "commandPlan", "httpSequence", "httpFlow"]
+    private static let tags = ["http", "jsonRpc", "cli", "file", "commandPlan", "httpSequence", "httpFlow", "workflow"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
         switch try container.singleTag(of: Self.tags, in: "fetch") {
         case "commandPlan": self = .commandPlan(try container.decode(CommandPlan.self, forKey: TagKey("commandPlan")))
         case "httpSequence": self = .httpSequence(try container.decode(HTTPSequence.self, forKey: TagKey("httpSequence")))
+        case "workflow": self = .workflow(try container.decode(Workflow.self, forKey: TagKey("workflow")))
         case "httpFlow": self = .httpFlow(try container.decode(HTTPFlow.self, forKey: TagKey("httpFlow")))
         case "http": self = .http(try container.decode(HTTPRequest.self, forKey: TagKey("http")))
         case "jsonRpc": self = .jsonRpc(try container.decode(JSONRPCCall.self, forKey: TagKey("jsonRpc")))
@@ -476,6 +478,7 @@ extension Fetch: Codable {
         switch self {
         case .commandPlan(let plan): try container.encode(plan, forKey: TagKey("commandPlan"))
         case .httpSequence(let sequence): try container.encode(sequence, forKey: TagKey("httpSequence"))
+        case .workflow(let flow): try container.encode(flow, forKey: TagKey("workflow"))
         case .httpFlow(let flow): try container.encode(flow, forKey: TagKey("httpFlow"))
         case .http(let request): try container.encode(request, forKey: TagKey("http"))
         case .jsonRpc(let call): try container.encode(call, forKey: TagKey("jsonRpc"))

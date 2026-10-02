@@ -1,3 +1,5 @@
+// Test-only monitor double; production Antigravity uses the shared definition.
+@testable import Domain
 import Quotas
 import DataSources
 import Providers
@@ -9,7 +11,7 @@ import Observation
 /// Owns its probe and manages its own data lifecycle.
 @MainActor
 @Observable
-public final class AntigravityProvider: AIProvider {
+final class StubAntigravityProvider: AIProvider {
     // MARK: - Identity (Protocol Requirement)
 
     public let id: String = "antigravity"

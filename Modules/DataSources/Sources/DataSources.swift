@@ -59,6 +59,7 @@ public enum DataSources {
         providerId: String,
         cliExecutor: any CLIExecutor,
         network: any NetworkClient,
+        loopbackNetwork: any NetworkClient = InsecureLocalhostNetworkClient(),
         makeTransport: @escaping TransportFactory,
         security: @escaping @Sendable ([String]) -> (status: Int32, output: String) = { _ in (1, "") },
         scripts: @escaping ScriptSource = { _ in nil },
@@ -76,6 +77,7 @@ public enum DataSources {
             providerId: providerId,
             makeCLIExecutor: { _ in cliExecutor },
             network: network,
+            loopbackNetwork: loopbackNetwork,
             makeTransport: makeTransport,
             security: security,
             scripts: scripts,
@@ -94,6 +96,7 @@ public enum DataSources {
         providerId: String,
         makeCLIExecutor: @escaping CLIFetcher.MakeExecutor,
         network: any NetworkClient,
+        loopbackNetwork: any NetworkClient = InsecureLocalhostNetworkClient(),
         makeTransport: @escaping TransportFactory,
         security: @escaping KeychainReader.Security,
         scripts: @escaping ScriptSource,
@@ -113,6 +116,8 @@ public enum DataSources {
             HTTPSequenceFetcher(sequence: sequence, network: network, now: now)
         case .httpFlow(let flow):
             HTTPFlowFetcher(flow: flow, network: network, script: scripts(flow.script), settingValue: settingValue, now: now, sleep: sleep)
+        case .workflow(let flow):
+            WorkflowFetcher(flow: flow, network: network, loopbackNetwork: loopbackNetwork, makeExecutor: makeCLIExecutor, script: scripts(flow.script), now: now, settingValue: settingValue)
         case .http(let request):
             HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue)
         case .jsonRpc(let call):

@@ -74,6 +74,7 @@ public struct DataSource: Sendable {
             credential = (try? credentials.find())?.credential
         }
         guard isExpectedLogin(credential) else { return false }
+        if let checker = fetcher as? any ReadinessChecking { return await checker.checkReadiness(with: credential) }
         return fetcher.isReady()
     }
 
@@ -422,4 +423,9 @@ final class UsageMemory: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         retryAt = date
     }
+}
+
+/// Availability that requires bounded read-only command discovery; no quota HTTP.
+protocol ReadinessChecking: Sendable {
+    func checkReadiness(with credential: Credential?) async -> Bool
 }

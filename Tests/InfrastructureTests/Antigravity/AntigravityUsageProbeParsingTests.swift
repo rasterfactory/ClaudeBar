@@ -50,7 +50,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(Self.sampleUserStatusResponse.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then
         #expect(snapshot.quotas.count == 2)
@@ -64,7 +64,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(Self.sampleUserStatusResponse.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then
         #expect(snapshot.quotas[0].percentRemaining == 75.0)
@@ -77,7 +77,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(Self.sampleUserStatusResponse.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then
         let expectedDate = ISO8601DateFormatter().date(from: "2025-01-01T00:00:00Z")
@@ -90,7 +90,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(Self.sampleUserStatusResponse.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then
         let expectedDate = Date(timeIntervalSince1970: 1735689600)
@@ -103,7 +103,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(Self.sampleUserStatusResponse.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then
         if case .modelSpecific(let name) = snapshot.quotas[0].quotaType {
@@ -119,7 +119,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(Self.sampleUserStatusResponse.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then
         #expect(snapshot.accountEmail == "user@example.com")
@@ -151,7 +151,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(responseWithMissingQuota.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then - models without quotaInfo should be skipped
         #expect(snapshot.quotas.count == 1)
@@ -185,7 +185,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(responseWithResetTimeOnly.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then - model with only resetTime should be included with 0% remaining
         #expect(snapshot.quotas.count == 2)
@@ -218,7 +218,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(responseWithManyModels.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then - all 4 models should be included
         #expect(snapshot.quotas.count == 4)
@@ -231,7 +231,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(Self.sampleUserStatusResponse.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
 
         // Then
         #expect(snapshot.providerId == "antigravity")
@@ -246,7 +246,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(Self.sampleCommandModelResponse.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseCommandModelResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseCommandModelResponse(data, providerId: "antigravity")
 
         // Then
         #expect(snapshot.quotas.count == 1)
@@ -260,7 +260,7 @@ struct AntigravityUsageProbeParsingTests {
         let data = Data(Self.sampleCommandModelResponse.utf8)
 
         // When
-        let snapshot = try AntigravityUsageProbe.parseCommandModelResponse(data, providerId: "antigravity")
+        let snapshot = try AntigravityDefinitionFixtures.parseCommandModelResponse(data, providerId: "antigravity")
 
         // Then
         #expect(snapshot.accountEmail == nil)
@@ -275,7 +275,7 @@ struct AntigravityUsageProbeParsingTests {
 
         // When/Then
         #expect(throws: UsageError.self) {
-            try AntigravityUsageProbe.parseUserStatusResponse(invalidData, providerId: "antigravity")
+            try AntigravityDefinitionFixtures.parseUserStatusResponse(invalidData, providerId: "antigravity")
         }
     }
 
@@ -295,7 +295,7 @@ struct AntigravityUsageProbeParsingTests {
 
         // When/Then
         #expect(throws: UsageError.self) {
-            try AntigravityUsageProbe.parseUserStatusResponse(data, providerId: "antigravity")
+            try AntigravityDefinitionFixtures.parseUserStatusResponse(data, providerId: "antigravity")
         }
     }
 }

@@ -174,6 +174,7 @@ struct ClaudeBarApp: App {
             return ProcessInfo.processInfo.environment[name]
         })
         let gemini = Self.builtIn("gemini", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "gemini"))
+        let antigravity = Self.builtIn("antigravity", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "antigravity"), secrets: vault)
 
         // The lineup: each login is its own pill. Legacy providers are their
         // own single login until they become definitions.
@@ -185,6 +186,8 @@ struct ClaudeBarApp: App {
             codex.defaultAccount,
             gemini.defaultAccount,
             AntigravityProvider(probe: AntigravityUsageProbe(), settingsRepository: settingsRepository),
+            GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
+            antigravity.defaultAccount,
             ZaiProvider(
                 probe: ZaiUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
@@ -238,7 +241,7 @@ struct ClaudeBarApp: App {
                 probe: OmpUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts + gemini.accounts).filter({ !$0.isDefault }) {
+        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts + gemini.accounts + antigravity.accounts).filter({ !$0.isDefault }) {
             repository.add(account)
         }
         // Providers people made in Add Provider (~/.claudebar/providers), after

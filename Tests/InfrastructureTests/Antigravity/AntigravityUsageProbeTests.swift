@@ -64,7 +64,7 @@ struct AntigravityUsageProbeTests {
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: Self.samplePsOutputNoAntigravity, exitCode: 0))
 
-        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: mockExecutor)
 
         // When & Then
         #expect(await probe.isAvailable() == false)
@@ -78,7 +78,7 @@ struct AntigravityUsageProbeTests {
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0))
 
-        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: mockExecutor)
 
         // When & Then
         #expect(await probe.isAvailable() == true)
@@ -92,7 +92,7 @@ struct AntigravityUsageProbeTests {
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: Self.samplePsOutputWithAntigravityARM, exitCode: 0))
 
-        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: mockExecutor)
 
         // When & Then
         #expect(await probe.isAvailable() == true)
@@ -106,7 +106,7 @@ struct AntigravityUsageProbeTests {
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: Self.samplePsOutputWithCurrentAntigravity, exitCode: 0))
 
-        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: mockExecutor)
 
         // When & Then
         #expect(await probe.isAvailable() == true)
@@ -120,7 +120,7 @@ struct AntigravityUsageProbeTests {
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: Self.samplePsOutputMissingToken, exitCode: 0))
 
-        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: mockExecutor)
 
         // When & Then
         #expect(await probe.isAvailable() == false)
@@ -134,7 +134,7 @@ struct AntigravityUsageProbeTests {
         let commandLine = "/path/to/language_server_macos --csrf_token abc123token --extension_server_port 8080 --app_data_dir antigravity"
 
         // When
-        let token = AntigravityUsageProbe.extractCSRFToken(from: commandLine)
+        let token = AntigravityDefinitionFixtures.extractCSRFToken(from: commandLine)
 
         // Then
         #expect(token == "abc123token")
@@ -146,7 +146,7 @@ struct AntigravityUsageProbeTests {
         let commandLine = "/path/to/language_server_macos --csrf_token abc123 --extension_server_port 8080 --app_data_dir antigravity"
 
         // When
-        let port = AntigravityUsageProbe.extractExtensionPort(from: commandLine)
+        let port = AntigravityDefinitionFixtures.extractExtensionPort(from: commandLine)
 
         // Then
         #expect(port == 8080)
@@ -158,7 +158,7 @@ struct AntigravityUsageProbeTests {
         let line = "12345 /path/to/language_server_macos --csrf_token abc123 --app_data_dir antigravity"
 
         // When
-        let pid = AntigravityUsageProbe.extractPID(from: line)
+        let pid = AntigravityDefinitionFixtures.extractPID(from: line)
 
         // Then
         #expect(pid == 12345)
@@ -175,11 +175,11 @@ struct AntigravityUsageProbeTests {
         let antigravityPathLine = "/Users/test/.antigravity/language_server_macos"
 
         // When & Then
-        #expect(AntigravityUsageProbe.isAntigravityProcess(antigravityLine) == true)
-        #expect(AntigravityUsageProbe.isAntigravityProcess(antigravityARMLine) == true)
-        #expect(AntigravityUsageProbe.isAntigravityProcess(currentAntigravityLine) == true)
-        #expect(AntigravityUsageProbe.isAntigravityProcess(otherLine) == false)
-        #expect(AntigravityUsageProbe.isAntigravityProcess(antigravityPathLine) == true)
+        #expect(AntigravityDefinitionFixtures.isAntigravityProcess(antigravityLine) == true)
+        #expect(AntigravityDefinitionFixtures.isAntigravityProcess(antigravityARMLine) == true)
+        #expect(AntigravityDefinitionFixtures.isAntigravityProcess(currentAntigravityLine) == true)
+        #expect(AntigravityDefinitionFixtures.isAntigravityProcess(otherLine) == false)
+        #expect(AntigravityDefinitionFixtures.isAntigravityProcess(antigravityPathLine) == true)
     }
 
     // MARK: - Port Discovery Parsing Tests
@@ -187,7 +187,7 @@ struct AntigravityUsageProbeTests {
     @Test
     func `parses listening ports from lsof output`() {
         // When
-        let ports = AntigravityUsageProbe.parseListeningPorts(from: Self.sampleLsofOutput)
+        let ports = AntigravityDefinitionFixtures.parseListeningPorts(from: Self.sampleLsofOutput)
 
         // Then
         #expect(ports.count == 2)
@@ -201,7 +201,7 @@ struct AntigravityUsageProbeTests {
         let emptyOutput = "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME"
 
         // When
-        let ports = AntigravityUsageProbe.parseListeningPorts(from: emptyOutput)
+        let ports = AntigravityDefinitionFixtures.parseListeningPorts(from: emptyOutput)
 
         // Then
         #expect(ports.isEmpty)
@@ -217,7 +217,7 @@ struct AntigravityUsageProbeTests {
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: Self.samplePsOutputNoAntigravity, exitCode: 0))
 
-        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: mockExecutor)
 
         // When & Then
         await #expect(throws: UsageError.cliNotFound("Antigravity")) {
@@ -233,7 +233,7 @@ struct AntigravityUsageProbeTests {
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willReturn(CLIResult(output: Self.samplePsOutputMissingToken, exitCode: 0))
 
-        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: mockExecutor)
 
         // When & Then
         await #expect(throws: UsageError.authenticationRequired) {
@@ -250,19 +250,19 @@ struct AntigravityUsageProbeTests {
 
         // First call: ps returns process with CSRF token
         // Second call: lsof fails
-        var callCount = 0
+        let callCount = AntigravityFixtureCounter()
         given(mockExecutor)
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
-            .willProduce { _, _, _, _, _, _ in
-                callCount += 1
-                if callCount == 1 {
+            .willProduce { @Sendable _, _, _, _, _, _ in
+                let call = callCount.increment()
+                if call == 1 {
                     return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
                 } else {
                     return CLIResult(output: "", exitCode: 1)
                 }
             }
 
-        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: mockExecutor)
 
         // When & Then
         await #expect(throws: UsageError.self) {
@@ -276,19 +276,19 @@ struct AntigravityUsageProbeTests {
         let mockExecutor = MockCLIExecutor()
 
         // ps returns process, lsof returns no ports
-        var callCount = 0
+        let callCount = AntigravityFixtureCounter()
         given(mockExecutor)
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
-            .willProduce { _, _, _, _, _, _ in
-                callCount += 1
-                if callCount == 1 {
+            .willProduce { @Sendable _, _, _, _, _, _ in
+                let call = callCount.increment()
+                if call == 1 {
                     return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
                 } else {
                     return CLIResult(output: "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME", exitCode: 0)
                 }
             }
 
-        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+        let probe = AntigravityDefinitionProbe(cliExecutor: mockExecutor)
 
         // When & Then
         await #expect(throws: UsageError.self) {
@@ -305,12 +305,12 @@ struct AntigravityUsageProbeTests {
         let mockNetwork = MockNetworkClient()
 
         // ps returns process, lsof returns listening ports
-        var callCount = 0
+        let callCount = AntigravityFixtureCounter()
         given(mockExecutor)
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
-            .willProduce { _, _, _, _, _, _ in
-                callCount += 1
-                if callCount == 1 {
+            .willProduce { @Sendable _, _, _, _, _, _ in
+                let call = callCount.increment()
+                if call == 1 {
                     return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
                 } else {
                     return CLIResult(output: Self.sampleLsofOutput, exitCode: 0)
@@ -327,7 +327,7 @@ struct AntigravityUsageProbeTests {
         )!
         given(mockNetwork).request(.any).willReturn((apiResponseData, response))
 
-        let probe = AntigravityUsageProbe(
+        let probe = AntigravityDefinitionProbe(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork
         )
@@ -351,12 +351,12 @@ struct AntigravityUsageProbeTests {
         let mockNetwork = MockNetworkClient()
 
         // ps returns process, lsof returns listening ports
-        var callCount = 0
+        let callCount = AntigravityFixtureCounter()
         given(mockExecutor)
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
-            .willProduce { _, _, _, _, _, _ in
-                callCount += 1
-                if callCount == 1 {
+            .willProduce { @Sendable _, _, _, _, _, _ in
+                let call = callCount.increment()
+                if call == 1 {
                     return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
                 } else {
                     return CLIResult(output: Self.sampleLsofOutput, exitCode: 0)
@@ -372,7 +372,7 @@ struct AntigravityUsageProbeTests {
         )!
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
-        let probe = AntigravityUsageProbe(
+        let probe = AntigravityDefinitionProbe(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork
         )
@@ -390,12 +390,12 @@ struct AntigravityUsageProbeTests {
         let mockNetwork = MockNetworkClient()
 
         // ps returns process, lsof returns listening ports
-        var callCount = 0
+        let callCount = AntigravityFixtureCounter()
         given(mockExecutor)
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
-            .willProduce { _, _, _, _, _, _ in
-                callCount += 1
-                if callCount == 1 {
+            .willProduce { @Sendable _, _, _, _, _, _ in
+                let call = callCount.increment()
+                if call == 1 {
                     return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
                 } else {
                     return CLIResult(output: Self.sampleLsofOutput, exitCode: 0)
@@ -412,7 +412,7 @@ struct AntigravityUsageProbeTests {
         )!
         given(mockNetwork).request(.any).willReturn((invalidData, response))
 
-        let probe = AntigravityUsageProbe(
+        let probe = AntigravityDefinitionProbe(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork
         )
@@ -433,12 +433,12 @@ struct AntigravityUsageProbeTests {
         let psOutput = """
         12345 /path/to/language_server_macos --csrf_token abc123token --extension_server_port 8080 --app_data_dir antigravity
         """
-        var callCount = 0
+        let callCount = AntigravityFixtureCounter()
         given(mockExecutor)
             .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
-            .willProduce { _, _, _, _, _, _ in
-                callCount += 1
-                if callCount == 1 {
+            .willProduce { @Sendable _, _, _, _, _, _ in
+                let call = callCount.increment()
+                if call == 1 {
                     return CLIResult(output: psOutput, exitCode: 0)
                 } else {
                     return CLIResult(output: Self.sampleLsofOutput, exitCode: 0)
@@ -455,7 +455,7 @@ struct AntigravityUsageProbeTests {
         )!
         given(mockNetwork).request(.any).willReturn((apiResponseData, response))
 
-        let probe = AntigravityUsageProbe(
+        let probe = AntigravityDefinitionProbe(
             cliExecutor: mockExecutor,
             networkClient: mockNetwork
         )

@@ -389,7 +389,8 @@ public final class Provider {
     /// A data source that serves cached usage sets how often the background
     /// may ask (Claude's API: 15 minutes, #204).
     public var backgroundRefreshFloor: Duration? {
-        definition.dataSource(activeKind)?.cache.map { .seconds($0.ttl) }
+        let seconds = [definition.dataSource(activeKind)?.cache?.ttl, definition.backgroundRefreshSeconds].compactMap { $0 }.filter { $0.isFinite && $0 > 0 }.max()
+        return seconds.map { .seconds($0) }
     }
 
     // MARK: - Refresh — one login at a time

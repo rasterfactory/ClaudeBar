@@ -125,9 +125,25 @@ public struct HTTPRequest: Sendable, Equatable, Codable {
 
 /// Where a CLI runs. `dedicated` is ClaudeBar's own trusted directory, so a
 /// CLI's folder-trust prompt never blocks a fetch.
-public enum WorkingDirectory: String, Sendable, Equatable, Codable {
-    /// ClaudeBar's own folder, so a CLI's folder-trust prompt never blocks it.
+public enum WorkingDirectory: Sendable, Equatable, Codable {
     case dedicated
+    case path(String)
+    private enum CodingKeys: String, CodingKey { case path }
+    public init(from decoder: Decoder) throws {
+        if let value = try? decoder.singleValueContainer().decode(String.self), value == "dedicated" {
+            self = .dedicated
+        } else {
+            self = .path(try decoder.container(keyedBy: CodingKeys.self).decode(String.self, forKey: .path))
+        }
+    }
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .dedicated:
+            var container = encoder.singleValueContainer(); try container.encode("dedicated")
+        case .path(let value):
+            var container = encoder.container(keyedBy: CodingKeys.self); try container.encode(value, forKey: .path)
+        }
+    }
 }
 
 /// Starts `cli args…`, sends the `handshake` in order, then `call`, and answers

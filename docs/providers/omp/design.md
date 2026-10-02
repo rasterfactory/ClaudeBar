@@ -69,3 +69,9 @@ Presentation is separate and may change freely:
 - Nothing at all to show → `ProbeError.noData`.
 
 `accountEmail` on the snapshot is set only when exactly one distinct email appears across the payload.
+
+## JSON engine migration
+
+The built-in JSON and pure mapping script replace the vendor Swift provider/probe. All 64 parsing fixtures and eight execution fixtures run through the real definition with stubbed connections. Shared script-report metadata retains full persisted labels separately from compact menu-bar/card titles; metrics express uncapped spend and no-usage accounts without fabricated percentages. Exact decimal helpers preserve monetary JSON tokens and round cents without a Double conversion. An explicit background floor preserves CLI pacing without caching manual refresh.
+
+An added login changes only its process environment and working directory. Its signed-in agent directory is mandatory; absent profiles never hand over to the default account. Actual multi-profile live sign-in remains unverified.

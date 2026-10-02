@@ -114,7 +114,7 @@ struct JSONRPCFetcher: Fetching {
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
-        let directory = call.workingDirectory == .dedicated ? CLIWorkingDirectory.resolve() : nil
+        let directory = try call.workingDirectory?.resolve()
         let transport = try makeTransport(call.cli, call.args, Self.environment(call.environment), directory)
         defer { transport.close() }
 
@@ -214,7 +214,7 @@ struct CLIFetcher: Fetching {
         if let label = call.errors?.missing, makeExecutor(call).locate(call.cli) == nil {
             throw UsageError.cliNotFound(label)
         }
-        let directory = call.workingDirectory == .dedicated ? CLIWorkingDirectory.resolve() : nil
+        let directory = try call.workingDirectory?.resolve()
         let result: CLIResult
         do {
             if let plan = call.session {
@@ -287,5 +287,15 @@ struct FileFetcher: Fetching {
             throw UsageError.executionFailed("No file at \(call.path)")
         }
         return Response(body: data)
+    }
+}
+private extension WorkingDirectory {
+    func resolve() throws -> URL {
+        switch self {
+        case .dedicated: return CLIWorkingDirectory.resolve()
+        case .path(let value):
+            guard value.hasPrefix("/") else { throw UsageError.executionFailed("CLI working directory must be absolute") }
+            return URL(fileURLWithPath: value, isDirectory: true)
+        }
     }
 }

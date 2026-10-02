@@ -42,6 +42,7 @@ struct ScriptMapper: Reading {
         context.setObject(humanDate, forKeyedSubscript: "humanDate" as NSString)
         context.setObject(try Self.inputJSON(response, facts: facts, now: now()), forKeyedSubscript: "__input" as NSString)
 
+        context.evaluateScript(DecimalScript.source)
         context.evaluateScript(source)
         if let exception {
             throw UsageError.parseFailed("Mapping script '\(file)' failed to load: \(exception)")
@@ -99,9 +100,15 @@ struct ScriptOutput: Decodable {
         let resetsAt: Double?
         let resetText: String?
         let windowSeconds: Double?
+        let group: String?
+        let compactTitle: String?
+        let menuBarTitle: String?
+        /// Interim spend metadata preserves the reported share when a server also returns dollars.
+        let spend: Spend?
+        struct Spend: Decodable { let used: Money; let limit: Money }
 
         private enum CodingKeys: String, CodingKey {
-            case type, name, percentRemaining, left, resetsAt, resetText, windowSeconds
+            case type, name, percentRemaining, left, resetsAt, resetText, windowSeconds, group, compactTitle, menuBarTitle, spend
         }
 
         private struct MoneyLeft: Decodable {
@@ -132,6 +139,13 @@ struct ScriptOutput: Decodable {
             resetsAt = try container.decodeIfPresent(Double.self, forKey: .resetsAt)
             resetText = try container.decodeIfPresent(String.self, forKey: .resetText)
             windowSeconds = try container.decodeIfPresent(Double.self, forKey: .windowSeconds)
+            group = try container.decodeIfPresent(String.self, forKey: .group)
+            compactTitle = try container.decodeIfPresent(String.self, forKey: .compactTitle)
+            menuBarTitle = try container.decodeIfPresent(String.self, forKey: .menuBarTitle)
+            spend = try container.decodeIfPresent(Spend.self, forKey: .spend)
+            if spend != nil, percent == nil {
+                throw DecodingError.dataCorruptedError(forKey: .spend, in: container, debugDescription: "Spend metadata needs a reported share")
+            }
         }
     }
 
@@ -172,6 +186,7 @@ struct ScriptOutput: Decodable {
     }
 
     let quotas: [Quota]?
+    let metrics: [ExtensionMetric]?
     let plan: String?
     let cost: Cost?
     let account: Account?
@@ -181,13 +196,20 @@ struct ScriptOutput: Decodable {
         if let error { throw error.usageError }
         let quotas = (quotas ?? []).compactMap { quota -> UsageQuota? in
             guard let type = JSONMapper.quotaType(quota.type, name: quota.name) else { return nil }
+            if let spend = quota.spend, case .share(let percent) = quota.left {
+                return UsageQuota(percentRemaining: percent, quotaType: type, providerId: providerId,
+                    resetsAt: quota.resetsAt.map { Date(timeIntervalSince1970: $0) }, resetText: quota.resetText,
+                    windowDuration: quota.windowSeconds, dollarUsed: spend.used.value, dollarCap: spend.limit.value,
+                    group: quota.group, compactTitle: quota.compactTitle, menuBarTitle: quota.menuBarTitle)
+            }
             return UsageQuota(
                 left: quota.left,
                 quotaType: type,
                 providerId: providerId,
                 resetsAt: quota.resetsAt.map { Date(timeIntervalSince1970: $0) },
                 resetText: quota.resetText,
-                windowDuration: quota.windowSeconds
+                windowDuration: quota.windowSeconds,
+                group: quota.group, compactTitle: quota.compactTitle, menuBarTitle: quota.menuBarTitle
             )
         }
         let costUsage = cost.map { cost in
@@ -210,7 +232,8 @@ struct ScriptOutput: Decodable {
             accountOrganization: account?.organization,
             loginMethod: account?.loginMethod,
             accountTier: plan.map(Self.tier),
-            costUsage: costUsage
+            costUsage: costUsage,
+            extensionMetrics: metrics
         )
     }
 

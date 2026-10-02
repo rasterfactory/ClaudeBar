@@ -27,8 +27,8 @@ struct ClaudeBarApp: App {
         settings: any MultiAccountSettingsRepository,
         accounts: [ProviderAccountConfig] = [],
         secrets: (any SecretVault)? = nil,
-        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] },
-        guestPasses: GuestPasses? = nil
+        guestPasses: GuestPasses? = nil,
+        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] }
     ) -> Provider {
         do {
             return try Providers.make(id, settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses, cloudWatch: SDKCloudWatchClient(), environment: environment)
@@ -124,139 +124,48 @@ struct ClaudeBarApp: App {
         // Codex is data: Modules/Providers/Resources/Providers/codex.json — the
         // product once, with the logins added beside the default one (#326).
         let codex = Self.builtIn("codex", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "codex"))
-
-        let vercel = Self.builtIn("vercel-gateway", settings: settingsRepository,
-                                  accounts: settingsRepository.accounts(forProvider: "vercel-gateway"), secrets: ProviderVault(),
-                                  environment: { name in
-            let configured = settingsRepository.vercelAuthEnvVar()
-            let variable = name == "AI_GATEWAY_API_KEY" && !configured.isEmpty ? configured : name
-            return ProcessInfo.processInfo.environment[variable]
-        })
-        let minimax = Self.builtIn("minimax", settings: settingsRepository,
-            accounts: settingsRepository.accounts(forProvider: "minimax"), secrets: ProviderVault(),
-            environment: { name in
-                let override = settingsRepository.minimaxAuthEnvVar()
-                return ProcessInfo.processInfo.environment[name == "MINIMAX_API_KEY" && !override.isEmpty ? override : name]
-            })
-        let opencode = Self.builtIn("opencode-go", settings: settingsRepository,
-            accounts: settingsRepository.accounts(forProvider: "opencode-go"), secrets: ProviderVault())
-        let commandcode = Self.builtIn("commandcode", settings: settingsRepository,
-            accounts: settingsRepository.accounts(forProvider: "commandcode"), secrets: ProviderVault())
-        let amp = Self.builtIn("ampcode", settings: settingsRepository,
-            accounts: settingsRepository.accounts(forProvider: "ampcode"), secrets: ProviderVault())
-
-        let deepseek = Self.builtIn("deepseek", settings: settingsRepository,
-                                   accounts: settingsRepository.accounts(forProvider: "deepseek"), secrets: ProviderVault(),
-                                   environment: { name in
-            let configured = settingsRepository.deepseekAuthEnvVar()
-            let variable = name == "DEEPSEEK_API_KEY" && !configured.isEmpty ? configured : name
-            return ProcessInfo.processInfo.environment[variable]
-        })
-
-        let kiro = Self.builtIn("kiro", settings: settingsRepository,
-            accounts: settingsRepository.accounts(forProvider: "kiro"))
-        let omp = Self.builtIn("omp", settings: settingsRepository,
-            accounts: settingsRepository.accounts(forProvider: "omp"))
-        let cursor = Self.builtIn("cursor", settings: settingsRepository,
-                                  accounts: settingsRepository.accounts(forProvider: "cursor"), secrets: vault)
-        let grok = Self.builtIn("grok", settings: settingsRepository,
-                                accounts: settingsRepository.accounts(forProvider: "grok"), secrets: vault)
-        let copilot = Self.builtIn("copilot", settings: settingsRepository,
-                                   accounts: settingsRepository.accounts(forProvider: "copilot"), secrets: vault,
-                                   environment: { name in
-            guard name == "COPILOT_TOKEN" else { return ProcessInfo.processInfo.environment[name] }
-            let configured = settingsRepository.copilotAuthEnvVar()
-            return configured.isEmpty ? nil : ProcessInfo.processInfo.environment[configured]
-        let zai = Self.builtIn("zai", settings: settingsRepository,
-                               accounts: settingsRepository.accounts(forProvider: "zai"), secrets: vault,
-                               environment: { name in
+        let vault = ProviderVault()
+        let gemini = Self.builtIn("gemini", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "gemini"), secrets: vault)
+        let antigravity = Self.builtIn("antigravity", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "antigravity"), secrets: vault)
+        let zai = Self.builtIn("zai", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "zai"), secrets: vault, environment: { name in
             if name == "ZAI_CONFIG_PATH" { return settingsRepository.zaiConfigPath() }
             if name == "GLM_AUTH_NAME" { return settingsRepository.glmAuthEnvVar() }
             return ProcessInfo.processInfo.environment[name]
         })
-        let gemini = Self.builtIn("gemini", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "gemini"))
-        let antigravity = Self.builtIn("antigravity", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "antigravity"), secrets: vault)
-        let mistral = Self.builtIn("mistral", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "mistral"))
-        let bedrock = Self.builtIn("bedrock", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "bedrock"))
-
-        // The lineup: each login is its own pill. Legacy providers are their
-        // own single login until they become definitions.
+        let copilot = Self.builtIn("copilot", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "copilot"), secrets: vault, environment: { name in
+            guard name == "COPILOT_TOKEN" else { return ProcessInfo.processInfo.environment[name] }
+            let configured = settingsRepository.copilotAuthEnvVar()
+            return configured.isEmpty ? nil : ProcessInfo.processInfo.environment[configured]
+        })
+        let bedrock = Self.builtIn("bedrock", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "bedrock"), secrets: vault)
+        let ampcode = Self.builtIn("ampcode", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "ampcode"), secrets: vault)
         let kimi = Self.builtIn("kimi", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "kimi"), secrets: vault)
+        let kiro = Self.builtIn("kiro", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "kiro"), secrets: vault)
+        let cursor = Self.builtIn("cursor", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "cursor"), secrets: vault)
+        let minimax = Self.builtIn("minimax", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "minimax"), secrets: vault, environment: { name in
+            let configured = settingsRepository.minimaxAuthEnvVar()
+            return ProcessInfo.processInfo.environment[name == "MINIMAX_API_KEY" && !configured.isEmpty ? configured : name]
+        })
+        let deepseek = Self.builtIn("deepseek", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "deepseek"), secrets: vault, environment: { name in
+            let configured = settingsRepository.deepseekAuthEnvVar()
+            return ProcessInfo.processInfo.environment[name == "DEEPSEEK_API_KEY" && !configured.isEmpty ? configured : name]
+        })
+        let vercel_gateway = Self.builtIn("vercel-gateway", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "vercel-gateway"), secrets: vault, environment: { name in
+            let configured = settingsRepository.vercelAuthEnvVar()
+            return ProcessInfo.processInfo.environment[name == "AI_GATEWAY_API_KEY" && !configured.isEmpty ? configured : name]
+        })
         let alibaba = Self.builtIn("alibaba", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "alibaba"), secrets: vault)
-        // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
-        let repository = AIProviders(providers: [
-            claude.defaultAccount,
-            codex.defaultAccount,
-            gemini.defaultAccount,
-            AntigravityProvider(probe: AntigravityUsageProbe(), settingsRepository: settingsRepository),
-            GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
-            antigravity.defaultAccount,
-            ZaiProvider(
-                probe: ZaiUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            copilot.defaultAccount,
-            zai.defaultAccount,
-            CopilotProvider(
-                billingProbe: CopilotUsageProbe(settingsRepository: settingsRepository),
-                internalProbe: CopilotInternalAPIProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            BedrockProvider(
-                probe: BedrockUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            amp.defaultAccount,
-            bedrock.defaultAccount,
-            AmpCodeProvider(probe: AmpCodeUsageProbe(), settingsRepository: settingsRepository),
-            KimiProvider(
-                cliProbe: KimiCLIUsageProbe(),
-                apiProbe: KimiUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            kiro.defaultAccount,
-            AmpCodeProvider(probe: AmpCodeUsageProbe(), settingsRepository: settingsRepository),
-            kimi.defaultAccount,
-            KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
-            CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
-            minimax.defaultAccount,
-            KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
-            cursor.defaultAccount,
-            MiniMaxProvider(
-                probe: MiniMaxUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            deepseek.defaultAccount,
-            vercel.defaultAccount,
-            AlibabaProvider(
-                probe: AlibabaUsageProbe(settingsRepository: settingsRepository, cookieProvider: AlibabaBrowserCookieProvider()),
-                settingsRepository: settingsRepository
-            ),
-            VercelProvider(
-                probe: VercelUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            alibaba.defaultAccount,
-            MistralProvider(
-                probe: MistralUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-            opencode.defaultAccount,
-            mistral.defaultAccount,
-            OpenCodeProvider(
-                probe: OpenCodeAPIUsageProbe(fallback: OpenCodeUsageProbe()),
-                settingsRepository: settingsRepository
-            ),
-            OmpProvider(
-                probe: OmpUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-        for account in (claude.accounts + codex.accounts + vercel.accounts + deepseek.accounts + minimax.accounts + opencode.accounts + commandcode.accounts + amp.accounts + kiro.accounts + omp.accounts + cursor.accounts + grok.accounts + copilot.accounts + zai.accounts + kimi.accounts + alibaba.accounts + gemini.accounts + antigravity.accounts + mistral.accounts + bedrock.accounts).filter({ !$0.isDefault }) {
-            repository.add(account)
-        }
+        let mistral = Self.builtIn("mistral", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "mistral"), secrets: vault)
+        let opencode_go = Self.builtIn("opencode-go", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "opencode-go"), secrets: vault)
+        let omp = Self.builtIn("omp", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "omp"), secrets: vault)
+        let grok = Self.builtIn("grok", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "grok"), secrets: vault)
+        let commandcode = Self.builtIn("commandcode", settings: settingsRepository, accounts: settingsRepository.accounts(forProvider: "commandcode"), secrets: vault)
+
+        let providers = [claude, codex, gemini, antigravity, zai, copilot, bedrock, ampcode, kimi, kiro, cursor, minimax, deepseek, vercel_gateway, alibaba, mistral, opencode_go, omp, grok, commandcode]
+        let repository = AIProviders(providers: providers.map(\.defaultAccount))
+        for account in providers.flatMap(\.accounts).filter({ !$0.isDefault }) { repository.add(account) }
         // Providers people made in Add Provider (~/.claudebar/providers), after
         // the built-ins; their keys come from ClaudeBar's vault.
-        let vault = ProviderVault()
         for definition in ProviderCatalog().custom() {
             Providers.register(custom: definition)
             let custom = Providers.make(definition, settings: settingsRepository,

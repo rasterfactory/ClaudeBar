@@ -80,7 +80,7 @@ public enum Providers {
             settings: settings,
             accounts: accounts,
             makeDataSource: { source, login in
-                DataSources.make(source, providerId: definition.id, scripts: builtInScripts, settingValue: { settings.stringValue($0, forProvider: definition.id) }, secrets: secrets?.scoped(to: login), settings: settings.scopedValues(forProvider: login), environment: environment)
+                DataSources.make(source, providerId: definition.id, scripts: builtInScripts, settingValue: { settings.stringValue($0, forProvider: definition.id) }, cloudWatch: cloudWatch, secrets: secrets?.scoped(to: login), settings: settings.scopedValues(forProvider: login), environment: environment)
             },
             guestPasses: guestPasses,
             vault: secrets

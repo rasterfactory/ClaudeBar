@@ -511,3 +511,20 @@ public struct HTTPFlow: Codable, Sendable, Equatable {
     /// A failed optional request becomes a status-less response for the planner.
     public let continueOnError: [String]?
 }
+
+public struct Workflow: Codable, Sendable, Equatable {
+    public let script: String
+    public let commands: [String: CLICall]
+    public let alternateExecutables: [String: [String]]?
+    public let requests: [String: HTTPRequest]
+    public let loopbackRequests: [String]?
+    public let continueOnError: [String: [String]]?
+    public let constants: [String: JSONValue]?
+    public let maxSteps: Int?
+}
+
+public struct DirectoryCall: Codable, Sendable, Equatable {
+    public let path: String
+    public let pattern: String
+    public let file: String
+}

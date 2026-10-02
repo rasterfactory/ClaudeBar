@@ -314,7 +314,17 @@ public final class JSONSettingsRepository:
               let raw = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) else { return }
         store.write(value: raw, key: "\(id).\(setting)")
     }
-    public func stringValue(_ setting: String, forProvider id: String) -> String? { store.read(key: "\(id).\(setting)") }
+    public func stringValue(_ setting:String,forProvider id:String) -> String? {
+        if id == "bedrock" {
+            switch setting {
+            case "awsProfile": return awsProfileName()
+            case "regions": return String(decoding:(try? JSONEncoder().encode(bedrockRegions())) ?? Data(),as:UTF8.self)
+            case "dailyBudget": return bedrockDailyBudget().map{NSDecimalNumber(decimal:$0).stringValue}
+            default: break
+            }
+        }
+        return store.read(key:"\(id).\(setting)")
+    }
 
     // MARK: - ProviderSettingsRepository
 
@@ -341,7 +351,6 @@ public final class JSONSettingsRepository:
     }
 
     /// `<id>.<setting>` — e.g. `claude.cliFallbackEnabled`, the key the Claude card writes.
-    public func stringValue(_ setting: String, forProvider id: String) -> String? { store.read(key: "\(id).\(setting)") }
     public func setStringValue(_ value: String?, _ setting: String, forProvider id: String) { store.write(value: value, key: "\(id).\(setting)") }
 
     public func isOn(_ setting: String, forProvider id: String) -> Bool? {

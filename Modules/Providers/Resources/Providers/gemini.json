@@ -55,7 +55,18 @@
               "cli": "gemini",
               "args": [],
               "input": "/quit\n",
-              "timeout": 15
+              "timeout": 15,
+              "environment": {
+                "unset": [
+                  "GEMINI_CLI_HOME",
+                  "GEMINI_API_KEY",
+                  "GOOGLE_API_KEY",
+                  "GOOGLE_GENAI_USE_VERTEXAI",
+                  "GOOGLE_APPLICATION_CREDENTIALS",
+                  "GOOGLE_CLOUD_PROJECT",
+                  "GCLOUD_PROJECT"
+                ]
+              }
             },
             "onStatus": [
               401

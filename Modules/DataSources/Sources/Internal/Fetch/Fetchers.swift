@@ -219,8 +219,15 @@ struct CLIFetcher: Fetching {
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
-        if call.checkAvailability && !isReady() { throw UsageError.cliNotFound(call.cli) }
-        let directory = call.workingDirectory == .dedicated ? CLIWorkingDirectory.resolve() : nil
+        var additions:[String:String]=[:]
+        for (name,template) in call.environment.set {
+            guard let value=Template.fill(template,with:credential) else{throw UsageError.authenticationRequired}
+            additions[name]=value
+        }
+        let call=CLICall(cli:call.cli,args:call.args,input:call.input,timeout:call.timeout,inputDelay:call.inputDelay,checkAvailability:call.checkAvailability,wrapExecutionErrors:call.wrapExecutionErrors,mapInteractiveErrors:call.mapInteractiveErrors,workingDirectory:call.workingDirectory,autoResponses:call.autoResponses,environment:.init(unset:call.environment.unset,set:additions),readyWhen:call.readyWhen,screen:call.screen,session:call.session,errors:call.errors,mode:call.mode)
+        if let label=call.errors?.missing,makeExecutor(call).locate(call.cli)==nil{throw UsageError.cliNotFound(label)}
+        if call.checkAvailability && !isReady(){throw UsageError.cliNotFound(call.cli)}
+        let directory=try call.workingDirectory?.resolve()
         let result: CLIResult
         do {
             if let plan = call.session {
@@ -248,6 +255,12 @@ struct CLIFetcher: Fetching {
             case .launchFailed(let message): throw UsageError.executionFailed(message)
             }
         } catch let error as UsageError {
+            if let template = call.errors?.failed {
+                let message: String
+                if case .executionFailed(let reason) = error { message = reason }
+                else { message = error.localizedDescription }
+                throw UsageError.executionFailed(template.replacingOccurrences(of: "{{error}}", with: message))
+            }
             throw call.wrapExecutionErrors ? UsageError.executionFailed(error.localizedDescription) : error
         } catch {
             if let template = call.errors?.failed {

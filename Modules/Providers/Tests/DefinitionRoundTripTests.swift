@@ -7,7 +7,7 @@ import Testing
 /// and filled. Anything lost on the way would silently change what it fetches.
 @Suite
 struct DefinitionRoundTripTests {
-    @Test(arguments: ["claude", "codex", "vercel-gateway", "deepseek", "minimax", "opencode-go", "commandcode", "ampcode", "kiro", "omp"])
+    @Test(arguments: ["claude", "codex", "gemini", "antigravity", "zai", "copilot", "bedrock", "ampcode", "kimi", "kiro", "cursor", "minimax", "deepseek", "vercel-gateway", "alibaba", "mistral", "opencode-go", "omp", "grok", "commandcode"])
     func `every built-in data source survives being written out and read back`(_ id: String) throws {
         let definition = try Providers.builtIn(id)
 

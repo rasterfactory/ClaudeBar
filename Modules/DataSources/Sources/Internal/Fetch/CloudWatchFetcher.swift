@@ -15,7 +15,7 @@ struct CloudWatchFetcher: Fetching, ReadinessChecking {
     }
     var budget:Decimal? { (query.budget ?? query.budgetSetting.flatMap(settingValue)).flatMap{Decimal(string:$0,locale:Locale(identifier:"en_US_POSIX"))} }
     func isReady()->Bool { client != nil }
-    func checkReadiness() async -> Bool { guard let client else{return false};return await client.verify(query:query,profile:profile) }
+    func checkReadiness(with credential:Credential?) async -> Bool { guard let client else{return false};return await client.verify(query:query,profile:profile) }
     func fetch(with credential:Credential?) async throws -> Response {
         guard !regions.isEmpty else{throw UsageError.executionFailed(query.emptyRegionsError)}
         guard let client else{throw UsageError.executionFailed("CloudWatch connection is unavailable")}

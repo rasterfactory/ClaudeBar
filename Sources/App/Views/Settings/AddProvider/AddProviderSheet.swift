@@ -505,21 +505,15 @@ struct AddProviderSheet: View {
         return source.dataSources.contains { $0.credential.map(Self.usesSavedKey) ?? false }
     }
 
-    private static func usesSavedKey(_ lookup: CredentialLookup) -> Bool {
+    private static func usesSavedKey(_ lookup:CredentialLookup) -> Bool {
         switch lookup {
-        case .script(let script): script.inputs.values.contains(where: usesSavedKey)
-        case .setting: true
-        case .firstOf(let lookups): lookups.contains(where: usesSavedKey)
-        case .refreshing(let base, _), .claiming(let base, _): usesSavedKey(base)
-        
-        case .accompanying(let base, let rule): usesSavedKey(base) || rule.fields.values.contains(where: usesSavedKey)
-        case .environment, .jsonFile, .keychain, .sqlite, .browserCookies: false
-        case .bySetting(let choice): choice.values.values.contains(where: usesSavedKey)
-        case .tagged(let base, _): usesSavedKey(base)
-        case .setting: true
-        case .firstOf(let lookups): lookups.contains(where: usesSavedKey)
-        case .refreshing(let base, _): usesSavedKey(base)
-        case .environment, .jsonFile, .keychain, .browserCookies: false
+        case .script(let script):script.inputs.values.contains(where:usesSavedKey)
+        case .setting:true
+        case .firstOf(let lookups):lookups.contains(where:usesSavedKey)
+        case .refreshing(let base,_),.refreshingWithCLI(let base,_),.claiming(let base,_),.tagged(let base,_):usesSavedKey(base)
+        case .accompanying(let base,let rule):usesSavedKey(base)||rule.fields.values.contains(where:usesSavedKey)
+        case .bySetting(let choice):choice.values.values.contains(where:usesSavedKey)
+        case .environment,.jsonFile,.keychain,.sqlite,.browserCookies:false
         }
     }
 

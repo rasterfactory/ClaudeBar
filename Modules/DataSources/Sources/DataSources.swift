@@ -130,7 +130,7 @@ public enum DataSources {
         case .directory(let call):
             DirectoryFetcher(call: call, reader: directoryReader, homeDirectory: homeDirectory, environment: environment, calendar: calendar, now: now)
         case .cloudWatch(let query):
-            CloudWatchFetcher(query:query,client:cloudWatch,settingValue:settingValue,calendar:.current,now:now)
+            CloudWatchFetcher(query:query,client:cloudWatch,settingValue:settingValue,calendar:calendar,now:now)
         case .http(let request):
             HTTPFetcher(request: request, network: network, now: now, settingValue: settingValue)
         case .jsonRpc(let call):
@@ -156,7 +156,7 @@ public enum DataSources {
 
         if case .refreshingWithCLI(let base, _)? = lookup { lookup = base }
         let readers = Readers(environment: environment, homeDirectory: homeDirectory, security: security,
-                              secrets: secrets, providerId: providerId, scripts: scripts, executor: makeCLIExecutor(CLICall(cli: "/bin/zsh")), browserCookies: browserCookies, settingValue: settingValue)
+                              secrets: secrets, providerId: providerId, scripts: scripts, makeExecutor: makeCLIExecutor, browserCookies: browserCookies, settingValue: settingValue)
         if case .refreshingWithCLI(let base, let refresh)? = definition.credential {
             refresher = CLIRefresher(refresh: refresh, reader: readers.reader(for: base), makeExecutor: makeCLIExecutor, sleep: sleep)
         }
@@ -191,14 +191,14 @@ public enum DataSources {
         let secrets: (any SecretStore)?
         let providerId: String
         let scripts: ScriptSource
-        let executor: any CLIExecutor
+        let makeExecutor: CLIFetcher.MakeExecutor
         let browserCookies: any BrowserCookieReading
         let settingValue: @Sendable (String) -> String?
 
         func reader(for lookup: CredentialLookup) -> any CredentialFinding {
             switch lookup {
             case .script(let script):
-                ScriptCredentialReader(definition: script, source: scripts(script.file), inputs: script.inputs.mapValues { reader(for: $0) }, environment: environment, homeDirectory: homeDirectory, executor: executor)
+                ScriptCredentialReader(definition: script, source: scripts(script.file), inputs: script.inputs.mapValues { reader(for: $0) }, environment: environment, homeDirectory: homeDirectory, executor: makeExecutor(CLICall(cli: "/bin/zsh")))
             case .environment(let name):
                 EnvironmentReader(name: name, environment: environment)
             case .jsonFile(let file):
@@ -221,7 +221,6 @@ public enum DataSources {
                 FirstOfReader(readers: lookups.map { reader(for: $0) })
             case .accompanying(let base, let rule):
                 CompanionsReader(base: reader(for: base), fields: rule.fields.mapValues { reader(for: $0) }, rule: rule)
-            case .refreshing(let base, _):
             case .refreshing(let base, _), .refreshingWithCLI(let base, _):
                 // A refresh nested inside `firstOf` is refreshed by the outer
                 // data source only; reading still works.

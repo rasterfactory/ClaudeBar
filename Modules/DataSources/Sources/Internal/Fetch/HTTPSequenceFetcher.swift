@@ -28,8 +28,7 @@ struct HTTPSequenceFetcher: Fetching {
             }
             url.queryItems = query.isEmpty ? nil : query
             guard let requestURL = url.url else { throw UsageError.executionFailed("Invalid URL") }
-            let request = HTTPRequest(url: requestURL.absoluteString, errors: step.request.errors,
-                method: step.request.method, headers: step.request.headers, body: step.request.body, timeout: step.request.timeout)
+            let request = HTTPRequest(url:requestURL.absoluteString,urlBySetting:step.request.urlBySetting,headersBySetting:step.request.headersBySetting,networkErrorPrefix:step.request.networkErrorPrefix,invalidResponseError:step.request.invalidResponseError,propagateNetworkErrors:step.request.propagateNetworkErrors,ignoreResponseStatus:step.request.ignoreResponseStatus,method:step.request.method,headers:step.request.headers,body:step.request.body,timeout:step.request.timeout,acceptedStatuses:step.request.acceptedStatuses,errors:step.request.errors)
             let response = try await HTTPFetcher(request: request, network: network, now: now).fetch(with: credential)
             guard let object = (try? JSONSerialization.jsonObject(with: response.body)) as? [String: Any] else {
                 throw step.whenInvalid?.usageError ?? UsageError.parseFailed("HTTP sequence response is not a JSON object")

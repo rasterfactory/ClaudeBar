@@ -194,7 +194,6 @@ public enum ErrorRef: Sendable, Equatable, Codable {
     case folderTrustRequired
     case subscriptionRequired
     case noData
-    case cliNotFound(String)
     case parseFailed(String)
     case sessionExpired(String?)
     case executionFailed(String)
@@ -211,7 +210,6 @@ public enum ErrorRef: Sendable, Equatable, Codable {
         case .parseFailed(let reason): .parseFailed(reason)
         case .sessionExpired(let hint): .sessionExpired(hint: hint)
         case .executionFailed(let reason): .executionFailed(reason)
-        case .cliNotFound(let cli): .cliNotFound(cli)
         }
     }
 

@@ -54,6 +54,13 @@ import Testing
         #expect(try await restored.defaultAccount.refresh().quotas[0].percentRemaining == 90)
         #expect(settings.accounts(forProvider:"gemini").count == 1)
     }
+    @Test func `default OAuth refresh uses the home containing the same credential file`() throws {
+        let definition=try Providers.builtIn("gemini")
+        guard case .refreshingWithCLI(_,let refresh)?=definition.dataSource("api")?.credential else{Issue.record("Missing refresh");return}
+        #expect(refresh.call.environment.unset.contains("GEMINI_CLI_HOME"))
+        #expect(refresh.call.environment.unset.contains("GEMINI_API_KEY"))
+        #expect(refresh.call.environment.unset.contains("GOOGLE_GENAI_USE_VERTEXAI"))
+    }
     @Test func `named API refresh and CLI quota use the same isolated home and configured binary`() throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at:root,withIntermediateDirectories:true)

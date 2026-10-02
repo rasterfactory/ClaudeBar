@@ -70,7 +70,6 @@ struct AddAccountSheet: View {
 
         case .form:
             ForEach(text.fields.filter { field in
-                let defaults = Dictionary(uniqueKeysWithValues: text.fields.compactMap { item in item.defaultValue.map { (item.id, $0) } })
                 let defaults = Dictionary(text.fields.compactMap { item in item.defaultValue.map { (item.id, $0) } }, uniquingKeysWith: { _, last in last })
                 return field.isShown(values: defaults.merging(entered) { _, supplied in supplied })
             }, id: \.id) { field in

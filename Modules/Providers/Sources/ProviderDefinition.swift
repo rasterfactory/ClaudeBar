@@ -111,31 +111,6 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                 self.existingDirectory = existingDirectory
                 self.excludedPaths = excludedPaths
                 self.choices = choices
-                self.absolutePath = absolutePath
-            }
-
-            public func isShown(values: [String: String]) -> Bool {
-                when?.allSatisfy { values[$0.key] == $0.value } ?? true
-            }
-
-            public func isShown(values: [String: String]) -> Bool {
-                when?.allSatisfy { values[$0.key] == $0.value } ?? true
-            }
-
-            public func isShown(values: [String: String]) -> Bool {
-                when?.allSatisfy { values[$0.key] == $0.value } ?? true
-            }
-
-            public func isShown(values: [String: String]) -> Bool {
-                when?.allSatisfy { values[$0.key] == $0.value } ?? true
-            }
-
-            public func isShown(values: [String: String]) -> Bool {
-                when?.allSatisfy { values[$0.key] == $0.value } ?? true
-            }
-
-            public func isShown(values: [String: String]) -> Bool {
-                when?.allSatisfy { values[$0.key] == $0.value } ?? true
             }
 
             public func isShown(values: [String: String]) -> Bool {
@@ -158,7 +133,6 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                     throw DecodingError.dataCorruptedError(forKey: .defaultValue, in: container, debugDescription: "Secret account fields cannot embed a default value")
                 }
                 choices = try container.decodeIfPresent([String].self, forKey: .choices)
-                absolutePath = try container.decodeIfPresent(Bool.self, forKey: .absolutePath) ?? false
             }
         }
         /// By data source kind, what an added login changes — its own folder,
@@ -389,12 +363,15 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
                     source = try source.patched(with: .object(["credential": .object(["script": .object(["cli": .object(changed)])])]))
                 }
             }
-            let tag: String
+            var patch: [String: JSONValue] = [:]
             switch source.fetch {
-            case .commandPlan(let plan) where plan.cli == cli: tag = "commandPlan"
-            case .cli(let call) where call.cli == cli: tag = "cli"
-            case .jsonRpc(let call) where call.cli == cli: tag = "jsonRpc"
-            default: return source
+            case .commandPlan(let plan) where plan.cli == cli:
+                patch["fetch"] = .object(["commandPlan": .object(["cli": .string(binary)])])
+            case .cli(let call) where call.cli == cli:
+                patch["fetch"] = .object(["cli": .object(["cli": .string(binary)])])
+            case .jsonRpc(let call) where call.cli == cli:
+                patch["fetch"] = .object(["jsonRpc": .object(["cli": .string(binary)])])
+            default: break
             }
             if case .refreshingWithCLI(_, let refresh)? = source.credential, refresh.call.cli == cli {
                 patch["credential"] = .object(["refresh": .object(["cli": .object(["call": .object(["cli": .string(binary)])])])])

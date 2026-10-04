@@ -25,6 +25,7 @@ struct StubbedProvider {
         home = FileManager.default.temporaryDirectory
             .appendingPathComponent("providers-tests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        given(cli).locate(.any).willProduce { @Sendable in $0 }
         settings = InMemoryProviderSettings(dataSourceKinds: dataSourceKind.map { [providerId: $0] } ?? [:])
         if providerId == "codex" {
             // A signed-in CLI: Codex refuses to start without a login (#216).

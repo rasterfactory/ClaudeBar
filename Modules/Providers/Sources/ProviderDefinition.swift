@@ -392,17 +392,26 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         let binary = binary.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let cli, !binary.isEmpty, binary != cli else { return self }
         let sources = try dataSources.map { source -> DataSourceDefinition in
+            var patch: [String: JSONValue] = [:]
             let fetch = source.fetch.runningCLI(cli, at: binary)
-            guard fetch != source.fetch else { return source }
-            let json = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(fetch))
-            return try source.patched(with: .object(["fetch": json]))
+            if fetch != source.fetch {
+                patch["fetch"] = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(fetch))
+            }
+            if let credential = source.credential {
+                let changed = credential.runningCLI(cli, at: binary)
+                if changed != credential {
+                    patch["credential"] = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(changed))
+                }
+            }
+            return patch.isEmpty ? source : try source.patched(with: .object(patch))
         }
+
         var accounts = accounts
         if let signIn = accounts?.signIn, signIn.cli == cli {
             accounts = Accounts(
                 folder: accounts?.folder,
                 signIn: SignInCall(cli: binary, args: signIn.args, homeVariable: signIn.homeVariable,
-                                   unset: signIn.unset, timeout: signIn.timeout, alsoAt: signIn.alsoAt),
+                                   unset: signIn.unset, timeout: signIn.timeout, alsoAt: []),
                 form: accounts?.form ?? [],
                 patch: accounts?.patch ?? [:]
             )

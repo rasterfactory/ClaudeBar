@@ -16,12 +16,32 @@ public struct InsecureLocalhostNetworkClient: NetworkClient {
     }
 
     public func request(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        try await session.data(for: request)
+        guard let url = request.url, Self.isLoopback(url) else { throw URLError(.unsupportedURL) }
+        return try await session.data(for: request)
     }
+
+    static func isLoopback(_ url: URL) -> Bool {
+        ["http", "https"].contains(url.scheme?.lowercased() ?? "") &&
+            ["127.0.0.1", "localhost"].contains(url.host?.lowercased() ?? "")
+    }
+
 }
 
 /// URLSession delegate that accepts self-signed certificates for localhost.
-private final class InsecureLocalhostDelegate: NSObject, URLSessionDelegate {
+final class InsecureLocalhostDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        guard let original = task.originalRequest?.url, let target = request.url,
+              InsecureLocalhostNetworkClient.isLoopback(target),
+              target.scheme?.lowercased() == original.scheme?.lowercased(),
+              target.host?.lowercased() == original.host?.lowercased(), target.port == original.port else {
+            completionHandler(nil)
+            return
+        }
+        completionHandler(request)
+    }
+
     func urlSession(
         _ session: URLSession,
         didReceive challenge: URLAuthenticationChallenge,

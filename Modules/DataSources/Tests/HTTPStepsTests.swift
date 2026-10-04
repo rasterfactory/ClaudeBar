@@ -42,6 +42,16 @@ struct HTTPStepsTests {
      "mapping":{"json":{"quotas":[{"kind":"weekly","usedPercent":"usage.used"}]}}}
     """
 
+    @Test func `a cancelled optional request stops the workflow`() async throws {
+        let definition = try decode(#"{"kind":"api","fetch":{"http":{"steps":[{"name":"optional","optional":true,"request":{"url":"https://example.invalid/optional"}},{"name":"usage","request":{"url":"https://example.invalid/usage"}}]}},"mapping":{"json":{"quotas":[]}}}"#)
+        guard case .httpSteps(let steps) = definition.fetch else { Issue.record("Expected HTTP steps"); return }
+        let network = MockNetworkClient()
+        given(network).request(.any).willThrow(CancellationError())
+        await #expect(throws: CancellationError.self) {
+            try await HTTPStepsFetcher(steps: steps, network: network, now: { Self.now }).fetch(with: nil)
+        }
+    }
+
     @Test
     func `a later step is filled with what an earlier step kept`() async throws {
         let sent = Sent()

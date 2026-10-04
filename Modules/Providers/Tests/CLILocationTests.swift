@@ -26,6 +26,48 @@ struct CLILocationTests {
                               probeConfig: ["codexHome": "/tmp/\(id)", "chatgptAccountId": id])
     }
 
+    @Test func `API credential refresh uses the configured CLI location`() throws {
+        let definition = try Providers.builtIn("gemini").runningCLI("/opt/tools/gemini")
+        guard case .refreshing(_, .cli(let refresh)) = definition.dataSource("api")?.credential else {
+            Issue.record("Expected a CLI credential refresh")
+            return
+        }
+        #expect(refresh.cli == "/opt/tools/gemini")
+        #expect(refresh.input == "/quit\n")
+        #expect(refresh.environment.unset.contains("GEMINI_API_KEY"))
+    }
+
+    @Test func `choosing a CLI location preserves the terminal input delay`() throws {
+        let definition = try Providers.builtIn("kimi")
+        guard case .cli(let before) = definition.dataSource("cli")?.fetch,
+              case .cli(let after) = try definition.runningCLI("/opt/tools/kimi").dataSource("cli")?.fetch else {
+            Issue.record("Expected the Kimi terminal call")
+            return
+        }
+        #expect(before.inputDelay == 1.5)
+        #expect(after.inputDelay == before.inputDelay)
+    }
+
+    @Test
+    func `browser sign in finds the CLI bundled with ChatGPT`() async throws {
+        let definition = try Providers.builtIn("codex")
+        let call = try #require(definition.accounts?.signIn)
+        let path = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+        let ran = Ran()
+        let process = MockSignInProcess()
+        given(process).run(executable: .any, arguments: .any, environment: .any, directory: .any, timeout: .any)
+            .willProduce { @Sendable executable, _, environment, _, _ in
+                ran.executable = executable
+                #expect(environment["CODEX_HOME"] == "/accounts/new")
+                #expect(environment["OPENAI_API_KEY"] == nil)
+                return 0
+            }
+        let runner = AccountSignIn(process: process, folders: InMemoryLoginFolders(), locate: { _ in nil },
+                                   isExecutable: { $0 == path }, environment: { ["HOME": "/Users/me", "OPENAI_API_KEY": "fake"] })
+        try await runner.signIn(call, into: URL(fileURLWithPath: "/accounts/new"))
+        #expect(ran.executable == path)
+    }
+
     @Test
     func `every login's cli data sources run the chosen location`() throws {
         let stub = try StubbedProvider(providerId: "codex")

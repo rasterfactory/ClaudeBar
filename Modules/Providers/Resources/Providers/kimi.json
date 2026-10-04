@@ -14,7 +14,7 @@
   "enabledByDefault": true,
   "settings": [
     { "id": "token", "label": "kimi-auth Session Token", "kind": "secret", "scope": "account", "for": ["api"] },
-    { "id": "home", "label": "Signed-in Kimi Folder", "scope": "account", "for": ["cli"], "kind": { "path": { "mustExist": true } } },
+    { "id": "home", "default": "${KIMI_SHARE_DIR:-~/.kimi}", "label": "Signed-in Kimi Folder", "scope": "account", "for": ["cli"], "kind": { "path": { "mustExist": true } } },
     { "id": "region", "label": "Region", "scope": "account", "default": "china",
       "kind": { "choice": [
         { "id": "china", "label": "China (kimi.com)", "site": "www.kimi.com", "domain": "kimi.com" },

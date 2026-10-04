@@ -29,6 +29,7 @@ struct HTTPStepsFetcher: Fetching {
                 answers[step.name] = (try? JSONSerialization.jsonObject(with: response.body, options: [.fragmentsAllowed])) ?? response.text
                 last = response
             } catch {
+                if error is CancellationError || Task.isCancelled { throw CancellationError() }
                 // A refused key or a rate limit is the whole data source's
                 // business: refresh-and-retry, or the remembered wait.
                 guard step.optional, !Self.concernsEveryStep(error) else { throw error }

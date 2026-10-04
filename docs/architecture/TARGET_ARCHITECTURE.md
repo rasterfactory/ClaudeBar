@@ -979,3 +979,7 @@ Each slice is one PR, green, with no change a user can see unless it says so.
 | UH6 ✅ | **Per login**: `accounts.patch.usageHistory`; `account.usageHistory` on every login | an added Claude login shows its own usage history (visible) |
 | GP ✗ | ~~Guest passes as data~~ — dropped: Claude's alone (§10.6) | `ClaudeGuestPassSource` stays Swift, handed in by the App |
 | — | the words: `Day`, `DayLedger`; the typealiases go | with §8 slice 7 |
+
+### Declared executable alternatives
+
+A `jsonRpc` fetch may list `alsoAt`, explicit executable paths used when the named CLI is not on PATH. Home-relative paths expand for that source. Import lists these alternatives with the primary command. A configured CLI location is authoritative. Credential-refresh CLI calls use that same configured location without changing their environment or timing.

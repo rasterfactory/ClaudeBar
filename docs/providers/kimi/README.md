@@ -45,3 +45,5 @@ Kimi runs two separate platforms: **kimi.com** (China) and **kimi.ai** (internat
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md)
+
+Added account folders must differ from the default login and every other listed login. Paths entered with `~` are resolved to absolute folders before they reach a CLI.

@@ -75,7 +75,7 @@ extension FileCall: Connection {
 
 extension JSONRPCCall: Connection {
     public var urls: [String] { [] }
-    public var commands: [[String]] { [[cli] + args] }
+    public var commands: [[String]] { ([cli] + alsoAt).map { [$0] + args } }
 
     func running(_ binary: String) -> JSONRPCCall {
         JSONRPCCall(cli: binary, args: args, workingDirectory: workingDirectory, handshake: handshake,
@@ -99,6 +99,21 @@ extension CLICall: Connection {
     func running(_ binary: String) -> CLICall {
         CLICall(cli: binary, args: args, input: input, timeout: timeout, workingDirectory: workingDirectory,
                         autoResponses: autoResponses, environment: environment, readyWhen: readyWhen,
-                        screen: screen, session: session)
+                        screen: screen, session: session, inputDelay: inputDelay)
+    }
+}
+
+
+extension CredentialLookup {
+    /// Repoints only declared credential-refresh commands, preserving wrappers.
+    public func runningCLI(_ cli: String, at binary: String) -> CredentialLookup {
+        switch self {
+        case .firstOf(let lookups): .firstOf(lookups.map { $0.runningCLI(cli, at: binary) })
+        case .refined(let base, let rules): .refined(base.runningCLI(cli, at: binary), rules)
+        case .refreshing(let base, .cli(let call)):
+            .refreshing(base.runningCLI(cli, at: binary), .cli(call.cli == cli ? call.running(binary) : call))
+        case .refreshing(let base, let refresh): .refreshing(base.runningCLI(cli, at: binary), refresh)
+        default: self
+        }
     }
 }

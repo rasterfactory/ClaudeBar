@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fix desktop-only Codex login/refresh, named AWS profiles, duplicate login folders, tilde paths, configured refresh CLIs, UTC billing months, cancellation and loopback redirects ([#331](https://github.com/tddworks/ClaudeBar/issues/331)).
+
 ---
 
 ## [0.5.1] - 2026-10-04

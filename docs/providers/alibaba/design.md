@@ -73,3 +73,5 @@ The payload is wrapped in varying envelopes, so the parser is deliberately loose
 | Monthly | `perBillMonthUsedQuota` / `perBillMonthTotalQuota` (also `perMonth…`) | `perBillMonthQuotaNextRefreshTime` |
 
 Reset times are accepted as ISO 8601 with offset (`2026-03-12T19:17:15+08:00`), with or without fractional seconds, or as epoch seconds (number or string). Plan name comes from `planName`, `instanceName` or `packageName`. A window with total 0 is skipped; no windows at all → "No quota windows found in payload".
+
+Monthly duration is calculated with UTC calendar components, including leap years. The previous month clamps the reset day to its last valid day, so March 31 uses February 28 or 29 instead of overflowing into March. Host timezone and daylight-saving changes do not alter the quota window.

@@ -382,6 +382,8 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
     }
 
     public let cli: String
+    /// Declared desktop-bundled executables when no CLI is on PATH.
+    public let alsoAt: [String]
     public let args: [String]
     public let workingDirectory: WorkingDirectory?
     public let handshake: [Step]
@@ -399,9 +401,11 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
         call: String,
         params: JSONValue? = nil,
         then: [FollowUp] = [],
-        environment: ProcessEnvironment = ProcessEnvironment()
+        environment: ProcessEnvironment = ProcessEnvironment(),
+        alsoAt: [String] = []
     ) {
         self.cli = cli
+        self.alsoAt = alsoAt
         self.args = args
         self.workingDirectory = workingDirectory
         self.handshake = handshake
@@ -414,6 +418,7 @@ public struct JSONRPCCall: Sendable, Equatable, Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         cli = try container.decode(String.self, forKey: .cli)
+        alsoAt = try container.decodeIfPresent([String].self, forKey: .alsoAt) ?? []
         args = try container.decodeIfPresent([String].self, forKey: .args) ?? []
         workingDirectory = try container.decodeIfPresent(WorkingDirectory.self, forKey: .workingDirectory)
         handshake = try container.decodeIfPresent([Step].self, forKey: .handshake) ?? []

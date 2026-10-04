@@ -28,6 +28,18 @@ struct CloudWatchFetchTests {
         return try #require(try JSONSerialization.jsonObject(with: response.body) as? [String: Any])
     }
 
+    @Test func `cancelling a region never returns partial spend as a successful refresh`() async throws {
+        let client = MockCloudWatchClient()
+        given(client).sums(namespace: .any, dimension: .any, metrics: .any, region: .any, profile: .any, from: .any, to: .any)
+            .willProduce { _, _, _, region, _, _, _ in
+                if region == "west-2" { throw CancellationError() }
+                return ["model": ["In": 100]]
+            }
+        await #expect(throws: CancellationError.self) {
+            try await CloudWatchFetcher(call: call, client: client, catalog: nil, now: { noon }).fetch(with: nil)
+        }
+    }
+
     @Test func `each region's sums come back as rows, priced`() async throws {
         let seen = Seen()
         let body = try await fetch(call, seen: seen)

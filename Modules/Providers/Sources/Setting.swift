@@ -1,3 +1,4 @@
+import DataSources
 import Foundation
 import Mockable
 
@@ -217,7 +218,8 @@ public struct Setting: Sendable, Equatable, Codable, Identifiable {
 
     /// Puts `value` where this setting keeps it: a secret with the keys for
     /// the vault, anything else with the saved values.
-    public func keep(_ value: String, in entry: inout SettingEntry) {
+    public func keep(_ value: String, in entry: inout SettingEntry, paths: any PathChecking = DiskPaths()) {
+        let value: String = if case .path = kind { paths.canonical(value) } else { value }
         if isSecret { entry.secrets[id] = value } else { entry.values[id] = value }
     }
 
@@ -293,6 +295,6 @@ public struct DiskPaths: PathChecking {
     }
 
     public func canonical(_ path: String) -> String {
-        URL(fileURLWithPath: (path as NSString).expandingTildeInPath).resolvingSymlinksInPath().standardizedFileURL.path
+        URL(fileURLWithPath: DataSources.expandPath(path)).resolvingSymlinksInPath().standardizedFileURL.path
     }
 }

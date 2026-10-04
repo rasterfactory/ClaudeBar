@@ -1012,3 +1012,7 @@ let modelDisplayNames: [String: String] = [
     // ... more mappings
 ]
 ```
+
+### Named-profile resolution
+
+CloudWatch uses `ProfileAWSCredentialIdentityResolver` for a selected profile. The SDK supports static, role, credential-process and SSO profiles through that resolver. A fixture containing distinct fake default/work keys verifies selection and a missing-profile fixture verifies that resolution fails closed. No process-wide AWS environment variables are changed.

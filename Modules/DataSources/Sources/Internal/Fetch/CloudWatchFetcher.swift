@@ -34,6 +34,7 @@ struct CloudWatchFetcher: Fetching {
                     rows.append(row)
                 }
             } catch {
+                if error is CancellationError || Task.isCancelled { throw CancellationError() }
                 AppLog.probes.warning("\(call.namespace) metrics in \(region) failed: \(error.localizedDescription)")
                 firstError = firstError ?? error
             }

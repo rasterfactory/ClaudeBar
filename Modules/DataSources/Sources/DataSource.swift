@@ -244,6 +244,7 @@ public struct DataSource: Sendable {
         do {
             found = try credentials.find()
         } catch {
+            if error is CancellationError || Task.isCancelled { throw CancellationError() }
             throw DataSourceError.wrap(error, as: .lookup)
         }
         guard let found else {
@@ -267,6 +268,7 @@ public struct DataSource: Sendable {
         do {
             renewed.credential = try await refresher.refresh(found.credential)
         } catch {
+            if error is CancellationError || Task.isCancelled { throw CancellationError() }
             throw DataSourceError.wrap(error, as: .lookup)
         }
         guard refresher.writesBack else {
@@ -278,7 +280,8 @@ public struct DataSource: Sendable {
     }
 
     /// A worker's failure, worded by the definition.
-    private func fetchError(_ error: Error) -> DataSourceError {
+    private func fetchError(_ error: Error) -> any Error {
+        if error is CancellationError || Task.isCancelled { return CancellationError() }
         guard let failure = error as? any ReportedFailure else { return DataSourceError.wrap(error, as: .fetch) }
         return DataSourceError(.fetch, definition.reason(for: failure))
     }

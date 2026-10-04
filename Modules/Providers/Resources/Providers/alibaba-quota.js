@@ -48,7 +48,12 @@ function read(response, context) {
     if(used==null||total==null||total<=0)return;
     var q={type:type,percentRemaining:Math.max(0,total-used)/total*100,resetText:used+' / '+total+' used'};if(window)q.windowSeconds=window;if(type==='time')q.name='Monthly';var resets=any(resetKeys,quota,date);if(resets!=null)q.resetsAt=resets;
     // The billing month is the month that ends on its reset — its real length; none without a reset.
-    if(type==='time'&&resets!=null){var end=new Date(resets*1000),start=new Date(end.getFullYear(),end.getMonth()-1,end.getDate(),end.getHours(),end.getMinutes(),end.getSeconds());q.windowSeconds=(end.getTime()-start.getTime())/1000;}
+    if(type==='time'&&resets!=null){
+      var end=new Date(resets*1000),year=end.getUTCFullYear(),month=end.getUTCMonth();
+      var previousLastDay=new Date(Date.UTC(year,month,0)).getUTCDate();
+      var start=Date.UTC(year,month-1,Math.min(end.getUTCDate(),previousLastDay),end.getUTCHours(),end.getUTCMinutes(),end.getUTCSeconds());
+      q.windowSeconds=(end.getTime()-start)/1000;
+    }
     quotas.push(q);
   }
   add('session',['per5HourUsedQuota','perFiveHourUsedQuota'],['per5HourTotalQuota','perFiveHourTotalQuota'],['per5HourQuotaNextRefreshTime','perFiveHourQuotaNextRefreshTime'],18000);

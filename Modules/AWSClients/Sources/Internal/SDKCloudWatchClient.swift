@@ -43,13 +43,19 @@ struct SDKCloudWatchClient: CloudWatchPort {
     }
 
     private static func client(region: String, profile: String?) async throws -> AWSCloudWatch.CloudWatchClient {
+        AWSCloudWatch.CloudWatchClient(config: try await configuration(region: region, profile: profile))
+    }
+
+    static func configuration(region: String, profile: String?, configFilePath: String? = nil,
+                              credentialsFilePath: String? = nil) async throws -> AWSCloudWatch.CloudWatchClient.CloudWatchClientConfiguration {
         let config = try await AWSCloudWatch.CloudWatchClient.CloudWatchClientConfiguration(region: region)
         if let profile {
-            // An SSO profile reads its cached login; a plain one its keys.
-            config.awsCredentialIdentityResolver = try SSOAWSCredentialIdentityResolver(profileName: profile)
+            config.awsCredentialIdentityResolver = ProfileAWSCredentialIdentityResolver(profileName: profile,
+                configFilePath: configFilePath, credentialsFilePath: credentialsFilePath)
         }
-        return AWSCloudWatch.CloudWatchClient(config: config)
+        return config
     }
+
 }
 
 /// Bedrock's price list as a `PriceCatalog`: per million tokens, as exact

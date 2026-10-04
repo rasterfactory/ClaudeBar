@@ -110,6 +110,23 @@ struct ProviderTests {
         )
     }
 
+    @Test func `cancellation never starts a fallback or publishes a snapshot`() async throws {
+        let network = MockNetworkClient()
+        let primaryHost = Self.api
+        given(network).request(.any).willProduce { @Sendable request in
+            if request.url?.host == primaryHost { throw CancellationError() }
+            return (Data(#"{"used":30}"#.utf8), StubbedProvider.response(200))
+        }
+        let provider = Provider(definition: Self.acme(), settings: InMemoryProviderSettings(), makeDataSource: { source, login in
+            DataSources.make(source, providerId: login, cliExecutor: MockCLIExecutor(), network: network,
+                makeTransport: { _, _, _, _ in MockRPCTransport() }, environment: { _ in nil },
+                homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
+        })
+        await #expect(throws: CancellationError.self) { try await provider.defaultAccount.refresh() }
+        #expect(provider.defaultAccount.snapshot == nil)
+        #expect(provider.defaultAccount.lastError == nil)
+    }
+
     // MARK: - Refresh
 
     @Test

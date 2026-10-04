@@ -22,12 +22,12 @@ struct AlibabaExecutionTests {
 
     /// Alibaba with its old card's settings where it kept them.
     private func make(region: String? = nil, mode: String? = nil, status: Int = 200, vault: MemoryVault = MemoryVault(),
-                      browser: [BrowserCookie] = [], page: String = "", sent: Sent = Sent()) throws -> Provider {
+                      browser: [BrowserCookie] = [], page: String = "", sent: Sent = Sent(), quota: String = Self.quota) throws -> Provider {
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
             sent.add(request)
             if request.httpMethod == "GET" { return (Data(page.utf8), StubbedProvider.response(200)) }
-            return (Data(Self.quota.utf8), StubbedProvider.response(status))
+            return (Data(quota.utf8), StubbedProvider.response(status))
         }
         let cookies = MockBrowserCookieReading()
         given(cookies).stores(domains: .any, names: .any).willReturn(browser.isEmpty ? [] : [browser])
@@ -79,6 +79,13 @@ struct AlibabaExecutionTests {
         let snapshot = try await make(vault: MemoryVault(["alibaba.apiKey": "sk-1"])).defaultAccount.refresh()
         let month = try #require(snapshot.quota(for: .timeLimit("Monthly")))
         #expect(month.window?.length == TimeInterval(28 * 86400))
+    }
+
+    @Test(arguments: [("2024-03-01T00:00:00Z", 29), ("2026-03-31T00:00:00Z", 31), ("2026-01-31T00:00:00Z", 31)])
+    func `billing months use UTC dates and clamp the previous month end`(_ fixture: (String, Int)) async throws {
+        let quota = Self.quota.replacingOccurrences(of: "2026-03-01T00:00:00Z", with: fixture.0)
+        let snapshot = try await make(vault: MemoryVault(["alibaba.apiKey": "fake"]), quota: quota).defaultAccount.refresh()
+        #expect(snapshot.quota(for: .timeLimit("Monthly"))?.window?.length == TimeInterval(fixture.1 * 86400))
     }
 
     // MARK: - Console cookie

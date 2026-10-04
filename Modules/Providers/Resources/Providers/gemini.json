@@ -39,7 +39,7 @@
   "enabledByDefault": true,
   "settings": [
     {
-      "id": "home",
+      "id": "home", "default": "~",
       "label": "Signed-in Gemini Home",
       "scope": "account",
       "kind": {

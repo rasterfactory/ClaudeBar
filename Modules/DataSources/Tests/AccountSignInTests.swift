@@ -81,6 +81,16 @@ struct AccountSignInTests {
     }
 
     @Test
+    func `an unavailable explicit CLI never signs in with a different bundled copy`() async throws {
+        let explicit = SignInCall(cli: "/custom/missing", args: ["login"], homeVariable: "TOOL_HOME", alsoAt: ["/bundled/tool"])
+        let folders = InMemoryLoginFolders()
+        await #expect(throws: SignInError.cliNotFound("/custom/missing")) {
+            try await signIn(MockSignInProcess(), folders: folders, found: [:], executables: ["/bundled/tool"]).signIn(explicit, into: folder)
+        }
+        #expect(folders.all.isEmpty)
+    }
+
+    @Test
     func `without the cli nothing is made`() async throws {
         let folders = InMemoryLoginFolders()
 

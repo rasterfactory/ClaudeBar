@@ -24,3 +24,5 @@ Shows your Kiro plan credits for the month (with the date they reset) and any bo
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [AWS Bedrock](../bedrock/README.md)
+
+Added account folders must differ from the default login and every other listed login. Paths entered with `~` are resolved to absolute folders before they reach a CLI.

@@ -26,3 +26,5 @@ The `grok` binary doesn't need to be on your PATH; ClaudeBar only needs the sign
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [status.x.ai](https://status.x.ai)
+
+Added account folders must differ from the default login and every other listed login. Paths entered with `~` are resolved to absolute folders before they reach a CLI.

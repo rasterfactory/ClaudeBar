@@ -221,6 +221,30 @@ struct DataSourceTests {
         #expect(started.directory == CLIWorkingDirectory.resolve())
     }
 
+
+    @Test
+    func `json rpc uses its declared bundled executable without a PATH install`() async throws {
+        let started = StartedProcess()
+        let transport = MockRPCTransport()
+        given(transport).send(.any).willReturn(())
+        given(transport).close().willReturn(())
+        given(transport).receive().willReturn(Data(#"{"id":1,"result":{}}"#.utf8))
+        let cli = MockCLIExecutor()
+        given(cli).locate(.any).willProduce { $0 == "/Users/me/Apps/Tool.app/bin/tool" ? $0 : nil }
+        let definition = try decode("""
+        {"kind":"rpc","fetch":{"jsonRpc":{"cli":"tool","alsoAt":["~/Apps/Tool.app/bin/tool"],"args":["serve"],"call":"read"}},
+         "mapping":{"json":{"quotas":[]}}}
+        """)
+        let source = DataSources.make(definition, providerId: "test", cliExecutor: cli, network: MockNetworkClient(),
+            makeTransport: { executable, arguments, _, directory in
+                started.record(executable, arguments, directory)
+                return transport
+            }, environment: { _ in nil }, homeDirectory: URL(fileURLWithPath: "/Users/me"), now: { Date() })
+        #expect(await source.isReady())
+        _ = try await source.fetchResponse()
+        #expect(started.executable == "/Users/me/Apps/Tool.app/bin/tool")
+    }
+
     // MARK: - The path dialect
 
     @Test

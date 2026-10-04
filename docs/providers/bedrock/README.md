@@ -25,7 +25,7 @@ These are AWS IAM permissions, not macOS ones:
 ## Gotchas
 
 - **Settings apply on the next refresh**, profile included; no restart.
-- **A named profile is resolved as an AWS SSO profile.** If your profile uses static access keys and nothing shows, clear the profile name and provide the keys through the default credential chain instead.
+- **A named profile uses its own credential configuration.** SSO, static access keys, roles and credential-process profiles are resolved by the AWS SDK profile resolver. A missing profile fails instead of borrowing the default profile.
 - **An AWS error on the card** (an expired SSO session, a wrong profile name, missing permissions) means every region failed; the first region's error is the one shown. Run `aws sso login` again for an expired session. A region that fails while another answers is skipped, and logged.
 - **"No regions configured"** means the Regions field is empty.
 - **Costs are estimates**: CloudWatch token counts × the price per million tokens from the AWS Pricing API (cached for a day), else the bundled price table. A model with no known price shows $0.

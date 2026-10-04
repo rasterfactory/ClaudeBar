@@ -117,7 +117,7 @@ public enum DataSources {
         case .httpSteps(let steps):
             HTTPStepsFetcher(steps: steps, network: network, now: now)
         case .jsonRpc(let call):
-            JSONRPCFetcher(call: call, cliExecutor: makeCLIExecutor(CLICall(cli: call.cli)), makeTransport: makeTransport)
+            JSONRPCFetcher(call: call, cliExecutor: makeCLIExecutor(CLICall(cli: call.cli)), makeTransport: makeTransport, homeDirectory: homeDirectory, environment: environment)
         case .cli(let call):
             CLIFetcher(call: call, makeExecutor: makeCLIExecutor)
         case .command(let call):

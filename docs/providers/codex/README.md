@@ -27,6 +27,8 @@ RPC mode starts `codex app-server` for each refresh and asks it for your rate li
 
 ## CLI location
 
+Browser sign-in and RPC refresh can use the CLI bundled inside Codex or ChatGPT in `/Applications` or `~/Applications`; a separate CLI installation is not required. A CLI location you choose takes precedence. For another installation folder, choose the bundled executable below.
+
 If ClaudeBar can't find the `codex` program, or finds a different one than you use, set **Settings → Providers → Codex → Configuration → CLI location**. Use **Choose…** to pick the program, or type its full path and press Return. The change takes effect immediately, for every account and for Add Account's sign-in. **Reset** goes back to finding `codex` on its own.
 
 A shell alias or function (`alias c=…`) can't be used: ClaudeBar starts a program, not a shell. Run `which c` (or `type c`) in a terminal to see what the alias runs, and choose that. An alias that only points `codex` at another config folder is a second account, not a different program: add that folder in **Accounts → Add Account**.

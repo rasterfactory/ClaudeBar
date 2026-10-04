@@ -234,3 +234,7 @@ RPC identity comes from `account/read` with `refreshToken: false`, which also
 supports the default Keychain login. File credentials provide the email from the
 ID token as display metadata only; decoding that claim does not verify a token.
 Full email remains in menu-bar tooltips when a visible label is shortened.
+
+## Desktop-bundled CLI discovery
+
+The definition declares `alsoAt` for browser sign-in and JSON-RPC, including the ChatGPT-bundled `Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex`. The generic workers resolve the declared candidates, expand the home path, and launch the resolved executable. An explicitly selected executable never falls back to a different copy. Added logins still use their own `CODEX_HOME`, file credential storage, and the declared environment exclusions.

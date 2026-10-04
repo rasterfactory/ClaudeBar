@@ -29,6 +29,7 @@
       "summary": "Uses codex app-server via JSON-RPC. Default, works with any auth. ClaudeBar never starts the Codex login itself.",
       "fetch": {
         "jsonRpc": {
+          "alsoAt": ["/Applications/Codex.app/Contents/Resources/codex", "~/Applications/Codex.app/Contents/Resources/codex", "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex", "~/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"],
           "cli": "codex",
           "args": ["-s", "read-only", "-a", "never", "app-server"],
           "workingDirectory": "dedicated",
@@ -359,7 +360,9 @@
       ],
       "alsoAt": [
         "/Applications/Codex.app/Contents/Resources/codex",
-        "~/Applications/Codex.app/Contents/Resources/codex"
+        "~/Applications/Codex.app/Contents/Resources/codex",
+        "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
+        "~/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
       ]
     },
     "folder": {

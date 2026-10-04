@@ -60,3 +60,7 @@ Antigravity is `Modules/Providers/Resources/Providers/antigravity.json` and `ant
 
 - `pgrep` matches on `language_server`, so an `agy` process is only found if its command line contains that string. The `agy` name check only runs on lines `pgrep` has already matched.
 - If the keychain item's service or account changes in a future Antigravity build, the app-closed fallback stops working without any error beyond "not running and no stored credentials".
+
+### Local-server redirects
+
+The loopback network adapter accepts HTTP(S) on localhost only. A redirect must retain the original scheme, host and port; a remote or different local origin is refused before the local server credential can be forwarded. Same-origin redirects remain supported.

@@ -1,5 +1,8 @@
 import Foundation
 import Testing
+import DataSources
+import Quotas
+import Mockable
 @testable import Providers
 
 /// A setting's kind owns its rule; a choice's options carry their values.
@@ -92,4 +95,38 @@ struct FakePaths: PathChecking {
 
     func isFolder(_ path: String) -> Bool { folders.contains(canonical(path)) }
     func canonical(_ path: String) -> String { aliases[path] ?? path }
+}
+
+@MainActor @Suite struct DefaultPathIsolationTests {
+    struct Paths: PathChecking {
+        func isFolder(_ path: String) -> Bool { true }
+        func canonical(_ path: String) -> String {
+            DataSources.expandPath(path, homeDirectory: URL(fileURLWithPath: "/Users/me"), environment: { _ in nil })
+        }
+    }
+    private func provider(_ id: String, accounts: [ProviderAccountConfig] = []) throws -> Provider {
+        Provider(definition: try Providers.builtIn(id), settings: InMemoryProviderSettings(), accounts: accounts,
+            makeDataSource: { source, login in
+                DataSources.make(source, providerId: login, cliExecutor: MockCLIExecutor(), network: MockNetworkClient(),
+                    makeTransport: { _, _, _, _ in MockRPCTransport() }, environment: { _ in nil },
+                    homeDirectory: URL(fileURLWithPath: "/Users/me"), now: { Date() })
+            }, paths: Paths())
+    }
+    @Test(arguments: [("gemini", "home", "~"), ("kiro", "home", "~"), ("grok", "directory", "~/.grok"), ("kimi", "home", "~/.kimi")])
+    func `an added login cannot reuse the provider default folder`(_ entry: (String, String, String)) throws {
+        let account = try provider(entry.0)
+        #expect(throws: UsageError.self) { try account.addAccount(filling: [entry.1: entry.2]) }
+        #expect(account.accounts.count == 1)
+    }
+    @Test func `a saved tilde path is normalized when its account is restored`() throws {
+        let owner = try provider("kiro", accounts: [ProviderAccountConfig(
+            accountId: "work", label: "Work", probeConfig: ["home": "~/work"], madeBy: .form)])
+        let account = try #require(owner.accounts.first { $0.accountId == "work" })
+        #expect(account.values["home"] == "/Users/me/work")
+    }
+    @Test func `a path entered with a tilde is saved as the absolute folder the CLI needs`() throws {
+        let owner = try provider("kiro")
+        let account = try owner.addAccount(filling: ["home": "~/work"])
+        #expect(account.values["home"] == "/Users/me/work")
+    }
 }

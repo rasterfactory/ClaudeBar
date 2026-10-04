@@ -175,7 +175,7 @@ public final class Provider {
             throw UsageError.executionFailed(problem)
         }
         var entry = SettingEntry()
-        if let kept { setting.keep(kept, in: &entry) }
+        if let kept { setting.keep(kept, in: &entry, paths: paths) }
         guard entry.secrets.isEmpty || vault != nil else {
             throw UsageError.executionFailed("ClaudeBar can't keep this key securely here.")
         }
@@ -271,15 +271,21 @@ public final class Provider {
         guard definition.accounts != nil, !login.isDefault, !accounts.contains(where: { $0.id == login.id }) else {
             return nil
         }
+        var values = config.probeConfig
+        for setting in definition.accountSettings {
+            if case .path = setting.kind, let value = values[setting.id], !value.isEmpty {
+                values[setting.id] = paths.canonical(value)
+            }
+        }
         do {
-            bound[login.id] = try sources(for: config.probeConfig, isDefault: false).map { makeDataSource($0, login.id) }
+            bound[login.id] = try sources(for: values, isDefault: false).map { makeDataSource($0, login.id) }
         } catch {
             AppLog.providers.error("\(definition.id): can't run account \(login.id): \(error.localizedDescription)")
             return nil
         }
-        let account = Account(provider: self, login: login, values: config.probeConfig, madeBy: config.madeBy)
+        let account = Account(provider: self, login: login, values: values, madeBy: config.madeBy)
         accounts.append(account)
-        if let makeUsageHistory, let own = definition.usageHistory(forAccount: config.probeConfig) {
+        if let makeUsageHistory, let own = definition.usageHistory(forAccount: values) {
             usageHistories[login.id] = makeUsageHistory(own, login.id)
         }
         return account
@@ -340,7 +346,7 @@ public final class Provider {
             if isTaken(value, by: setting) {
                 throw UsageError.executionFailed("Choose a separate folder for \(setting.label) — another \(name) login uses this one.")
             }
-            setting.keep(value, in: &entry)
+            setting.keep(value, in: &entry, paths: paths)
         }
         guard entry.secrets.isEmpty || vault != nil else {
             throw UsageError.executionFailed("ClaudeBar can't keep this key securely here.")
@@ -632,8 +638,10 @@ public final class Provider {
         while true {
             do {
                 let usage = try await current.fetchUsage()
+                try Task.checkCancellation()
                 return account.succeed(identified(usage, for: account), from: current.kind)
             } catch {
+                if error is CancellationError || Task.isCancelled { throw CancellationError() }
                 let reason = Self.reason(of: error)
                 if case .rateLimited? = reason {
                     // A rate limit is not a reason to hit another endpoint.

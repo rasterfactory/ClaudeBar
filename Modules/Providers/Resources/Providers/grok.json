@@ -13,7 +13,7 @@
   "cli": "grok",
   "enabledByDefault": true,
   "settings": [
-    { "id": "directory", "label": "Signed-in Grok Folder", "scope": "account", "kind": { "path": { "mustExist": true } } }
+    { "id": "directory", "default": "~/.grok", "label": "Signed-in Grok Folder", "scope": "account", "kind": { "path": { "mustExist": true } } }
   ],
   "defaultDataSource": "api",
   "dataSources": [

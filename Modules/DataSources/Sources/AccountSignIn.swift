@@ -126,6 +126,7 @@ public struct AccountSignIn: Sendable {
 
     private func executable(for call: SignInCall) -> String? {
         if let found = locate(call.cli) { return found }
+        guard !call.cli.contains("/") else { return nil }
         let home = environment()["HOME"] ?? NSHomeDirectory()
         return call.alsoAt
             .map { $0.hasPrefix("~/") ? home + $0.dropFirst() : $0 }

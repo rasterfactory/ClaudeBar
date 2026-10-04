@@ -76,6 +76,7 @@ struct HTTPFetcher: Fetching {
         do {
             (data, response) = try await network.request(urlRequest)
         } catch {
+            if error is CancellationError || Task.isCancelled { throw CancellationError() }
             AppLog.probes.error("HTTP fetch failed: \(error.localizedDescription)")
             throw UsageError.executionFailed("Network error: \(error.localizedDescription)")
         }
@@ -127,16 +128,32 @@ struct JSONRPCFetcher: Fetching {
     let call: JSONRPCCall
     let cliExecutor: any CLIExecutor
     let makeTransport: DataSources.TransportFactory
+    let homeDirectory: URL
+    let environment: @Sendable (String) -> String?
+
+    private func executable() -> String? {
+        if let found = cliExecutor.locate(call.cli) { return found }
+        guard !call.cli.contains("/") else { return nil }
+        return call.alsoAt.lazy.compactMap {
+            cliExecutor.locate(Paths.expand($0, homeDirectory: homeDirectory, environment: environment))
+        }.first
+    }
 
     func isReady() -> Bool {
-        if cliExecutor.locate(call.cli) != nil { return true }
+        if executable() != nil { return true }
         AppLog.probes.error("'\(call.cli)' not found in PATH")
         return false
     }
 
     func fetch(with credential: Credential?) async throws -> Response {
+        let binary: String
+        if call.alsoAt.isEmpty { binary = call.cli }
+        else {
+            guard let found = executable() else { throw CLIMissingError(cli: call.cli) }
+            binary = found
+        }
         let directory = call.workingDirectory?.url
-        let transport = try makeTransport(call.cli, call.args, Self.environment(call.environment), directory)
+        let transport = try makeTransport(binary, call.args, Self.environment(call.environment), directory)
         defer { transport.close() }
 
         let session = RPCSession(transport: transport)

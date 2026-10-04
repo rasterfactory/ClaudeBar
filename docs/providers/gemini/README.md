@@ -29,3 +29,5 @@ Sign in to another Google account in a separate folder with `GEMINI_CLI_HOME=<fo
 ## See also
 
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md) · [Antigravity](../antigravity/README.md)
+
+Added account folders must differ from the default login and every other listed login. Paths entered with `~` are resolved to absolute folders before they reach a CLI.

@@ -23,7 +23,7 @@ struct JSONSettingsRepositoryProviderTests {
     // MARK: - Provider Enabled State
 
     @Test
-    func `isEnabled defaults to true`() {
+    func `should show a provider when the person never turned it off`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -31,7 +31,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `isEnabled with custom default returns that default`() {
+    func `should hide a provider that starts off when the person never turned it on`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -39,7 +39,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setEnabled persists value`() {
+    func `should remember a provider turned off`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -48,7 +48,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `providers have independent enabled state`() {
+    func `should keep each provider on or off independently`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -62,7 +62,7 @@ struct JSONSettingsRepositoryProviderTests {
     // MARK: - Custom Card URL
 
     @Test
-    func `customCardURL defaults to nil`() {
+    func `should open no custom page from a card until one is set`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -70,7 +70,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setCustomCardURL persists value`() {
+    func `should remember a card's custom page`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -79,7 +79,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setCustomCardURL nil removes value`() {
+    func `should forget a card's custom page when it is cleared`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -89,7 +89,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setCustomCardURL empty string removes value`() {
+    func `should forget a card's custom page when it is set to nothing`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -99,7 +99,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `customCardURL is per provider`() {
+    func `should keep each provider's custom page apart`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -114,7 +114,7 @@ struct JSONSettingsRepositoryProviderTests {
     // MARK: - Provider Order
 
     @Test
-    func `providerOrder defaults to empty`() {
+    func `should keep no provider order until the person arranges them`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -122,7 +122,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setProviderOrder persists value`() {
+    func `should remember the provider order across restarts`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -136,7 +136,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setProviderOrder empty clears the stored order`() {
+    func `should forget the provider order when it is cleared`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -146,7 +146,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `providerOrder round-trips a partial order`() {
+    func `should remember an order that names only some providers`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -157,7 +157,7 @@ struct JSONSettingsRepositoryProviderTests {
     // MARK: - Hidden Quota Keys (issue #140)
 
     @Test
-    func `hiddenQuotaKeys defaults to empty`() {
+    func `should hide no quotas until the person hides some (#140)`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -165,7 +165,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setHiddenQuotaKeys persists across store reopen`() {
+    func `should remember hidden quotas across restarts (#140)`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -179,7 +179,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `hiddenQuotaKeys is per provider`() {
+    func `should keep each provider's hidden quotas apart (#140)`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -192,7 +192,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setHiddenQuotaKeys with empty set clears the stored keys`() {
+    func `should show every quota again once nothing is hidden (#140)`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -205,7 +205,7 @@ struct JSONSettingsRepositoryProviderTests {
     // MARK: - Claude Settings
 
     @Test
-    func `claudeProbeMode defaults to cli`() {
+    func `should read Claude through its CLI when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -213,7 +213,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setClaudeProbeMode persists value`() {
+    func `should remember reading Claude through the API`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -222,7 +222,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `claudeCliFallbackEnabled defaults to true`() {
+    func `should fall back to Claude's CLI when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -230,7 +230,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setClaudeCliFallbackEnabled persists value`() {
+    func `should remember turning Claude's CLI fallback off`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -241,7 +241,7 @@ struct JSONSettingsRepositoryProviderTests {
     // MARK: - Codex Settings
 
     @Test
-    func `codexProbeMode defaults to rpc`() {
+    func `should read Codex over RPC when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -249,7 +249,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setCodexProbeMode persists value`() {
+    func `should remember reading Codex through the API`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -258,7 +258,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `codexVerifiedAtLeastOnce defaults to false`() {
+    func `should not count Codex as verified before it ever answered`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -266,7 +266,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setCodexVerifiedAtLeastOnce persists value`() {
+    func `should remember whether Codex has been verified`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -280,7 +280,7 @@ struct JSONSettingsRepositoryProviderTests {
     // MARK: - Hook Settings
 
     @Test
-    func `isHookEnabled defaults to false`() {
+    func `should keep session hooks off until asked`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -288,7 +288,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setHookEnabled persists value`() {
+    func `should remember session hooks turned on`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -297,7 +297,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `hookPort defaults to 19847`() {
+    func `should listen for session hooks on port 19847 when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -305,7 +305,7 @@ struct JSONSettingsRepositoryProviderTests {
     }
 
     @Test
-    func `setHookPort persists value`() {
+    func `should remember the chosen session hook port`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 

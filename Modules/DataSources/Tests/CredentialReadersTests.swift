@@ -10,7 +10,7 @@ struct CredentialReadersTests {
     // MARK: - KeychainReader.decode
 
     @Test
-    func `a hex-encoded keychain password is decoded`() throws {
+    func `should read a keychain login the Mac hands back hex-encoded`() throws {
         let json = #"{"claudeAiOauth":{"accessToken":"hex-token"}}"#
         let hex = json.utf8.map { String(format: "%02x", $0) }.joined()
 
@@ -20,7 +20,7 @@ struct CredentialReadersTests {
     }
 
     @Test
-    func `a plain json keychain password is passed through unchanged`() throws {
+    func `should read a keychain login stored as plain JSON as it is`() throws {
         let json = #"{"claudeAiOauth":{"accessToken":"plain-token"}}"#
 
         let decoded = try #require(KeychainReader.decode(json))
@@ -31,7 +31,7 @@ struct CredentialReadersTests {
     // MARK: - KeychainReader write-back
 
     @Test
-    func `a refreshed keychain credential is saved as compact json over the same item`() throws {
+    func `should save a renewed keychain login over the same item as one printable line, keeping its other fields`() throws {
         let password = """
         {
           "claudeAiOauth": {
@@ -74,7 +74,7 @@ struct CredentialReadersTests {
     }
 
     @Test
-    func `a keychain item that does not answer is no key`() throws {
+    func `should find no key when the keychain item isn't there`() throws {
         let reader = KeychainReader(
             item: KeychainCredential(service: "Missing", fields: ["token": "$.token"]),
             security: { _ in (44, "") }
@@ -86,7 +86,7 @@ struct CredentialReadersTests {
     // MARK: - EnvironmentReader
 
     @Test
-    func `an environment token is trimmed and an empty one is no key`() throws {
+    func `should use an environment key without surrounding whitespace, never save it, and find none when it is empty`() throws {
         let trimmed = EnvironmentReader(name: "KEY", environment: { _ in "  sk-1\n" })
         let empty = EnvironmentReader(name: "KEY", environment: { _ in "" })
 
@@ -98,7 +98,7 @@ struct CredentialReadersTests {
     // MARK: - Paths.expand
 
     @Test
-    func `a path under the home directory expands`() {
+    func `should place a path starting with a tilde under the home folder and leave an absolute path alone`() {
         #expect(Paths.expand("~/.claude/.credentials.json", homeDirectory: home, environment: { _ in nil })
             == "/Users/someone/.claude/.credentials.json")
         #expect(Paths.expand("~", homeDirectory: home, environment: { _ in nil }) == "/Users/someone")
@@ -106,14 +106,14 @@ struct CredentialReadersTests {
     }
 
     @Test
-    func `a variable with a default uses the variable when it is set`() {
+    func `should place a path under the folder a variable names when the variable is set`() {
         let path = Paths.expand("${CONFIG_DIR:-~}/.claude.json", homeDirectory: home, environment: { $0 == "CONFIG_DIR" ? "/custom" : nil })
 
         #expect(path == "/custom/.claude.json")
     }
 
     @Test
-    func `a variable with a default uses the default when it is unset or empty`() {
+    func `should place a path under its default folder when the variable is unset or empty`() {
         let unset = Paths.expand("${CONFIG_DIR:-~}/.claude.json", homeDirectory: home, environment: { _ in nil })
         let empty = Paths.expand("${CONFIG_DIR:-~}/.claude.json", homeDirectory: home, environment: { _ in "" })
 
@@ -130,7 +130,7 @@ struct CredentialReadersTests {
     ]
 
     @Test
-    func `a value written back keeps its json type`() throws {
+    func `should keep each saved value's type when a renewed login is written back`() throws {
         let document: [String: Any] = ["oauth": ["accessToken": "old", "expiresAt": 1000, "refreshToken": "r"] as [String: Any]]
 
         let updated = CredentialDocument.updated(
@@ -147,7 +147,7 @@ struct CredentialReadersTests {
     }
 
     @Test
-    func `a missing expiresAt is written as a number`() throws {
+    func `should write a new expiry time as a number when the login file had none`() throws {
         let document: [String: Any] = ["oauth": ["accessToken": "old"]]
 
         let updated = CredentialDocument.updated(document, with: Credential(["token": "new", "expiresAt": "2000"]), fields: fields)
@@ -158,7 +158,7 @@ struct CredentialReadersTests {
     }
 
     @Test
-    func `fields the definition does not name are kept`() throws {
+    func `should keep every field the definition doesn't name and add none when a renewed login is written back`() throws {
         let document: [String: Any] = [
             "oauth": ["accessToken": "old", "scopes": ["a", "b"]] as [String: Any],
             "other": "kept",
@@ -181,7 +181,7 @@ struct CredentialReadersTests {
     // MARK: - JSONFileReader write-back
 
     @Test
-    func `a json file written back keeps its other fields and number types`() throws {
+    func `should keep a login file's other fields and number types when a renewed login is saved into it`() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("readers-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }

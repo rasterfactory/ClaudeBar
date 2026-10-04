@@ -11,8 +11,8 @@ import Testing
 @Suite("BinaryLocator caching", .serialized)
 struct BinaryLocatorCachingTests {
 
-    @Test("Repeated lookups return a stable, still-executable path")
-    func repeatedLookupsAreStable() {
+    @Test
+    func `should find a CLI at the same runnable path every time it is looked up`() {
         // `sh` is guaranteed present on macOS and lives on the default PATH.
         let first = BinaryLocator.which("sh")
         let second = BinaryLocator.which("sh")
@@ -23,16 +23,16 @@ struct BinaryLocatorCachingTests {
         }
     }
 
-    @Test("A missing tool resolves to nil consistently")
-    func missingToolStaysNil() {
+    @Test
+    func `should keep finding nothing for a CLI that isn't installed`() {
         let name = "claudebar-definitely-not-a-real-binary"
 
         #expect(BinaryLocator.which(name) == nil)
         #expect(BinaryLocator.which(name) == nil)
     }
 
-    @Test("Lookups still resolve after cache invalidation")
-    func survivesInvalidation() {
+    @Test
+    func `should still find a CLI at the same path after the remembered paths are forgotten`() {
         let before = BinaryLocator.which("sh")
 
         BinaryLocator.invalidateCaches()
@@ -41,21 +41,21 @@ struct BinaryLocatorCachingTests {
         #expect(before == after)
     }
 
-    @Test("An already-executable absolute path resolves to itself")
-    func acceptsAbsolutePaths() {
+    @Test
+    func `should use a runnable full path as it is`() {
         // The shell `which` guard rejects '/', so absolute paths must be
         // short-circuited or every executor handed a resolved path fails.
         #expect(BinaryLocator.which("/bin/echo") == "/bin/echo")
     }
 
-    @Test("A non-executable absolute path does not resolve")
-    func rejectsNonExecutableAbsolutePaths() {
+    @Test
+    func `should find nothing at a full path that isn't runnable or isn't there`() {
         #expect(BinaryLocator.which("/etc/hosts") == nil)
         #expect(BinaryLocator.which("/bin/claudebar-not-here") == nil)
     }
 
-    @Test("Shell PATH is non-empty and stable across calls")
-    func shellPathIsStable() {
+    @Test
+    func `should know the shell's search path, the same every time`() {
         let first = BinaryLocator.shellPath()
         let second = BinaryLocator.shellPath()
 
@@ -63,8 +63,8 @@ struct BinaryLocatorCachingTests {
         #expect(first == second)
     }
 
-    @Test("Cached shell PATH avoids re-spawning the login shell")
-    func cachedShellPathIsCheap() {
+    @Test
+    func `should start the login shell only once to learn its search path`() {
         BinaryLocator.invalidateCaches()
 
         // First call pays for a login-shell spawn; the cached call must not.

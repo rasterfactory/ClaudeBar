@@ -10,11 +10,11 @@ struct RequestSignerTests {
         return try SigningKey(rawRepresentation: #require(Data(base64URL: vectors.signing.privateKey)))
     }
 
-    @Test func `the public key is the one the server is given`() throws {
+    @Test func `should give the server the public key the shared vectors expect`() throws {
         #expect(try key().publicKey == LeaderboardVectors.load().signing.publicKey)
     }
 
-    @Test func `the signed text is method, path, time, nonce and the body's hash`() throws {
+    @Test func `should sign the method, path, time, nonce and the body's hash, as the server checks them`() throws {
         for item in try LeaderboardVectors.load().signing.cases {
             let canonical = RequestSigner.canonical(method: item.method, pathAndQuery: item.pathAndQuery,
                                                     timestamp: item.timestamp, nonce: item.nonce, body: Data(item.body.utf8))
@@ -22,7 +22,7 @@ struct RequestSignerTests {
         }
     }
 
-    @Test func `each request carries a signature the public key accepts`() throws {
+    @Test func `should sign each request so the server accepts it for the member`() throws {
         let vectors = try LeaderboardVectors.load()
         let key = try key()
         let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: #require(Data(base64URL: vectors.signing.publicKey)))
@@ -40,7 +40,7 @@ struct RequestSignerTests {
         }
     }
 
-    @Test func `a signature made elsewhere checks out here too`() throws {
+    @Test func `should accept a signature the server's own vectors made`() throws {
         let vectors = try LeaderboardVectors.load()
         let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: #require(Data(base64URL: vectors.signing.publicKey)))
         for item in vectors.signing.cases {
@@ -49,13 +49,13 @@ struct RequestSignerTests {
         }
     }
 
-    @Test func `a fresh nonce is sixteen random bytes`() {
+    @Test func `should make every nonce sixteen fresh random bytes`() {
         let first = RequestSigner.makeNonce()
         #expect(Data(base64URL: first)?.count == 16)
         #expect(first != RequestSigner.makeNonce())
     }
 
-    @Test func `a key survives being stored and read back`() throws {
+    @Test func `should keep this Mac's key the same once it is stored and read back`() throws {
         let key = SigningKey.generate()
         #expect(try SigningKey(rawRepresentation: key.rawRepresentation).publicKey == key.publicKey)
     }

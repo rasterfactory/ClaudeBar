@@ -10,7 +10,7 @@ struct NotchMetricsTests {
     private let builtInAuxiliaryWidth: CGFloat = 663.5
 
     @Test
-    func `a notched display measures the notch from the auxiliary areas either side`() {
+    func `should size the pill 189pt wide on a 14-inch MacBook Pro's notch`() {
         let metrics = NotchMetrics.measure(
             screenWidth: builtInDisplayWidth,
             safeAreaTop: 32,
@@ -25,7 +25,7 @@ struct NotchMetricsTests {
     }
 
     @Test
-    func `a notched display takes its height from the safe area inset`() {
+    func `should make the pill as tall as the notch on a notched display`() {
         let metrics = NotchMetrics.measure(
             screenWidth: builtInDisplayWidth,
             safeAreaTop: 38,
@@ -38,7 +38,7 @@ struct NotchMetricsTests {
     }
 
     @Test
-    func `a display without a notch gets a virtual pill of the default width`() {
+    func `should show a pill of the default width on a display without a notch`() {
         let metrics = NotchMetrics.measure(
             screenWidth: 2560,
             safeAreaTop: 0,
@@ -52,7 +52,7 @@ struct NotchMetricsTests {
     }
 
     @Test
-    func `a display without a notch takes its height from the menu bar`() {
+    func `should make the pill as tall as the menu bar on a display without a notch`() {
         let metrics = NotchMetrics.measure(
             screenWidth: 2560,
             safeAreaTop: 0,
@@ -65,7 +65,7 @@ struct NotchMetricsTests {
     }
 
     @Test
-    func `an auto-hidden menu bar falls back to the default height`() {
+    func `should give the pill the default height when the menu bar auto-hides`() {
         // visibleFrame reaches the top of the screen when the menu bar hides,
         // which measures as a zero-height menu bar.
         let metrics = NotchMetrics.measure(
@@ -80,7 +80,7 @@ struct NotchMetricsTests {
     }
 
     @Test
-    func `a notched display missing its auxiliary areas falls back to the default width`() {
+    func `should give the pill the default width when the display does not report both sides of the notch`() {
         let metrics = NotchMetrics.measure(
             screenWidth: builtInDisplayWidth,
             safeAreaTop: 32,
@@ -94,7 +94,7 @@ struct NotchMetricsTests {
     }
 
     @Test
-    func `an implausibly narrow measurement falls back rather than collapsing the notch`() {
+    func `should give the pill the default width rather than collapse it when the notch measures implausibly narrow`() {
         // Guards against a transient screen configuration reporting auxiliary
         // areas that consume the whole width.
         let metrics = NotchMetrics.measure(

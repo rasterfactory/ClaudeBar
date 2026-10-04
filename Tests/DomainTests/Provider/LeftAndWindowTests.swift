@@ -10,7 +10,7 @@ struct LeftAndWindowTests {
     // MARK: - Left
 
     @Test
-    func `a balance with no ceiling is money, not 100 percent`() {
+    func `should show a balance with no ceiling as money, with no percentage and no pace`() {
         let balance = UsageQuota(
             percentRemaining: 100, quotaType: .timeLimit("AI Gateway Credits"), providerId: "vercel-gateway",
             dollarRemaining: 12.40, currency: "USD"
@@ -23,14 +23,14 @@ struct LeftAndWindowTests {
     }
 
     @Test
-    func `an empty balance is depleted`() {
+    func `should show an empty balance as depleted`() {
         let balance = UsageQuota(left: .money(Money(0, currency: "USD"), of: nil), quotaType: .timeLimit("Credits"), providerId: "x")
 
         #expect(balance.status == .depleted)
     }
 
     @Test
-    func `money with a ceiling has the share it implies`() {
+    func `should show money with a ceiling as the share of it left, 24.8 percent`() {
         let credits = UsageQuota(
             left: .money(Money(12.40, currency: "USD"), of: Money(50, currency: "USD")),
             quotaType: .timeLimit("Credits"), providerId: "openrouter"
@@ -44,7 +44,7 @@ struct LeftAndWindowTests {
     }
 
     @Test
-    func `a share is a percentage`() {
+    func `should show a share as its percentage left`() {
         let session = UsageQuota(percentRemaining: 62, quotaType: .session, providerId: "claude")
 
         #expect(session.left == .share(62))
@@ -52,7 +52,7 @@ struct LeftAndWindowTests {
     }
 
     @Test
-    func `a balance marked unavailable stays a depleted share`() {
+    func `should show a balance DeepSeek marks unavailable as depleted`() {
         // DeepSeek writes 0 with its balance when `is_available` is false.
         let unavailable = UsageQuota(percentRemaining: 0, quotaType: .modelSpecific("Balance"), providerId: "deepseek", dollarRemaining: 5)
 
@@ -61,7 +61,7 @@ struct LeftAndWindowTests {
     }
 
     @Test
-    func `the lowest quota is never a balance while a share exists`() {
+    func `should never pick a balance as the lowest quota while a share exists`() {
         let usage = UsageSnapshot(providerId: "x", quotas: [
             UsageQuota(percentRemaining: 100, quotaType: .timeLimit("Credits"), providerId: "x", dollarRemaining: 1),
             UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "x"),
@@ -73,7 +73,7 @@ struct LeftAndWindowTests {
     // MARK: - Window
 
     @Test
-    func `pace needs a stated window — the name is never a guess`() {
+    func `should show no pace for a window whose length the provider did not state`() {
         let unstated = UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "x",
                                   resetsAt: Date().addingTimeInterval(3600))
         let stated = UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "x",
@@ -87,7 +87,7 @@ struct LeftAndWindowTests {
     }
 
     @Test
-    func `the conventional window is a source's to state`() {
+    func `should know a session as five hours and a monthly limit as thirty days`() {
         #expect(QuotaType.session.conventionalWindow == .hours(5))
         #expect(QuotaType.timeLimit("Monthly").conventionalWindow == .days(30))
     }
@@ -95,7 +95,7 @@ struct LeftAndWindowTests {
     // MARK: - The menu bar
 
     @Test
-    func `the menu bar shows a balance as money`() {
+    func `should show a balance as money in the menu bar`() {
         let balance = UsageQuota(left: .money(Money(12.40, currency: "USD"), of: nil), quotaType: .timeLimit("Credits"), providerId: "x")
 
         #expect(MenuBarPercentageDisplay(quota: balance, mode: .remaining).text == "$12.40")

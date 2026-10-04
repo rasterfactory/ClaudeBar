@@ -30,7 +30,7 @@ struct TogetherTests {
     }
 
     @Test
-    func `every data source answers, and the usage is their union`() async throws {
+    func `should show what every data source reports, together`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try write("quotas.json", #"{"quotas":[{"type":"weekly","percentRemaining":62}]}"#)
         try write("cost.json", #"{"costUsage":{"totalCost":10.26,"apiDuration":0}}"#)
@@ -43,7 +43,7 @@ struct TogetherTests {
     }
 
     @Test
-    func `a data source that fails is left out of the usage and shows beside it`() async throws {
+    func `should show what the others report and the failure beside it when one data source fails`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try write("quotas.json", #"{"quotas":[{"type":"weekly","percentRemaining":62}]}"#)
         let acme = try provider()
@@ -57,7 +57,7 @@ struct TogetherTests {
     }
 
     @Test
-    func `the refresh fails only when every data source does`() async throws {
+    func `should fail only when every data source fails`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let acme = try provider()
@@ -67,7 +67,7 @@ struct TogetherTests {
     }
 
     @Test
-    func `without it, one data source answers, as always`() async throws {
+    func `should show only the chosen data source's usage when they do not answer together`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try write("quotas.json", #"{"quotas":[{"type":"weekly","percentRemaining":62}]}"#)
         try write("cost.json", #"{"costUsage":{"totalCost":10.26,"apiDuration":0}}"#)
@@ -80,7 +80,7 @@ struct TogetherTests {
     }
 
     @Test
-    func `together is kept in the definition's file`() throws {
+    func `should keep answering together after the provider is saved and read back`() throws {
         let definition = try provider().definition
 
         let again = try ProviderDefinition.parse(try JSONEncoder().encode(definition), origin: .extension)

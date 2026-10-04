@@ -36,7 +36,7 @@ struct KeptProvidersTests {
     // MARK: - Read
 
     @Test
-    func `the providers are in the order they were kept`() throws {
+    func `should list the providers, and find each provider and login, in the order they were kept`() throws {
         let kept = try providers(["claude", "codex"])
 
         #expect(kept.all.map(\.id) == ["claude", "codex"])
@@ -45,7 +45,7 @@ struct KeptProvidersTests {
     }
 
     @Test
-    func `the lineup is the enabled logins of enabled providers`() throws {
+    func `should leave a turned-off provider's logins out of the lineup`() throws {
         let kept = try providers(["claude", "codex"])
 
         kept.provider(id: "codex")?.isEnabled = false
@@ -56,7 +56,7 @@ struct KeptProvidersTests {
     // MARK: - Update: the order
 
     @Test
-    func `moving a provider saves the order, its logins together`() throws {
+    func `should save the new order when the person moves a provider`() throws {
         let kept = try providers(["claude", "codex", "gemini"])
 
         kept.move("gemini", by: -2)
@@ -66,7 +66,7 @@ struct KeptProvidersTests {
     }
 
     @Test
-    func `the saved order is read back; a provider it doesn't name keeps its place after`() throws {
+    func `should list providers in the saved order, with ones it doesn't name after`() throws {
         settings.setProviderOrder(["codex", "gone"])
 
         let kept = try providers(["claude", "codex"])
@@ -75,7 +75,7 @@ struct KeptProvidersTests {
     }
 
     @Test
-    func `a move past the end stops at the end`() throws {
+    func `should stop a provider at the end when it is moved past it`() throws {
         let kept = try providers(["claude", "codex"])
 
         kept.move("claude", by: 5)
@@ -86,7 +86,7 @@ struct KeptProvidersTests {
     // MARK: - Create
 
     @Test
-    func `adding a custom provider saves it and keeps it, after the others`() throws {
+    func `should save a new custom provider and list it after the others`() throws {
         defer { try? FileManager.default.removeItem(at: catalog.directory) }
         let kept = try providers(["claude"])
         let acme = try custom()
@@ -99,7 +99,7 @@ struct KeptProvidersTests {
     }
 
     @Test
-    func `a provider is kept once`() throws {
+    func `should refuse to add a provider that is already kept`() throws {
         defer { try? FileManager.default.removeItem(at: catalog.directory) }
         let kept = try providers(["claude"])
         let acme = try custom()
@@ -112,7 +112,7 @@ struct KeptProvidersTests {
     // MARK: - Delete
 
     @Test
-    func `deleting a custom provider removes its file, its keys and its place`() throws {
+    func `should remove a deleted custom provider's file, keys and place in the list`() throws {
         defer { try? FileManager.default.removeItem(at: catalog.directory) }
         let kept = try providers(["claude"])
         let acme = try custom()
@@ -128,7 +128,7 @@ struct KeptProvidersTests {
     }
 
     @Test
-    func `a built-in provider is never deleted, only turned off`() throws {
+    func `should refuse to delete a built-in provider`() throws {
         let kept = try providers(["claude"])
 
         #expect(throws: (any Error).self) { try kept.remove("claude") }

@@ -10,8 +10,8 @@ import Testing
 @Suite("DefaultCLIExecutor")
 struct DefaultCLIExecutorTests {
 
-    @Test("Executes a command and returns its output")
-    func executesCommand() async throws {
+    @Test
+    func `should show what a CLI printed and its success in a terminal`() async throws {
         let result = try await DefaultCLIExecutor().execute(
             binary: "/bin/echo",
             args: ["pty-hello"],
@@ -25,8 +25,8 @@ struct DefaultCLIExecutorTests {
         #expect(result.exitCode == 0)
     }
 
-    @Test("Waits past an idle gap while the screen is still filling in")
-    func waitsForPendingScreen() async throws {
+    @Test
+    func `should wait past a quiet spell while Claude's usage screen is still filling in (#271)`() async throws {
         // issue #271: `claude /usage` paints a placeholder, goes quiet longer
         // than the idle cutoff, then appends the quota bars.
         let result = try await DefaultCLIExecutor(completionRule: .claudeUsage).execute(
@@ -41,8 +41,8 @@ struct DefaultCLIExecutorTests {
         #expect(result.output.contains("Current session"))
     }
 
-    @Test("Delivers typed input after the configured delay")
-    func deliversDelayedInput() async throws {
+    @Test
+    func `should still deliver typed input after the stated delay`() async throws {
         // /bin/cat echoes back whatever it reads; the delay must not lose the
         // input, and the session must stay open long enough to receive it.
         let result = try await DefaultCLIExecutor(inputDelay: 1.0).execute(
@@ -57,8 +57,8 @@ struct DefaultCLIExecutorTests {
         #expect(result.output.contains("delayed-hello"))
     }
 
-    @Test("Throws when the binary cannot be located")
-    func throwsForMissingBinary() async {
+    @Test
+    func `should fail when the CLI can't be found`() async {
         await #expect(throws: (any Error).self) {
             try await DefaultCLIExecutor().execute(
                 binary: "claudebar-missing-cli-xyz",
@@ -71,8 +71,8 @@ struct DefaultCLIExecutorTests {
         }
     }
 
-    @Test("Runs in the supplied working directory")
-    func honoursWorkingDirectory() async throws {
+    @Test
+    func `should run the CLI in the folder it is given`() async throws {
         let result = try await DefaultCLIExecutor().execute(
             binary: "/bin/pwd",
             args: [],
@@ -85,8 +85,8 @@ struct DefaultCLIExecutorTests {
         #expect(result.output.contains("tmp"))
     }
 
-    @Test("Forwards environment additions to the spawned process")
-    func forwardsEnvironmentAdditions() async throws {
+    @Test
+    func `should start the CLI with the extra environment values it is given`() async throws {
         let result = try await DefaultCLIExecutor(
             environmentAdditions: ["CLAUDEBAR_PROBE": "1"]
         ).execute(
@@ -101,8 +101,8 @@ struct DefaultCLIExecutorTests {
         #expect(result.output.contains("marked"))
     }
 
-    @Test("Concurrent executions do not block one another")
-    func concurrentExecutionsProceedInParallel() async throws {
+    @Test
+    func `should let several CLIs run at once without waiting on each other`() async throws {
         // The whole point of moving the blocking PTY run off the cooperative
         // pool: several providers refresh at once without serialising. Each
         // command sleeps, so a serialised implementation would take N x 1s.

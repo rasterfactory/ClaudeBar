@@ -76,7 +76,7 @@ struct ClaudeUsageScreenTests {
     // MARK: - Parsing Percentages
 
     @Test
-    func `parses session quota from left format`() throws {
+    func `should show a healthy session with 65% left when the screen prints percent left`() throws {
         let snapshot = try read(Self.sampleClaudeOutput)
 
         #expect(snapshot.sessionQuota?.percentRemaining == 65)
@@ -84,7 +84,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses weekly quota from left format`() throws {
+    func `should show the weekly window as a warning at 35% left`() throws {
         let snapshot = try read(Self.sampleClaudeOutput)
 
         #expect(snapshot.weeklyQuota?.percentRemaining == 35)
@@ -92,7 +92,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses model specific quota like opus`() throws {
+    func `should show the Opus weekly window on its own`() throws {
         let snapshot = try read(Self.sampleClaudeOutput)
 
         let opusQuota = snapshot.quota(for: .modelSpecific("opus"))
@@ -101,7 +101,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses fable weekly quota with its own reset time`() throws {
+    func `should show the Fable weekly window with its own reset time`() throws {
         let snapshot = try read(Self.fableQuotaOutput)
 
         // 17% used = 83% remaining, reset from the Fable section (not all-models)
@@ -125,7 +125,7 @@ struct ClaudeUsageScreenTests {
     """
 
     @Test
-    func `fable quota falls back to weekly reset when its section has none`() throws {
+    func `should give the Fable window the weekly reset when its section prints none`() throws {
         let snapshot = try read(Self.fableQuotaWithoutOwnResetOutput)
 
         // inherits the all-models weekly reset
@@ -135,14 +135,14 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `no fable quota when section absent`() throws {
+    func `should show no Fable window when the screen has no Fable section`() throws {
         let snapshot = try read(Self.sampleClaudeOutput)
 
         #expect(snapshot.quota(for: .modelSpecific("fable")) == nil)
     }
 
     @Test
-    func `converts used format to remaining`() throws {
+    func `should show percent left when the screen prints percent used`() throws {
         let snapshot = try read(Self.usedPercentOutput)
 
         // 25% used = 75% left, 60% used = 40% left
@@ -151,7 +151,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `detects depleted quota at zero percent`() throws {
+    func `should show the session as depleted at 0% left`() throws {
         let snapshot = try read(Self.exhaustedQuotaOutput)
 
         #expect(snapshot.sessionQuota?.percentRemaining == 0)
@@ -162,7 +162,7 @@ struct ClaudeUsageScreenTests {
     // MARK: - Account Info from ~/.claude.json
 
     @Test
-    func `account info comes from the config file not CLI output`() throws {
+    func `should show the account email and organization from Claude Code's config`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(email: "user@example.com", displayName: "Acme Corp")
@@ -174,7 +174,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `account info is nil when there is no config file`() throws {
+    func `should show no account when there is no config, even though the screen prints one`() throws {
         // The screen prints "Account:" and "Organization:" rows; they are not read.
         let snapshot = try read(Self.sampleClaudeOutput)
 
@@ -183,7 +183,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `resolves email and displayName from oauthAccount`() throws {
+    func `should show the signed-in email and display name`() throws {
         let snapshot = try read(Self.sampleClaudeOutput, config: """
         {
             "oauthAccount": {
@@ -201,7 +201,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `resolves email only when displayName is absent`() throws {
+    func `should show only the email when the account has no display name`() throws {
         let snapshot = try read(Self.sampleClaudeOutput, config: """
         {
             "oauthAccount": {
@@ -215,7 +215,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `resolves displayName only when email is absent`() throws {
+    func `should show only the display name when the account has no email`() throws {
         let snapshot = try read(Self.sampleClaudeOutput, config: """
         {
             "oauthAccount": {
@@ -229,7 +229,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `no account when oauthAccount section is missing`() throws {
+    func `should show no account when the config has no signed-in account`() throws {
         let snapshot = try read(Self.sampleClaudeOutput, config: """
         { "numStartups": 100 }
         """)
@@ -239,7 +239,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `no account when oauthAccount has neither email nor displayName`() throws {
+    func `should show no account when the signed-in account has neither email nor name`() throws {
         let snapshot = try read(Self.sampleClaudeOutput, config: """
         {
             "oauthAccount": {
@@ -254,7 +254,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `no account when config file is invalid JSON`() throws {
+    func `should still show the quotas, with no account, when the config is damaged`() throws {
         let snapshot = try read(Self.sampleClaudeOutput, config: "not valid json {{{")
 
         #expect(snapshot.accountEmail == nil)
@@ -263,7 +263,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `a subscription billing type vetoes the cost fallback`() {
+    func `should say the CLI missed the subscription when a subscriber's screen shows API billing`() {
         #expect(throws: UsageError.executionFailed(Self.subscriptionMisread)) {
             try read(Self.apiBillingCostPanelOutput, config: """
             {
@@ -277,7 +277,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `a billing type counts even when the account has no name`() {
+    func `should say the CLI missed the subscription even when the subscriber's account has no name (#271)`() {
         // The billing type decides whether a `/usage` cost panel means "this is
         // an API account" or "the CLI could not see the subscription" (#271),
         // so it is read on its own.
@@ -294,7 +294,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `an account without a billing type is not vetoed`() {
+    func `should fall back to session cost when the account names no billing type`() {
         #expect(throws: UsageError.subscriptionRequired) {
             try read(Self.apiBillingCostPanelOutput, config: """
             {
@@ -336,21 +336,21 @@ struct ClaudeUsageScreenTests {
     """
 
     @Test
-    func `detects folder trust prompt and throws error`() {
+    func `should ask to trust the folder when Claude Code prompts for folder trust`() {
         #expect(throws: UsageError.folderTrustRequired) {
             try read(Self.trustPromptOutput)
         }
     }
 
     @Test
-    func `detects new folder trust prompt format and throws error`() {
+    func `should ask to trust the folder when Claude Code shows its newer trust prompt`() {
         #expect(throws: UsageError.folderTrustRequired) {
             try read(Self.newTrustPromptOutput)
         }
     }
 
     @Test
-    func `detects authentication error and throws error`() {
+    func `should ask to sign in again when Claude Code's session has expired`() {
         #expect(throws: UsageError.authenticationRequired) {
             try read(Self.authErrorOutput)
         }
@@ -359,7 +359,7 @@ struct ClaudeUsageScreenTests {
     // MARK: - Reset Time Parsing
 
     @Test
-    func `parses session reset time from output`() throws {
+    func `should show when the session resets, counted from now`() throws {
         let snapshot = try read(Self.sampleClaudeOutput, now: Self.now)
 
         let sessionQuota = snapshot.sessionQuota
@@ -369,14 +369,14 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses short reset time like 30m`() throws {
+    func `should show a session reset 30 minutes away`() throws {
         let snapshot = try read(Self.exhaustedQuotaOutput, now: Self.now)
 
         #expect(snapshot.sessionQuota?.resetsAt == Self.now.addingTimeInterval(30 * 60))
     }
 
     @Test
-    func `adds the resets prefix to a reset line without one`() throws {
+    func `should print "Resets" before a reset line that lacks it`() throws {
         let snapshot = try read("""
         Current session
         ████████████████░░░░ 65% left
@@ -388,7 +388,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `has no reset text when the screen shows none`() throws {
+    func `should show no reset when the screen prints none`() throws {
         let snapshot = try read(Self.usedPercentOutput)
 
         #expect(snapshot.sessionQuota?.resetText == nil)
@@ -398,7 +398,7 @@ struct ClaudeUsageScreenTests {
     // MARK: - Absolute Reset Time Parsing (resetsAt populated)
 
     @Test
-    func `populates resetsAt for time only reset format`() throws {
+    func `should know the reset time and elapsed share when the reset is a time of day`() throws {
         // Pro header with "Resets 4:59pm (America/New_York)"
         let snapshot = try read(Self.proHeaderOutput)
 
@@ -409,7 +409,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `populates resetsAt for date at time reset format`() throws {
+    func `should know the reset moment when the reset is a date at a time in another time zone`() throws {
         // real CLI output with "Resets Dec 25 at 4:59am (Asia/Shanghai)"
         let snapshot = try read(Self.realCliOutput, now: Self.now)
 
@@ -419,7 +419,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `populates resetsAt for date comma time format`() throws {
+    func `should place a reset date already past this year in next year`() throws {
         // "Resets Jan 15, 3:30pm (America/Los_Angeles)" — past this year, so next year
         let snapshot = try read(Self.sampleClaudeOutput, now: Self.now)
 
@@ -428,7 +428,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `populates resetsAt for Claude API quotas with absolute times`() throws {
+    func `should know the reset moments of a Claude API account's windows`() throws {
         // "Resets 9pm (Asia/Shanghai)" and "Resets Feb 12 at 4pm (Asia/Shanghai)"
         let snapshot = try read(Self.claudeApiWithQuotasOutput, now: Self.now)
 
@@ -454,7 +454,7 @@ struct ClaudeUsageScreenTests {
     """
 
     @Test
-    func `parses percentages when reset and percent share same line`() throws {
+    func `should show each window's percent when the reset and percent share a line`() throws {
         let snapshot = try read(Self.resetOnSameLineOutput)
 
         #expect(snapshot.sessionQuota?.percentRemaining == 73) // 27% used = 73% remaining
@@ -463,7 +463,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses resetsAt when reset and percent share same line`() throws {
+    func `should know each window's reset when the reset and percent share a line`() throws {
         let snapshot = try read(Self.resetOnSameLineOutput, now: Self.now)
 
         // 3pm Amsterdam (CEST) is 13:00 UTC, still ahead at noon UTC
@@ -482,7 +482,7 @@ struct ClaudeUsageScreenTests {
     """
 
     @Test
-    func `strips ansi color codes before parsing`() throws {
+    func `should show the session when the screen is coloured`() throws {
         let snapshot = try read(Self.ansiColoredOutput)
 
         #expect(snapshot.sessionQuota?.percentRemaining == 65)
@@ -553,7 +553,7 @@ struct ClaudeUsageScreenTests {
     """
 
     @Test
-    func `parses real CLI output with Settings header`() throws {
+    func `should show the Pro plan, session and weekly windows, and no extra usage, under the Settings header`() throws {
         let snapshot = try read(Self.realCliOutput)
 
         #expect(snapshot.accountTier == .claudePro)
@@ -563,7 +563,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses real CLI output with ANSI escape codes`() throws {
+    func `should show the Pro plan and windows when the real screen carries terminal escape codes`() throws {
         let snapshot = try read(Self.realCliOutputWithAnsi)
 
         #expect(snapshot.accountTier == .claudePro)
@@ -572,22 +572,22 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `detects Max account type from header`() throws {
+    func `should show the Max plan when the header names it`() throws {
         #expect(try read(Self.maxHeaderOutput).accountTier == .claudeMax)
     }
 
     @Test
-    func `detects Pro account type from header`() throws {
+    func `should show the Pro plan when the header names it`() throws {
         #expect(try read(Self.proHeaderOutput).accountTier == .claudePro)
     }
 
     @Test
-    func `detects Max account type from percentage data when no header`() throws {
+    func `should show the Max plan when there is no header but there are quotas`() throws {
         #expect(try read("Current session\n75% left").accountTier == .claudeMax)
     }
 
     @Test
-    func `defaults to Max when no header but has quota data`() throws {
+    func `should show the Max plan when there is no header but quotas and extra usage`() throws {
         let output = """
         Current session
         75% left
@@ -630,7 +630,7 @@ struct ClaudeUsageScreenTests {
     """
 
     @Test
-    func `parses Extra usage cost for Pro account`() throws {
+    func `should show a Pro account's extra-usage spend against its limit`() throws {
         let costUsage = try read(Self.proWithExtraUsageOutput).costUsage
 
         #expect(costUsage?.totalCost == Decimal(string: "5.41"))
@@ -639,7 +639,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses Extra usage cost line`() throws {
+    func `should show extra-usage spend, limit and reset`() throws {
         let costUsage = try read("""
         Current session
         75% left
@@ -654,7 +654,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses Extra usage cost line without dollar signs`() throws {
+    func `should show extra-usage spend when the amounts have no dollar sign`() throws {
         let costUsage = try read("""
         Current session
         75% left
@@ -668,7 +668,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses Extra usage amounts with thousands separators`() throws {
+    func `should show extra-usage spend when the amounts have thousands separators`() throws {
         let costUsage = try read("""
         Current session
         75% left
@@ -682,7 +682,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `returns nil for Extra usage not enabled`() throws {
+    func `should show no extra usage when it isn't enabled`() throws {
         let snapshot = try read(Self.maxWithExtraUsageNotEnabled)
 
         #expect(snapshot.costUsage == nil)
@@ -690,7 +690,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `returns nil when no Extra usage section`() throws {
+    func `should show no extra usage when the screen has no extra-usage section`() throws {
         let output = """
         Current session
         65% left
@@ -700,7 +700,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parse returns snapshot with Extra usage for Pro account`() throws {
+    func `should show a Pro account's quotas together with its extra-usage spend`() throws {
         let snapshot = try read(Self.proWithExtraUsageOutput)
 
         #expect(snapshot.accountTier == .claudePro)
@@ -710,7 +710,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses resetsAt from Extra usage cost line with mid-line Resets`() throws {
+    func `should know when extra usage resets when the reset sits mid-line`() throws {
         // "$5.41 / $20.00 spent · Resets Jan 1, 2026 (America/New_York)"
         // "Resets" appears mid-line, not at the start
         let snapshot = try read(Self.proWithExtraUsageOutput, now: Self.now)
@@ -783,7 +783,7 @@ struct ClaudeUsageScreenTests {
     """
 
     @Test
-    func `treats API Usage Billing with quotas as subscription account`() throws {
+    func `should show a subscription plan when the header says API Usage Billing but quotas show`() throws {
         // header has "API Usage Billing" but no subscription-only error, and the
         // output contains real quota bars (subscription with Extra Usage credits).
         let accountType = try read(Self.apiUsageBillingWithQuotasOutput).accountTier
@@ -794,7 +794,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses subscription account with API Usage Billing header and Extra Usage credits`() throws {
+    func `should show a subscriber's windows when Extra Usage credits put API Usage Billing in the header`() throws {
         let snapshot = try read(Self.apiUsageBillingWithQuotasOutput)
 
         // quotas parsed; no fall-through to /cost
@@ -804,14 +804,14 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `the subscription-only message is subscriptionRequired`() {
+    func `should fall back to session cost when Claude says usage is for subscription plans only`() {
         #expect(throws: UsageError.subscriptionRequired) {
             try read("/usage is only available for subscription plans.")
         }
     }
 
     @Test
-    func `treats Claude API with quotas as subscription account`() throws {
+    func `should show the Max plan when a Claude API header comes with quotas`() throws {
         let output = """
         Sonnet 4.5 · Claude API
 
@@ -825,7 +825,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses Claude API account with quotas successfully`() throws {
+    func `should show a Claude API account's session, weekly and Sonnet windows`() throws {
         let snapshot = try read(Self.claudeApiWithQuotasOutput)
 
         // Should parse quotas, not throw subscriptionRequired
@@ -836,7 +836,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `detects subscription required error for API billing accounts`() {
+    func `should fall back to session cost when an API-billing account opens the usage screen`() {
         #expect(throws: UsageError.subscriptionRequired) {
             try read(Self.apiUsageBillingOutput)
         }
@@ -845,7 +845,7 @@ struct ClaudeUsageScreenTests {
     // MARK: - Terminal Rendering
 
     @Test
-    func `text placed by cursor movements lands where the terminal put it`() throws {
+    func `should read the session where cursor movements placed the text`() throws {
         // "Hello" + move 5 columns right + "World", on the label and the reset rows
         let snapshot = try read(
             "Current session\r\n████████\u{1B}[30C20% used\r\nResets\u{1B}[1Cin 2h 15m",
@@ -858,7 +858,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `colour codes inside a label do not hide it`() throws {
+    func `should show the session when colour codes sit inside its label`() throws {
         // Green colored text + reset + normal
         let snapshot = try read("\u{1B}[32mCurrent\u{1B}[0m session\n\u{1B}[33m42%\u{1B}[0m left")
 
@@ -866,7 +866,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses usage sections that scrolled off the visible screen`() throws {
+    func `should show the windows that scrolled off the visible screen`() throws {
         // the CLI /usage screen grew past 50 rows (usage-contribution report),
         // pushing the quota sections above the visible screen into scrollback
         let filler = (1...60).map { "contributing insight line \($0)" }.joined(separator: "\n")
@@ -895,7 +895,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `parses clean terminal output with proper structure`() throws {
+    func `should show the session and weekly windows from a cleanly rendered screen`() throws {
         // clean terminal output as rendered by SwiftTerm
         let output = """
         Opus 4.5 · Claude Max · user@example.com's Organization
@@ -918,7 +918,7 @@ struct ClaudeUsageScreenTests {
     // MARK: - Terminal Rendering Deduplication
 
     @Test
-    func `handles duplicated reset text from terminal redraw artifact`() throws {
+    func `should show each reset once, with its moment, when a redraw doubles the reset line`() throws {
         // terminal rendering artifact where cursor misalignment causes
         // reset text to appear twice on a single line
         let output = """
@@ -949,7 +949,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `a reset line duplicated by a redraw keeps one Resets`() throws {
+    func `should print "Resets" once when a redraw doubles the reset line`() throws {
         let text = """
         Current session
         ████ 6% used
@@ -1004,7 +1004,7 @@ struct ClaudeUsageScreenTests {
         + "Run `claude auth login` again, or switch Claude to API mode in Settings."
 
     @Test
-    func `still-loading output reports that usage data never arrived`() {
+    func `should say usage never finished loading when the screen is still loading`() {
         #expect(throws: UsageError.executionFailed(
             "Claude usage data did not finish loading — the usage endpoint may be rate limited. Try again in a moment."
         )) {
@@ -1013,13 +1013,13 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `a cost-only usage panel without its header still routes to the cost fallback`() throws {
+    func `should show session cost when the usage panel has lost its header`() throws {
         let panel = "Session\nTotal cost: $0.0000\nTotal duration (API): 0s\nEsc to cancel"
         #expect(throws: UsageError.subscriptionRequired) { try read(panel) }
     }
 
     @Test
-    func `a subscription account with a headerless cost panel gets a reconnect explanation`() throws {
+    func `should explain reconnection when a subscription account shows a headerless cost panel`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(email: "user@example.com", billingType: "stripe_subscription")
@@ -1029,14 +1029,14 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `API billing cost panel routes to the cost fallback instead of a parse error`() {
+    func `should fall back to session cost when the screen shows the API-billing cost panel`() {
         #expect(throws: UsageError.subscriptionRequired) {
             try read(Self.apiBillingCostPanelOutput)
         }
     }
 
     @Test
-    func `API billing cost panel on a subscription account refuses the cost fallback`() throws {
+    func `should say the CLI missed the subscription when a subscriber gets the API-billing cost panel (#271)`() throws {
         // A Max plan billed through Apple still renders the API-billing cost
         // panel when the CLI cannot see the subscription (#271). Answering with
         // `/cost` would report $0.00 and no quota, and — because it succeeds —
@@ -1052,7 +1052,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `API billing cost panel on a pay-as-you-go account still routes to cost`() throws {
+    func `should fall back to session cost when a pay-as-you-go account gets the cost panel`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(email: "user@example.com", billingType: "api")
@@ -1083,7 +1083,7 @@ struct ClaudeUsageScreenTests {
     """
 
     @Test
-    func `subscription-only message on a subscription account refuses the cost fallback`() throws {
+    func `should say the CLI missed the subscription when a subscriber is told usage is for subscription plans only (#317)`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(email: "user@example.com", billingType: "apple_subscription")
@@ -1094,7 +1094,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `subscription-only message on a pay-as-you-go account still routes to cost`() throws {
+    func `should fall back to session cost when a pay-as-you-go account is told usage is for subscription plans only`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(email: "user@example.com", billingType: "api")
@@ -1105,7 +1105,7 @@ struct ClaudeUsageScreenTests {
     }
 
     @Test
-    func `subscription output that mentions API usage billing alongside quotas still parses`() throws {
+    func `should show the windows when a subscriber's header mentions API Usage Billing beside quotas`() throws {
         // Extra Usage credits put "API Usage Billing" in a subscription header —
         // the quota bars are what decide, not the header.
         let output = """

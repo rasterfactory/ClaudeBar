@@ -8,21 +8,21 @@ struct StatusColorPolicyTests {
     // MARK: - RGBColorValue
 
     @Test
-    func `hex round trips through RGBColorValue`() {
+    func `should read back the hex color the person typed`() {
         let color = RGBColorValue(hex: "#1A7A3C")
         #expect(color != nil)
         #expect(color?.hexString == "#1A7A3C")
     }
 
     @Test
-    func `hex parsing accepts lowercase and missing hash`() {
+    func `should accept a lowercase hex color without a hash and refuse a malformed one`() {
         #expect(RGBColorValue(hex: "ff5c5c")?.hexString == "#FF5C5C")
         #expect(RGBColorValue(hex: "#zz0000") == nil)
         #expect(RGBColorValue(hex: "#123") == nil)
     }
 
     @Test
-    func `contrast ratio of white on black is 21`() {
+    func `should measure white on black at 21 to 1 either way round`() {
         let white = RGBColorValue(red: 1, green: 1, blue: 1)
         let black = RGBColorValue(red: 0, green: 0, blue: 0)
         let ratio = RGBColorValue.contrastRatio(white, black)
@@ -31,7 +31,7 @@ struct StatusColorPolicyTests {
     }
 
     @Test
-    func `RGBColorValue encodes as a hex string`() throws {
+    func `should save a color as its hex string and read it back`() throws {
         let data = try JSONEncoder().encode(RGBColorValue(hex: "#B81F1F")!)
         #expect(String(data: data, encoding: .utf8) == "\"#B81F1F\"")
         let decoded = try JSONDecoder().decode(RGBColorValue.self, from: data)
@@ -41,7 +41,7 @@ struct StatusColorPolicyTests {
     // MARK: - High Contrast Palettes
 
     @Test
-    func `high contrast light palette clears 4_5 to 1 on a light menu bar`() {
+    func `should show every status at 4.5 to 1 contrast or better on a light menu bar in high contrast`() {
         for status in [QuotaStatus.healthy, .warning, .critical, .depleted] {
             let color = StatusPalette.highContrastLight[status]
             let ratio = RGBColorValue.contrastRatio(color, MenuBarSurface.light)
@@ -50,7 +50,7 @@ struct StatusColorPolicyTests {
     }
 
     @Test
-    func `high contrast dark palette clears 4_5 to 1 on a dark menu bar`() {
+    func `should show every status at 4.5 to 1 contrast or better on a dark menu bar in high contrast`() {
         for status in [QuotaStatus.healthy, .warning, .critical, .depleted] {
             let color = StatusPalette.highContrastDark[status]
             let ratio = RGBColorValue.contrastRatio(color, MenuBarSurface.dark)
@@ -61,7 +61,7 @@ struct StatusColorPolicyTests {
     // MARK: - Overrides
 
     @Test
-    func `overrides start empty`() {
+    func `should start with no custom status colors`() {
         let overrides = StatusColorOverrides.none
         #expect(overrides.isEmpty)
         #expect(overrides[.healthy] == nil)
@@ -69,7 +69,7 @@ struct StatusColorPolicyTests {
     }
 
     @Test
-    func `partial overrides round trip through JSON and leave others nil`() throws {
+    func `should read back one custom status color after saving and leave the others unset`() throws {
         var overrides = StatusColorOverrides.none
         overrides[.critical] = RGBColorValue(hex: "#112233")
 
@@ -87,7 +87,7 @@ struct StatusColorPolicyTests {
     // MARK: - Policy Precedence
 
     @Test
-    func `default policy defers to the theme for every status`() {
+    func `should leave every status color to the theme by default`() {
         let policy = StatusColorPolicy.default
         #expect(!policy.isActive)
         for status in [QuotaStatus.healthy, .warning, .critical, .depleted] {
@@ -97,7 +97,7 @@ struct StatusColorPolicyTests {
     }
 
     @Test
-    func `high contrast picks the palette matching the appearance`() {
+    func `should use the high-contrast palette for the light or dark menu bar when the person turns it on`() {
         let policy = StatusColorPolicy(overrides: .none, highContrastEnabled: true)
         #expect(policy.isActive)
         #expect(policy.color(for: .warning, appearance: .light) == StatusPalette.highContrastLight[.warning])
@@ -105,7 +105,7 @@ struct StatusColorPolicyTests {
     }
 
     @Test
-    func `a user override beats high contrast for that status only`() {
+    func `should use the person's own color for that status only, over high contrast`() {
         var overrides = StatusColorOverrides.none
         let custom = RGBColorValue(hex: "#ABCDEF")!
         overrides[.critical] = custom
@@ -117,7 +117,7 @@ struct StatusColorPolicyTests {
     }
 
     @Test
-    func `overrides alone are active and leave unset statuses to the theme`() {
+    func `should use the person's own color for one status and leave the rest to the theme`() {
         var overrides = StatusColorOverrides.none
         overrides[.healthy] = RGBColorValue(hex: "#000000")
         let policy = StatusColorPolicy(overrides: overrides, highContrastEnabled: false)

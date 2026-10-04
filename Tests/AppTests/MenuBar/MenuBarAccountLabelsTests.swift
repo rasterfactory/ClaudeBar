@@ -8,7 +8,7 @@ import Domain
 @Suite @MainActor
 struct MenuBarAccountLabelsTests {
     @Test(arguments: [false, true])
-    func `without its name a primary account keeps its icon and quota`(stacked: Bool) throws {
+    func `should narrow the menu bar but keep its height when the primary account's name is hidden (#365)`(stacked: Bool) throws {
         let theme = DarkTheme()
         var content = content(stacked: stacked)
         content.accountNames = ["codex": "personal"]
@@ -21,7 +21,7 @@ struct MenuBarAccountLabelsTests {
     }
 
     @Test(arguments: [false, true])
-    func `without names every pinned account keeps its icon and quota`(stacked: Bool) throws {
+    func `should narrow the menu bar for each pinned account's name hidden but keep its height (#365)`(stacked: Bool) throws {
         let theme = DarkTheme()
         var content = content(stacked: stacked)
         content.additionalLabels = [MenuBarProviderLabel(

@@ -53,7 +53,7 @@ struct ClaudeUsageHistoryTests {
         return #"{"type":"assistant",\#(requestId)"message":{\#(messageId)"model":"\#(model)","usage":{"input_tokens":\#(input),"output_tokens":\#(output),"cache_creation_input_tokens":\#(cacheWrite),"cache_read_input_tokens":\#(cacheRead)}},"timestamp":"\#(stamp(at))"}"#
     }
 
-    @Test func `today's usage is read from the session logs`() async throws {
+    @Test func `should show today's tokens and cost from Claude Code's session logs`() async throws {
         try write(Self.line())
         let report = try await report()
         #expect(report.today.totalTokens == 1500)
@@ -61,20 +61,20 @@ struct ClaudeUsageHistoryTests {
         #expect(report.previous.isEmpty)
     }
 
-    @Test func `no logs is no report`() async throws {
+    @Test func `should show no usage history when there are no session logs`() async throws {
         let history = try history()
         await history.read()
         #expect(history.report == nil)
     }
 
-    @Test func `today and yesterday are told apart`() async throws {
+    @Test func `should count yesterday's usage apart from today's`() async throws {
         try write([Self.line(), Self.line(input: 2000, output: 1000, at: Self.yesterdayNoon)].joined(separator: "\n"))
         let report = try await report()
         #expect(report.today.totalTokens == 1500)
         #expect(report.previous.totalTokens == 3000)
     }
 
-    @Test func `cache tokens and savings are summed`() async throws {
+    @Test func `should show cache tokens, cache savings and the hit rate`() async throws {
         try write(Self.line(cacheWrite: 2000, cacheRead: 1_000_000))
         let today = try await report().today
         #expect([today.inputTokens, today.outputTokens, today.cacheCreationTokens, today.cacheReadTokens] == [1000, 500, 2000, 1_000_000] as [Int])
@@ -84,13 +84,13 @@ struct ClaudeUsageHistoryTests {
 
     // MARK: - Streamed and copied messages count once (#207)
 
-    @Test func `a message repeated across content blocks counts once`() async throws {
+    @Test func `should count a message once when it is repeated across content blocks (#207)`() async throws {
         let line = Self.line(message: "msg_A", request: "req_1")
         try write([line, line, line].joined(separator: "\n"))
         #expect(try await report().today.totalTokens == 1500)
     }
 
-    @Test func `the final streamed snapshot wins`() async throws {
+    @Test func `should count a streamed message at its final size (#207)`() async throws {
         try write([Self.line(output: 1, message: "msg_A", request: "req_1"),
                    Self.line(output: 1, message: "msg_A", request: "req_1", at: Date().addingTimeInterval(0.1)),
                    Self.line(output: 500, message: "msg_A", request: "req_1", at: Date().addingTimeInterval(0.9))].joined(separator: "\n"))
@@ -99,14 +99,14 @@ struct ClaudeUsageHistoryTests {
         #expect(today.totalTokens == 1500)
     }
 
-    @Test func `a response copied into a resumed session file counts once`() async throws {
+    @Test func `should count a response once when a resumed session copies it into another file (#207)`() async throws {
         let line = Self.line(message: "msg_A", request: "req_1")
         try write(line, to: "session-1.jsonl")
         try write(line, to: "session-2.jsonl")
         #expect(try await report().today.totalTokens == 1500)
     }
 
-    @Test func `lines missing an id or request id are all counted`() async throws {
+    @Test func `should count every line that has no message or request id`() async throws {
         let line = Self.line()
         try write([line, line].joined(separator: "\n"))
         #expect(try await report().today.totalTokens == 3000)
@@ -114,7 +114,7 @@ struct ClaudeUsageHistoryTests {
 
     // MARK: - Prices from claude-prices.json
 
-    @Test func `models are priced as Anthropic lists them`() async throws {
+    @Test func `should price models as Anthropic lists them, estimating unknown ones`() async throws {
         // 1M in / 100K out / 1M cache write / 1M cache read each.
         try write([Self.line("claude-sonnet-4-6", input: 1_000_000, output: 100_000, cacheWrite: 1_000_000, cacheRead: 1_000_000, message: "a", request: "1"),
                    Self.line("claude-opus-4-99-20260101", input: 1_000_000, output: 0, message: "b", request: "2"),
@@ -123,7 +123,7 @@ struct ClaudeUsageHistoryTests {
         #expect(try await report().today.totalCost == Decimal(string: "16.55"))
     }
 
-    @Test func `the current models have today's list prices`() async throws {
+    @Test func `should price the current models at today's list prices`() async throws {
         try write([Self.line("claude-opus-5-5", input: 1_000_000, output: 100_000, message: "a", request: "1"),
                    Self.line("claude-haiku-4-5-20251001", input: 1_000_000, output: 0, cacheRead: 1_000_000, message: "b", request: "2")]
             .joined(separator: "\n"))
@@ -131,7 +131,7 @@ struct ClaudeUsageHistoryTests {
         #expect(try await report().today.totalCost == Decimal(string: "7.1"))
     }
 
-    @Test func `cache writes kept an hour cost the hour price`() async throws {
+    @Test func `should charge the one-hour price for cache writes kept an hour`() async throws {
         let line = #"{"type":"assistant","message":{"model":"claude-opus-5-5","usage":{"input_tokens":1000,"output_tokens":500,"cache_creation_input_tokens":1000000,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":100000,"ephemeral_1h_input_tokens":900000}}},"timestamp":"\#(Self.stamp())"}"#
         try write(line)
         let today = try await report().today
@@ -142,7 +142,7 @@ struct ClaudeUsageHistoryTests {
 
     // MARK: - Local inference costs nothing (#190)
 
-    @Test func `an open-weight model costs nothing, its cache reads saving nothing`() async throws {
+    @Test func `should cost nothing and save nothing when the model is open-weight (#190)`() async throws {
         try write(Self.line("qwen3-coder:30b", cacheRead: 1_000_000))
         let today = try await report().today
         #expect(today.totalCost == 0)
@@ -151,7 +151,7 @@ struct ClaudeUsageHistoryTests {
         #expect(today.totalTokens == 1500)
     }
 
-    @Test func `an unpriced model costs nothing when Claude Code is routed at this Mac`() async throws {
+    @Test func `should cost nothing when an unpriced model runs while Claude Code is routed at this Mac (#190)`() async throws {
         try route(#"{"env":{"ANTHROPIC_BASE_URL":"http://localhost:11434"}}"#)
         try write(Self.line("acme-internal-7b", cacheRead: 1_000_000))
         let today = try await report().today
@@ -159,25 +159,25 @@ struct ClaudeUsageHistoryTests {
         #expect(today.cachedSavings == 0)
     }
 
-    @Test func `a local route listed only among providers counts when env names none`() async throws {
+    @Test func `should treat Claude Code as local when only its providers list a local route (#190)`() async throws {
         try route(#"{"providers":[{"base_url":"https://api.anthropic.com"},{"env":{"ANTHROPIC_BASE_URL":"http://[::1]:11434"}}]}"#)
         try write(Self.line("some-unknown-model"))
         #expect(try await report().today.totalCost == 0)
     }
 
-    @Test func `a remote route outranks a local provider entry`() async throws {
+    @Test func `should keep the estimate when a remote route outranks a local provider entry`() async throws {
         try route(#"{"env":{"ANTHROPIC_BASE_URL":"https://api.z.ai/api/anthropic"},"providers":[{"base_url":"http://localhost:11434"}]}"#)
         try write(Self.line("some-unknown-model"))
         #expect(try await report().today.totalCost == Decimal(string: "0.0105"))
     }
 
-    @Test func `a known Anthropic model keeps its list price on a local route`() async throws {
+    @Test func `should keep a known Anthropic model's list price on a local route`() async throws {
         try route(#"{"env":{"ANTHROPIC_BASE_URL":"http://127.0.0.1:1234"}}"#)
         try write(Self.line())
         #expect(try await report().today.totalCost == Decimal(string: "0.0105"))
     }
 
-    @Test func `yesterday keeps its estimate when the route is local now`() async throws {
+    @Test func `should keep yesterday's estimate when Claude Code is routed locally only now`() async throws {
         try route(#"{"env":{"ANTHROPIC_BASE_URL":"http://localhost:11434"}}"#)
         try write(Self.line("some-unknown-model", at: Self.yesterdayNoon))
         let report = try await report()
@@ -205,7 +205,7 @@ struct ClaudeUsageHistoryTests {
         )
     }
 
-    @Test func `an added login reads its own config folder's logs, never the default's`() async throws {
+    @Test func `should show an added login the usage from its own config folder, never the default's`() async throws {
         let work = home.appendingPathComponent("work-claude")
         try FileManager.default.createDirectory(at: work.appendingPathComponent("projects/p"), withIntermediateDirectories: true)
         try Self.line(input: 2000, output: 1000).write(to: work.appendingPathComponent("projects/p/s.jsonl"), atomically: true, encoding: .utf8)
@@ -221,7 +221,7 @@ struct ClaudeUsageHistoryTests {
         #expect(added.usageHistory !== provider.defaultAccount.usageHistory)
     }
 
-    @Test func `an added login's local route is its own folder's`() async throws {
+    @Test func `should cost nothing when an added login's own folder routes Claude Code at this Mac`() async throws {
         let work = home.appendingPathComponent("work-claude")
         try FileManager.default.createDirectory(at: work.appendingPathComponent("projects/p"), withIntermediateDirectories: true)
         try Self.line("acme-internal-7b").write(to: work.appendingPathComponent("projects/p/s.jsonl"), atomically: true, encoding: .utf8)
@@ -233,7 +233,7 @@ struct ClaudeUsageHistoryTests {
         #expect(added.usageHistory?.report?.today.totalCost == 0)
     }
 
-    @Test func `an added login's usage history goes with it`() throws {
+    @Test func `should drop an added login's usage history when the login is removed`() throws {
         let provider = try provider(work: home.appendingPathComponent("work-claude"))
         let added = try #require(provider.accounts.first { !$0.isDefault })
         #expect(added.usageHistory != nil)
@@ -243,7 +243,7 @@ struct ClaudeUsageHistoryTests {
         #expect(added.usageHistory == nil)
     }
 
-    @Test func `the patch fills the folder into where the logs and the route are`() throws {
+    @Test func `should read an added login's logs and route from its config folder, and have no history without one`() throws {
         let own = try #require(try ProviderFactory.builtIn("claude").usageHistory(forAccount: ["configDirectory": "/tmp/work"]))
         #expect(own.records.files == "/tmp/work/projects/**/*.jsonl")
         #expect(own.freeWhen?.localEndpoint?.file == "/tmp/work/.claude.json")
@@ -251,7 +251,7 @@ struct ClaudeUsageHistoryTests {
         #expect(try ProviderFactory.builtIn("claude").usageHistory(forAccount: [:]) == nil)
     }
 
-    @Test func `an added login's patch leaves out the Mac's other apps`() throws {
+    @Test func `should leave the Mac's other apps out of an added login's history`() throws {
         #expect(try ProviderFactory.builtIn("claude").usageHistory?.otherApps?.map(\.label) == ["Claude Desktop"])
         #expect(try ProviderFactory.builtIn("claude").usageHistory(forAccount: ["configDirectory": "/tmp/work"])?.otherApps == nil)
     }
@@ -279,7 +279,7 @@ struct ClaudeUsageHistoryTests {
         return formatter.string(from: Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!)
     }
 
-    @Test func `Claude Desktop's tokens today are their own history, with no cost`() async throws {
+    @Test func `should show Claude Desktop's tokens today as their own history, with no cost (#198)`() async throws {
         try write(Self.line())
         try buddyTokens(#"{"tokens-today": {"date": "\#(Self.day())", "tokens": 74422}}"#)
 
@@ -290,7 +290,7 @@ struct ClaudeUsageHistoryTests {
         #expect(desktop.knowsCost == false)
     }
 
-    @Test func `a count Claude Desktop wrote yesterday is yesterday's, and today is nothing yet`() async throws {
+    @Test func `should count Claude Desktop's tokens as yesterday's, with nothing today yet, when it wrote them yesterday`() async throws {
         try buddyTokens(#"{"tokens-today": {"date": "\#(Self.day(daysAgo: 1))", "tokens": 61210}}"#)
 
         let report = try #require(try await desktop().report)
@@ -307,18 +307,18 @@ struct ClaudeUsageHistoryTests {
         #"{"tokens-today": {"date": "2026-02-30", "tokens": 100}}"#,
         #"{"tokens-today": {"date": "2099-12-31", "tokens": 100}}"#,
     ])
-    func `a buddy-tokens file Claude Desktop changed the shape of shows nothing`(body: String) async throws {
+    func `should show nothing for Claude Desktop when its tokens file changes shape`(body: String) async throws {
         try buddyTokens(body)
         #expect(try await desktop().report == nil)
     }
 
     @Test(arguments: ["-5", "74422.5"])
-    func `a negative or fractional count shows nothing`(count: String) async throws {
+    func `should show nothing for Claude Desktop when its token count is negative or fractional`(count: String) async throws {
         try buddyTokens(#"{"tokens-today": {"date": "\#(Self.day())", "tokens": \#(count)}}"#)
         #expect(try await desktop().report == nil)
     }
 
-    @Test func `no Claude Desktop on this Mac shows nothing`() async throws {
+    @Test func `should show nothing for Claude Desktop when it isn't on this Mac`() async throws {
         #expect(try await desktop().report == nil)
     }
 }

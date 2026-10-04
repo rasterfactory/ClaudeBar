@@ -47,7 +47,7 @@ struct LeaderboardHTTPClientTests {
 
     // MARK: - Join
 
-    @Test func `joining sends the name and the public key, unsigned`() async throws {
+    @Test func `should ask to join with the name and public key, unsigned`() async throws {
         var sent: URLRequest?
         try await client(status: 201, sent: { sent = $0 }).join(username: "tokenwhale", publicKey: key.publicKey)
 
@@ -58,7 +58,7 @@ struct LeaderboardHTTPClientTests {
         #expect(sent?.value(forHTTPHeaderField: "X-Signature") == nil)
     }
 
-    @Test func `a taken name is said so`() async {
+    @Test func `should say the name is taken when someone already has it`() async {
         await #expect(throws: LeaderboardError.usernameTaken) {
             try await client(status: 409, body: #"{"error":"usernameTaken","message":"That username is taken."}"#)
                 .join(username: "tokenwhale", publicKey: key.publicKey)
@@ -67,7 +67,7 @@ struct LeaderboardHTTPClientTests {
 
     // MARK: - Upload
 
-    @Test func `an upload carries this Mac's date and the days, signed over the exact body sent`() async throws {
+    @Test func `should upload the days with this Mac's date, signed over the exact body sent`() async throws {
         var sent: URLRequest?
         let days = [DailyTokens(provider: "claude", day: "2026-10-04", input: 1, output: 2, cacheWrite: 3, cacheRead: 4, unsplit: 0)]
 
@@ -85,7 +85,7 @@ struct LeaderboardHTTPClientTests {
 
     // MARK: - Reading
 
-    @Test func `your own data is a signed read of the view`() async throws {
+    @Test func `should read the member's own standing and days for the chosen view, signed`() async throws {
         var sent: URLRequest?
         let body = #"{"username":"tokenwhale","visible":false,"standing":{"rank":3,"username":"tokenwhale","total":90,"input":10,"output":20,"cache":60,"byProvider":{"claude":90}},"days":[{"provider":"claude","day":"2026-10-04","input":10,"output":20,"cacheWrite":0,"cacheRead":60,"unsplit":0}]}"#
 
@@ -100,7 +100,7 @@ struct LeaderboardHTTPClientTests {
         #expect(summary.days.count == 1)
     }
 
-    @Test func `the board is read without signing`() async throws {
+    @Test func `should read the board fresh and unsigned`() async throws {
         var sent: URLRequest?
         let body = #"{"period":"today","provider":null,"standings":[{"rank":1,"username":"big","total":1000,"input":500,"output":0,"cache":500,"byProvider":{"claude":1000}}]}"#
 
@@ -115,7 +115,7 @@ struct LeaderboardHTTPClientTests {
 
     // MARK: - Changes
 
-    @Test func `hiding and renaming are one signed patch`() async throws {
+    @Test func `should hide and rename the member in one signed change`() async throws {
         var sent: URLRequest?
         try await client(sent: { sent = $0 }).update(MemberChange(username: "whale2", visible: false), as: member)
 
@@ -128,7 +128,7 @@ struct LeaderboardHTTPClientTests {
         #expect(try isSigned(request, by: key))
     }
 
-    @Test func `opting in to the globe sends only that change`() async throws {
+    @Test func `should send only the globe opt-in when the member shares their country`() async throws {
         var sent: URLRequest?
         try await client(sent: { sent = $0 }).update(MemberChange(sharesCountry: true), as: member)
 
@@ -137,7 +137,7 @@ struct LeaderboardHTTPClientTests {
         #expect(body?["shareCountry"] as? Bool == true)
     }
 
-    @Test func `a link is sent as a platform and a handle; removing it as null`() async throws {
+    @Test func `should send a profile link as platform and handle, and clear it when removed`() async throws {
         var sent: URLRequest?
         let link = try #require(ProfileLink(platform: .github, handle: "octocat"))
         try await client(sent: { sent = $0 }).update(MemberChange(link: .set(link)), as: member)
@@ -150,7 +150,7 @@ struct LeaderboardHTTPClientTests {
         #expect(body?["link"] is NSNull)
     }
 
-    @Test func `the board carries each member's link, and drops one that breaks its platform's rules`() async throws {
+    @Test func `should show each member's link and drop one that breaks its platform's rules`() async throws {
         let body = #"{"standings":[{"rank":1,"username":"a","total":5,"link":{"platform":"x","handle":"jack"}},{"rank":2,"username":"b","total":3,"link":{"platform":"x","handle":"https://evil.example"}},{"rank":3,"username":"c","total":1}]}"#
 
         let standings = try await client(body: body).board(in: BoardView(period: .sevenDays))
@@ -158,7 +158,7 @@ struct LeaderboardHTTPClientTests {
         #expect(standings.map(\.link?.handle) == ["jack", nil, nil])
     }
 
-    @Test func `the globe is read without signing, countries and the hidden count`() async throws {
+    @Test func `should read the globe's countries and hidden count, unsigned`() async throws {
         var sent: URLRequest?
         let body = #"{"period":"30d","provider":null,"countries":[{"country":"NL","members":3,"tokens":300}],"hiddenCountries":2}"#
 
@@ -170,14 +170,14 @@ struct LeaderboardHTTPClientTests {
         #expect(globe == GlobeSummary(countries: [.init(country: "NL", members: 3, tokens: 300)], hiddenCountries: 2))
     }
 
-    @Test func `your own data says whether your country is on the globe`() async throws {
+    @Test func `should tell the member whether their country is on the globe`() async throws {
         let body = #"{"username":"tokenwhale","visible":true,"shareCountry":true,"country":"NL","standing":null,"days":[]}"#
         let summary = try await client(body: body).me(in: BoardView(period: .sevenDays), as: member)
         #expect(summary.sharesCountry)
         #expect(summary.country == "NL")
     }
 
-    @Test func `leaving is a signed delete`() async throws {
+    @Test func `should leave the leaderboard with a signed request`() async throws {
         var sent: URLRequest?
         try await client(sent: { sent = $0 }).leave(as: member)
 
@@ -187,13 +187,13 @@ struct LeaderboardHTTPClientTests {
 
     // MARK: - Failures
 
-    @Test func `a refused signature means the key no longer matches`() async {
+    @Test func `should say the key no longer matches when the server refuses the signature`() async {
         await #expect(throws: LeaderboardError.unauthorized) {
             try await client(status: 401, body: #"{"error":"unauthorized","message":"no"}"#).leave(as: member)
         }
     }
 
-    @Test func `a refusal the server explains is shown in its words`() async {
+    @Test func `should show the server's own words when it explains a refusal`() async {
         await #expect(throws: LeaderboardError.rejected("This Mac's clock is more than five minutes off.")) {
             try await client(status: 401, body: #"{"error":"clock","message":"This Mac's clock is more than five minutes off."}"#)
                 .leave(as: member)
@@ -203,7 +203,7 @@ struct LeaderboardHTTPClientTests {
         }
     }
 
-    @Test func `a server error or no connection means unreachable`() async {
+    @Test func `should say the leaderboard is unreachable when the server fails or there is no connection`() async {
         await #expect(throws: LeaderboardError.unreachable) {
             try await client(status: 503, body: "oops").board(in: BoardView(period: .today))
         }

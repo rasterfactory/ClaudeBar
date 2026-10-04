@@ -39,7 +39,7 @@ struct CredentialRefinementTests {
     """#
 
     @Test
-    func `a field is read from the first of its paths that answers`() async throws {
+    func `should find the key and its host in the next place the config holds them when the first is empty`() async throws {
         let (home, cleanUp) = try config(#"{"providers":[{"key":"k-1","base_url":"https://cn.acme.test/v1"}]}"#)
         defer { cleanUp() }
 
@@ -49,7 +49,7 @@ struct CredentialRefinementTests {
     }
 
     @Test
-    func `a lookup whose value doesn't match answers with no key — its token is never sent elsewhere`() async throws {
+    func `should ask to sign in, never sending the key elsewhere, when the found host isn't the provider's`() async throws {
         let (home, cleanUp) = try config(#"{"env":{"TOKEN":"k-1","BASE_URL":"https://api.anthropic.com"}}"#)
         defer { cleanUp() }
 
@@ -59,7 +59,7 @@ struct CredentialRefinementTests {
     }
 
     @Test
-    func `a value with adds must fit match too — a setting left blank gives no key`() async throws {
+    func `should ask to sign in when a host filled from a blank setting doesn't fit the provider's`() async throws {
         let (home, cleanUp) = try config("{}")
         defer { cleanUp() }
         let filled = try lookup(#"{"environment":"ACME_KEY","with":{"baseURL":"https://api.acme.test"},"match":{"baseURL":"acme\\.test"}}"#)
@@ -72,7 +72,7 @@ struct CredentialRefinementTests {
     }
 
     @Test
-    func `with adds fixed values, never replacing what was found`() async throws {
+    func `should add the definition's fixed values to the key it found, never replacing the key`() async throws {
         let refined = try lookup(#"{"environment":"ACME_KEY","with":{"baseURL":"https://api.acme.test/v1","token":"not-this"}}"#)
         #expect(refined.lookupOrder == ["$ACME_KEY"])
         let definition = DataSourceDefinition(kind: "api", credential: refined,
@@ -95,7 +95,7 @@ struct CredentialRefinementTests {
     }
 
     @Test
-    func `named cookies are read out of a Cookie header into their own values`() async throws {
+    func `should send each named cookie on its own, as well as the whole Cookie header`() async throws {
         let refined = try lookup(#"{"environment":"ACME_COOKIE","cookies":["sec_token","csrf"]}"#)
         let definition = DataSourceDefinition(kind: "api", credential: refined,
                                               fetch: .http(HTTPRequest(url: "https://acme.test/usage?t={{sec_token}}", headers: ["x-csrf": "{{csrf}}", "Cookie": "{{token}}"])),
@@ -119,14 +119,14 @@ struct CredentialRefinementTests {
     }
 
     @Test
-    func `a cookie the header lacks stays unknown`() throws {
+    func `should know no value for a named cookie the Cookie header lacks`() throws {
         let refinement = Refinement(cookies: ["sec_token"])
         #expect(refinement.cookieValues(in: "a=1; b=2").isEmpty)
         #expect(try lookup(#"{"setting":"cookie","cookies":["sec_token"]}"#) == .refined(.setting("cookie"), refinement))
     }
 
     @Test
-    func `match and with round-trip as written`() throws {
+    func `should keep the host rule when the definition is written out and read back`() throws {
         let refined = try lookup(acmeConfig)
         let again = try JSONDecoder().decode(CredentialLookup.self, from: JSONEncoder().encode(refined))
         #expect(again == refined)

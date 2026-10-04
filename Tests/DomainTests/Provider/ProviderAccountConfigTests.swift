@@ -5,8 +5,8 @@ import Testing
 @Suite("ProviderAccountConfig")
 struct ProviderAccountConfigTests {
 
-    @Test("Config converts to ProviderAccount domain model")
-    func configConvertsToProviderAccount() {
+    @Test
+    func `should become an account under its provider with its label, email and organization`() {
         let config = ProviderAccountConfig(
             accountId: "work",
             label: "Work Account",
@@ -25,8 +25,8 @@ struct ProviderAccountConfigTests {
         #expect(account.id == "claude.work")
     }
 
-    @Test("Config with minimal fields converts correctly")
-    func minimalConfigConverts() {
+    @Test
+    func `should become an account with no email or organization when only a label is saved`() {
         let config = ProviderAccountConfig(
             accountId: "personal",
             label: "Personal"
@@ -42,8 +42,8 @@ struct ProviderAccountConfigTests {
         #expect(account.id == "codex.personal")
     }
 
-    @Test("Config is Codable for JSON serialization")
-    func configIsCodable() throws {
+    @Test
+    func `should read back the same saved account after writing it to settings`() throws {
         let original = ProviderAccountConfig(
             accountId: "work",
             label: "Work",
@@ -60,8 +60,8 @@ struct ProviderAccountConfigTests {
         #expect(decoded == original)
     }
 
-    @Test("Config equality compares all fields")
-    func configEquality() {
+    @Test
+    func `should differ from another saved account when only the label differs`() {
         let a = ProviderAccountConfig(accountId: "work", label: "Work", email: "a@b.com")
         let b = ProviderAccountConfig(accountId: "work", label: "Work", email: "a@b.com")
         let c = ProviderAccountConfig(accountId: "work", label: "Different", email: "a@b.com")

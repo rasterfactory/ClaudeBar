@@ -40,7 +40,7 @@ struct ProviderEnableDisableSpec {
         }
 
         @Test
-        func `disabled provider is skipped during refreshAll`() async {
+        func `should not read a turned-off provider's quotas when every provider refreshes`() async {
             // Given — Claude enabled, Codex disabled
             let settings = ProviderEnableDisableSpec.makeSettings()
 
@@ -75,7 +75,7 @@ struct ProviderEnableDisableSpec {
         }
 
         @Test
-        func `disabled provider excluded from overall status`() async {
+        func `should turn the menu bar healthy when the person turns off the only critical provider`() async {
             // Given — Claude healthy, Codex critical but disabled
             let settings = ProviderEnableDisableSpec.makeSettings()
 
@@ -126,7 +126,7 @@ struct ProviderEnableDisableSpec {
         }
 
         @Test
-        func `enabling Codex does not change Claude selection`() {
+        func `should add Codex to the lineup and keep Claude selected when the person turns Codex on`() {
             // Given — Claude selected, Codex disabled
             let settings = ProviderEnableDisableSpec.makeSettings()
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -158,7 +158,7 @@ struct ProviderEnableDisableSpec {
     struct PersistEnabledState {
 
         @Test
-        func `enabled state is stored in UserDefaults`() {
+        func `should remember whether the person turned a provider on or off`() {
             // Given — isolated UserDefaults
             let suiteName = "com.claudebar.test.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suiteName)!

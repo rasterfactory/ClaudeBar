@@ -18,7 +18,7 @@ struct NotSetUpTests {
     }
 
     @Test
-    func `no CLI and no sign-in is not set up`() async throws {
+    func `should wait to be set up when Claude Code is not installed and never signed in (#198)`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         cliNotFound(claude)
@@ -30,7 +30,7 @@ struct NotSetUpTests {
     }
 
     @Test
-    func `in API mode, no sign-in and no CLI is not set up`() async throws {
+    func `should wait to be set up on the API when Claude Code is not installed and never signed in`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         cliNotFound(claude)
@@ -42,7 +42,7 @@ struct NotSetUpTests {
     }
 
     @Test
-    func `a CLI that is there but fails is a failure, not setup`() async throws {
+    func `should show a failure, not set up, when Claude Code is installed but fails`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         given(claude.cli).locate(.any).willReturn("/usr/local/bin/claude")
@@ -57,14 +57,14 @@ struct NotSetUpTests {
     }
 
     @Test
-    func `a login that has never refreshed is not yet waiting for setup`() throws {
+    func `should not wait to be set up when the login has never been refreshed`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         #expect(try !claude.provider().defaultAccount.needsSetup)
     }
 
     @Test
-    func `claude says what setting it up takes and where`() throws {
+    func `should tell the person how to set up Claude Code and where`() throws {
         let setup = try #require(try ProviderFactory.builtIn("claude").setup)
         #expect(setup.title == "See your session and weekly limits")
         #expect(setup.text.contains("Claude Code"))
@@ -73,7 +73,7 @@ struct NotSetUpTests {
     }
 
     @Test
-    func `setup decodes, and a provider without one has none`() throws {
+    func `should offer a plain Set up button when a setup names none, and no setup for Grok`() throws {
         let json = #"{"title":"Install Acme","text":"Acme reads your limits through its CLI.","url":"https://acme.dev/cli"}"#
         let setup = try JSONDecoder().decode(ProviderDefinition.Setup.self, from: Data(json.utf8))
         #expect(setup == ProviderDefinition.Setup(title: "Install Acme", text: "Acme reads your limits through its CLI.",
@@ -83,7 +83,7 @@ struct NotSetUpTests {
     }
 
     @Test
-    func `the notice is the definition's setup`() async throws {
+    func `should show Claude's own setup notice when Claude Code is not set up`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         cliNotFound(claude)
@@ -95,7 +95,7 @@ struct NotSetUpTests {
     }
 
     @Test
-    func `without a setup in the definition, the notice names the provider and says what failed`() throws {
+    func `should name the provider and say what failed when it has no setup of its own`() throws {
         let definition = try ProviderDefinition(
             profile: ProviderFactory.builtIn("claude").profile, dataSources: ProviderFactory.builtIn("claude").dataSources,
             defaultDataSource: "cli")
@@ -108,7 +108,7 @@ struct NotSetUpTests {
     }
 
     @Test
-    func `a login with no usage history reads no usage`() async throws {
+    func `should read no usage history when the login has none`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let provider = try claude.provider()

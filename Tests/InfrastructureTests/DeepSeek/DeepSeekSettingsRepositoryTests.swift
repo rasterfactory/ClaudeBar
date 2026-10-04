@@ -5,7 +5,7 @@ import Foundation
 @Suite
 struct DeepSeekSettingsRepositoryTests {
     @Test
-    func `user defaults repository persists and removes DeepSeek settings`() {
+    func `should remember and forget the DeepSeek key and its environment variable when settings live in the app's defaults`() {
         let suiteName = "DeepSeekSettingsRepositoryTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -27,7 +27,7 @@ struct DeepSeekSettingsRepositoryTests {
     }
 
     @Test
-    func `JSON repository persists and removes DeepSeek settings`() {
+    func `should remember and forget the DeepSeek key and its environment variable when settings live in settings.json`() {
         let tempDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("DeepSeekJSONSettingsTests.\(UUID().uuidString)")
         let settingsURL = tempDirectory.appendingPathComponent("settings.json")

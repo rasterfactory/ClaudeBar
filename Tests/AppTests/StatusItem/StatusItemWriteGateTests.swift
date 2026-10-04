@@ -77,7 +77,7 @@ struct StatusItemWriteGateTests {
     }
 
     @Test
-    func `writes the first content immediately and schedules nothing`() {
+    func `should show the menu bar's first content at once, with nothing left waiting`() {
         // Given
         let clock = FakeClock()
         let scheduler = FlushScheduler()
@@ -95,7 +95,7 @@ struct StatusItemWriteGateTests {
     }
 
     @Test
-    func `defers a write inside the window and flushes it at the trailing edge`() {
+    func `should hold a change that arrives within a second of the last and show it when the second is up (#281)`() {
         // Given
         let clock = FakeClock()
         let scheduler = FlushScheduler()
@@ -121,7 +121,7 @@ struct StatusItemWriteGateTests {
     }
 
     @Test
-    func `keeps only the latest pending content when several renders land in one window`() {
+    func `should show only the latest of several changes that arrive within one second`() {
         // Given
         let clock = FakeClock()
         let scheduler = FlushScheduler()
@@ -145,7 +145,7 @@ struct StatusItemWriteGateTests {
     }
 
     @Test
-    func `writes immediately again once the interval has elapsed`() {
+    func `should show a change at once when a full second has passed since the last`() {
         // Given
         let clock = FakeClock()
         let scheduler = FlushScheduler()
@@ -163,7 +163,7 @@ struct StatusItemWriteGateTests {
     }
 
     @Test
-    func `phases arriving just inside the boundary still alternate after each flush`() {
+    func `should keep the countdown blink alternating once a second when ticks land just before the second is up`() {
         // Given — a repeating timer never fires early but can fire late, so a
         // tick can land just inside the window (0.95s after the last write).
         // The blink's alternation depends on the trailing flush completing
@@ -191,7 +191,7 @@ struct StatusItemWriteGateTests {
     }
 
     @Test
-    func `a half-second cadence produces at most one write per second with a final trailing flush`() {
+    func `should update the menu bar at most once a second, ending on the latest content, when changes arrive every half second (#281)`() {
         // Given — the pathological stress case: renders every 0.5s, two per
         // window (the pre-fix tick rate). The gate must collapse them to one
         // write per second, and whatever render arrived last is the one that
@@ -228,7 +228,7 @@ struct StatusItemWriteGateTests {
     }
 
     @Test
-    func `a trailing flush with nothing pending writes nothing`() {
+    func `should leave the menu bar alone when the second is up and nothing changed`() {
         // Given
         let clock = FakeClock()
         let scheduler = FlushScheduler()
@@ -244,7 +244,7 @@ struct StatusItemWriteGateTests {
     }
 
     @Test
-    func `a new window opens after a trailing flush`() {
+    func `should hold a change that arrives soon after a held one was shown, until a full second has passed`() {
         // Given — one write and one trailing flush already done
         let clock = FakeClock()
         let scheduler = FlushScheduler()
@@ -276,7 +276,7 @@ struct StatusItemWriteGateTests {
     // MARK: - Reconcile (the render skip path)
 
     @Test
-    func `reconcile points the armed flush at the newest render instead of a stale pending value`() {
+    func `should never show an older held change over what the menu bar already shows`() {
         // Given — the driver skipped a render because the screen already
         // shows that content, but a flush is still armed carrying an older
         // render's value
@@ -304,7 +304,7 @@ struct StatusItemWriteGateTests {
     }
 
     @Test
-    func `reconcile with nothing pending writes nothing and schedules nothing`() {
+    func `should leave the menu bar alone when it already shows the latest content and nothing is held`() {
         let clock = FakeClock()
         let scheduler = FlushScheduler()
         let recorder = WriteRecorder()
@@ -320,7 +320,7 @@ struct StatusItemWriteGateTests {
     // MARK: - Immediate writes retire the armed flush
 
     @Test
-    func `an immediate write retires the pending flush schedule`() {
+    func `should keep updates a second apart after a change is shown at once while an older one was held`() {
         // Given — B is pending, with a flush armed for the 1.0 boundary
         let clock = FakeClock()
         let scheduler = FlushScheduler()
@@ -358,7 +358,7 @@ struct StatusItemWriteGateTests {
     // MARK: - Production clock
 
     @Test
-    func `the production clock is monotonic`() {
+    func `should never let the menu bar's clock go backwards`() {
         // The interval math only needs a clock that never goes backwards.
         // A wall-clock jump (user or NTP correction) would make a submit
         // interval come out negative — every render writing at once — or

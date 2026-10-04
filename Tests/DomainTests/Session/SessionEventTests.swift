@@ -5,7 +5,7 @@ import Foundation
 @Suite
 struct SessionEventTests {
     @Test
-    func `creates event with all fields`() {
+    func `should carry the session, what happened, the folder and when it arrived`() {
         let date = Date()
         let event = SessionEvent(
             sessionId: "abc-123",
@@ -21,7 +21,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `events with same values are equal`() {
+    func `should treat two reports of the same thing as the same event`() {
         let date = Date()
         let event1 = SessionEvent(sessionId: "abc", eventName: .taskCompleted, cwd: "/tmp", receivedAt: date)
         let event2 = SessionEvent(sessionId: "abc", eventName: .taskCompleted, cwd: "/tmp", receivedAt: date)
@@ -30,7 +30,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `events with different values are not equal`() {
+    func `should tell apart events from different sessions`() {
         let date = Date()
         let event1 = SessionEvent(sessionId: "abc", eventName: .sessionStart, cwd: "/tmp", receivedAt: date)
         let event2 = SessionEvent(sessionId: "def", eventName: .sessionStart, cwd: "/tmp", receivedAt: date)
@@ -39,7 +39,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `Codable round-trip preserves all fields`() throws {
+    func `should keep the session, what happened and the folder when saved and read back`() throws {
         let date = Date()
         let original = SessionEvent(
             sessionId: "test-session",
@@ -59,7 +59,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `event from probe working directory is flagged as ClaudeBar probe`() {
+    func `should count an event from ClaudeBar's own working folder as ClaudeBar's own run`() {
         let event = SessionEvent(
             sessionId: "probe-1",
             eventName: .sessionEnd,
@@ -70,7 +70,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `event with trailing slash on probe directory is flagged as ClaudeBar probe`() {
+    func `should count an event from ClaudeBar's own working folder as its own run even with a trailing slash`() {
         let event = SessionEvent(
             sessionId: "probe-2",
             eventName: .sessionStart,
@@ -81,7 +81,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `event from a real project directory is not flagged as ClaudeBar probe`() {
+    func `should count an event from the person's project as a real session`() {
         let event = SessionEvent(
             sessionId: "real-1",
             eventName: .sessionEnd,
@@ -92,7 +92,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `event from a directory merely named Probe is not flagged`() {
+    func `should count an event from a project folder that merely shares the name Probe as a real session`() {
         let event = SessionEvent(
             sessionId: "real-2",
             eventName: .sessionEnd,
@@ -103,7 +103,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `event with no cwd is treated as probe noise`() {
+    func `should count an event with no folder as ClaudeBar's own run (#222)`() {
         // The probe's hook payloads can arrive with cwd missing or reshaped by
         // a CLI update; without it the suffix filter let the probe leak back
         // in as a "Claude Code Started/Finished" pair (#222).
@@ -117,7 +117,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `event with whitespace-only cwd is treated as probe noise`() {
+    func `should count an event with a blank folder as ClaudeBar's own run`() {
         let event = SessionEvent(
             sessionId: "no-cwd-2",
             eventName: .sessionEnd,
@@ -128,7 +128,7 @@ struct SessionEventTests {
     }
 
     @Test
-    func `all event names have correct raw values`() {
+    func `should know each event by the name Claude Code's hooks send`() {
         #expect(SessionEvent.EventName.sessionStart.rawValue == "SessionStart")
         #expect(SessionEvent.EventName.sessionEnd.rawValue == "SessionEnd")
         #expect(SessionEvent.EventName.taskCompleted.rawValue == "TaskCompleted")
@@ -140,14 +140,14 @@ struct SessionEventTests {
     }
 
     @Test
-    func `message defaults to nil`() {
+    func `should carry no message when the hook sends none`() {
         let event = SessionEvent(sessionId: "s", eventName: .sessionStart, cwd: "/tmp")
 
         #expect(event.message == nil)
     }
 
     @Test
-    func `a notification event carries the prompt Claude Code is blocked on`() {
+    func `should carry the prompt Claude Code is blocked on when it notifies`() {
         let event = SessionEvent(
             sessionId: "s",
             eventName: .notification,

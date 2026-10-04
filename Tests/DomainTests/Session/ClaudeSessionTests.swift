@@ -5,7 +5,7 @@ import Foundation
 @Suite
 struct ClaudeSessionTests {
     @Test
-    func `new session starts in active phase`() {
+    func `should be active with no agents or finished tasks when the session starts`() {
         let session = ClaudeSession(id: "test", cwd: "/tmp")
 
         #expect(session.phase == .active)
@@ -16,7 +16,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `subagent start changes phase to subagentsWorking`() {
+    func `should show agents working when a subagent starts`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
 
         session.subagentStarted()
@@ -26,7 +26,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `multiple subagents can be active`() {
+    func `should count three agents working when three subagents start`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
 
         session.subagentStarted()
@@ -38,7 +38,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `subagent stop returns to active when no subagents remain`() {
+    func `should go back to active when the last subagent stops`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
 
         session.subagentStarted()
@@ -49,7 +49,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `subagent stop stays subagentsWorking when subagents remain`() {
+    func `should keep showing agents working while a subagent is still running`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
 
         session.subagentStarted()
@@ -61,7 +61,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `subagent count does not go below zero`() {
+    func `should count no agents, never fewer, when more subagents stop than started`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
 
         session.subagentStopped()
@@ -72,7 +72,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `task completed increments count`() {
+    func `should count each finished task`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
 
         session.taskCompleted()
@@ -83,7 +83,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `stop sets phase to stopped and clears subagents`() {
+    func `should show the session stopped with no agents, yet not ended, when Claude stops`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.subagentStarted()
         session.subagentStarted()
@@ -96,7 +96,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `end sets phase to ended`() {
+    func `should show the session ended with its end time when it ends`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         let endDate = Date()
 
@@ -109,7 +109,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `duration description formats correctly for seconds`() {
+    func `should print a 45-second session as 45s`() {
         let start = Date()
         var session = ClaudeSession(id: "test", cwd: "/tmp", startedAt: start)
         session.end(at: start.addingTimeInterval(45))
@@ -118,7 +118,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `duration description formats correctly for minutes`() {
+    func `should print a session of just over two minutes as 2m 5s`() {
         let start = Date()
         var session = ClaudeSession(id: "test", cwd: "/tmp", startedAt: start)
         session.end(at: start.addingTimeInterval(125)) // 2m 5s
@@ -127,7 +127,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `duration description formats correctly for hours`() {
+    func `should print a session of just over an hour as 1h 1m`() {
         let start = Date()
         var session = ClaudeSession(id: "test", cwd: "/tmp", startedAt: start)
         session.end(at: start.addingTimeInterval(3660)) // 1h 1m
@@ -136,7 +136,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `identity is based on id`() {
+    func `should be known by its id wherever it runs`() {
         let session1 = ClaudeSession(id: "abc", cwd: "/tmp")
         let session2 = ClaudeSession(id: "abc", cwd: "/other")
 
@@ -146,7 +146,7 @@ struct ClaudeSessionTests {
     // MARK: - Phase Guards
 
     @Test
-    func `subagentStarted revives a stopped session`() {
+    func `should show agents working again when a subagent starts after Claude stopped`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.stop()
 
@@ -157,7 +157,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `resume returns a stopped session to active`() {
+    func `should go back to active when the person resumes a stopped session`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.stop()
 
@@ -168,7 +168,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `resume keeps subagentsWorking when subagents are active`() {
+    func `should keep showing agents working when the session resumes with a subagent running`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.subagentStarted()
 
@@ -179,7 +179,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `resume is ignored after ended`() {
+    func `should stay ended when an ended session is resumed`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.end()
 
@@ -189,7 +189,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `subagentStopped is ignored after ended`() {
+    func `should stay ended with no agents when a subagent stops after the session ended`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.subagentStarted()
         session.end()
@@ -201,7 +201,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `taskCompleted still works after stopped`() {
+    func `should still count a task finished after Claude stopped`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.stop()
 
@@ -211,7 +211,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `taskCompleted is ignored after ended`() {
+    func `should not count a task finished after the session ended`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.end()
 
@@ -221,7 +221,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `stop is ignored after ended`() {
+    func `should stay ended when Claude stops after the session ended`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.end()
 
@@ -234,7 +234,7 @@ struct ClaudeSessionTests {
     // MARK: - Awaiting input
 
     @Test
-    func `awaitInput moves the session to awaitingInput and records the prompt`() {
+    func `should show the session needs the person, with the prompt, when Claude asks for input`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
 
         session.awaitInput("Bash · rm -rf build/")
@@ -244,7 +244,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `awaitInput is ignored after ended`() {
+    func `should stay ended with no prompt when Claude asks for input after the session ended`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.end()
 
@@ -255,7 +255,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `resume clears the pending prompt`() {
+    func `should drop the prompt and go back to active when the person answers`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.awaitInput("Bash · ls")
 
@@ -266,7 +266,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `subagent start clears the pending prompt`() {
+    func `should drop the prompt and show agents working when a subagent starts`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.awaitInput("Bash · ls")
 
@@ -279,7 +279,7 @@ struct ClaudeSessionTests {
     // MARK: - Finishing
 
     @Test
-    func `stop records when the session stopped`() {
+    func `should remember when Claude stopped as the time the session finished`() {
         let when = Date(timeIntervalSince1970: 1_700_000_000)
         var session = ClaudeSession(id: "test", cwd: "/tmp")
 
@@ -290,14 +290,14 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `finishedAt is nil while the session is running`() {
+    func `should have no finish time while the session runs`() {
         let session = ClaudeSession(id: "test", cwd: "/tmp")
 
         #expect(session.finishedAt == nil)
     }
 
     @Test
-    func `finishedAt prefers endedAt over stoppedAt`() {
+    func `should take the end time over the stop time as the time the session finished`() {
         let stopped = Date(timeIntervalSince1970: 1_700_000_000)
         let ended = stopped.addingTimeInterval(30)
         var session = ClaudeSession(id: "test", cwd: "/tmp")
@@ -309,7 +309,7 @@ struct ClaudeSessionTests {
     }
 
     @Test
-    func `resuming a stopped session clears the stop timestamp`() {
+    func `should forget the stop time when a stopped session resumes`() {
         var session = ClaudeSession(id: "test", cwd: "/tmp")
         session.stop()
 
@@ -322,21 +322,21 @@ struct ClaudeSessionTests {
     // MARK: - Identity
 
     @Test
-    func `repoName is the last path component of the working directory`() {
+    func `should name the session after the folder it runs in`() {
         let session = ClaudeSession(id: "test", cwd: "/Users/me/github/tddworks/claudebar")
 
         #expect(session.repoName == "claudebar")
     }
 
     @Test
-    func `repoName tolerates a trailing slash`() {
+    func `should name the session after its folder even when the path ends in a slash`() {
         let session = ClaudeSession(id: "test", cwd: "/Users/me/github/claudebar/")
 
         #expect(session.repoName == "claudebar")
     }
 
     @Test
-    func `phase label returns correct strings`() {
+    func `should print each phase as Active, Agents Working, Needs You, Stopped or Ended`() {
         #expect(ClaudeSession.Phase.active.label == "Active")
         #expect(ClaudeSession.Phase.subagentsWorking.label == "Agents Working")
         #expect(ClaudeSession.Phase.awaitingInput.label == "Needs You")

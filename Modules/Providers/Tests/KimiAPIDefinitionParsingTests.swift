@@ -10,7 +10,7 @@ struct KimiAPIDefinitionParsingTests {
     // MARK: - Full Response Parsing
 
     @Test
-    func `parseResponse extracts weekly and session quotas from valid response`() throws {
+    func `should show the weekly quota and the 5-hour session when Kimi reports both`() throws {
         let json = """
         {
             "usages": [{
@@ -56,7 +56,7 @@ struct KimiAPIDefinitionParsingTests {
     }
 
     @Test
-    func `parseResponse detects Moderato tier from weekly limit of 2048`() throws {
+    func `should show the Moderato plan when the weekly limit is 2048 requests`() throws {
         let json = """
         {
             "usages": [{
@@ -77,7 +77,7 @@ struct KimiAPIDefinitionParsingTests {
     }
 
     @Test
-    func `parseResponse detects Andante tier from weekly limit of 1024`() throws {
+    func `should show the Andante plan when the weekly limit is 1024 requests`() throws {
         let json = """
         {
             "usages": [{
@@ -98,7 +98,7 @@ struct KimiAPIDefinitionParsingTests {
     }
 
     @Test
-    func `parseResponse detects Allegretto tier from weekly limit of 7168`() throws {
+    func `should show the Allegretto plan when the weekly limit is 7168 requests`() throws {
         let json = """
         {
             "usages": [{
@@ -119,7 +119,7 @@ struct KimiAPIDefinitionParsingTests {
     }
 
     @Test
-    func `parseResponse returns nil tier for unknown weekly limit`() throws {
+    func `should show no plan when the weekly limit matches no known plan`() throws {
         let json = """
         {
             "usages": [{
@@ -142,7 +142,7 @@ struct KimiAPIDefinitionParsingTests {
     // MARK: - Missing Limits Array
 
     @Test
-    func `parseResponse handles missing limits array gracefully`() throws {
+    func `should show only the weekly quota when Kimi reports no rate-limit windows`() throws {
         let json = """
         {
             "usages": [{
@@ -167,7 +167,7 @@ struct KimiAPIDefinitionParsingTests {
     // MARK: - Missing used/remaining Fields
 
     @Test
-    func `parseResponse handles missing used field by computing from limit and remaining`() throws {
+    func `should work out the plan's requests used from its limit and what remains when Kimi omits the used count`() throws {
         let json = """
         {
             "usages": [{
@@ -184,13 +184,13 @@ struct KimiAPIDefinitionParsingTests {
         let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         // Not one of the weekly plans: "Plan", with no guessed window.
-        let weekly = snapshot.quota(for: .timeLimit("Plan"))!
-        #expect(weekly.percentRemaining == 75.0)
-        #expect(weekly.resetText == "250/1000 requests")
+        let plan = snapshot.quota(for: .timeLimit("Plan"))!
+        #expect(plan.percentRemaining == 75.0)
+        #expect(plan.resetText == "250/1000 requests")
     }
 
     @Test
-    func `parseResponse handles missing remaining field by computing from limit and used`() throws {
+    func `should work out what remains of the plan from its limit and requests used when Kimi omits the remaining count`() throws {
         let json = """
         {
             "usages": [{
@@ -207,13 +207,13 @@ struct KimiAPIDefinitionParsingTests {
         let snapshot = try KimiDefinitionFixtures.api(json, providerId: "kimi")
 
         // Not one of the weekly plans: "Plan", with no guessed window.
-        let weekly = snapshot.quota(for: .timeLimit("Plan"))!
-        #expect(weekly.percentRemaining == 70.0)
-        #expect(weekly.resetText == "300/1000 requests")
+        let plan = snapshot.quota(for: .timeLimit("Plan"))!
+        #expect(plan.percentRemaining == 70.0)
+        #expect(plan.resetText == "300/1000 requests")
     }
 
     @Test
-    func `parseResponse shows no quota when neither used nor remaining is reported`() throws {
+    func `should show no quota when Kimi reports neither requests used nor remaining`() throws {
         let json = """
         {
             "usages": [{
@@ -235,7 +235,7 @@ struct KimiAPIDefinitionParsingTests {
     // MARK: - Reset Time Parsing
 
     @Test
-    func `parseResponse parses ISO8601 with fractional seconds`() throws {
+    func `should show the exact reset time when Kimi gives it with fractional seconds`() throws {
         let json = """
         {
             "usages": [{
@@ -263,7 +263,7 @@ struct KimiAPIDefinitionParsingTests {
     }
 
     @Test
-    func `parseResponse parses ISO8601 without fractional seconds`() throws {
+    func `should show a reset time when Kimi gives it without fractional seconds`() throws {
         let json = """
         {
             "usages": [{
@@ -288,7 +288,7 @@ struct KimiAPIDefinitionParsingTests {
     // MARK: - Error Cases
 
     @Test
-    func `parseResponse throws parseFailed for invalid JSON`() throws {
+    func `should fail to read usage when Kimi answers with something that is not JSON`() throws {
         let json = "not json".data(using: .utf8)!
 
         #expect(throws: UsageError.self) {
@@ -297,7 +297,7 @@ struct KimiAPIDefinitionParsingTests {
     }
 
     @Test
-    func `parseResponse throws parseFailed when FEATURE_CODING scope is missing`() throws {
+    func `should fail to read usage when Kimi reports no coding usage`() throws {
         let json = """
         {
             "usages": [{
@@ -318,7 +318,7 @@ struct KimiAPIDefinitionParsingTests {
     }
 
     @Test
-    func `parseResponse throws parseFailed for empty usages array`() throws {
+    func `should fail to read usage when Kimi reports no usage at all`() throws {
         let json = """
         {
             "usages": []
@@ -333,7 +333,7 @@ struct KimiAPIDefinitionParsingTests {
     // MARK: - Edge Cases
 
     @Test
-    func `parseResponse shows no quota for a zero limit`() throws {
+    func `should show no quota when the limit is zero`() throws {
         let json = """
         {
             "usages": [{
@@ -355,7 +355,7 @@ struct KimiAPIDefinitionParsingTests {
     }
 
     @Test
-    func `parseResponse selects 5hour rate limit window`() throws {
+    func `should show the 5-hour window as the session when Kimi reports several rate-limit windows`() throws {
         let json = """
         {
             "usages": [{

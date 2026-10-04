@@ -76,7 +76,7 @@ struct CodexConfigSpec {
     struct SwitchProbeMode {
 
         @Test
-        func `switching to API mode uses the API for refresh`() async throws {
+        func `should show the API's quotas, not the app server's, after the person switches Codex to API mode`() async throws {
             // Given — isolated settings, credentials, and both endpoints answering
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             settings.setEnabled(true, forProvider: "codex")
@@ -115,7 +115,7 @@ struct CodexConfigSpec {
         }
 
         @Test
-        func `the mode the card saves is the mode the provider uses`() throws {
+        func `should use the data source the Codex card saves, RPC by default`() throws {
             // Given
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             let home = try CodexConfigSpec.makeHome()
@@ -140,7 +140,7 @@ struct CodexConfigSpec {
     struct FailedLookupNamesItsStep {
 
         @Test
-        func `the last usage stays, the lookup step is named, and its source is kept`() async throws {
+        func `should keep the last usage and its source, and say the key couldn't be read, when the Codex key disappears (#351)`() async throws {
             // Given — Codex on its API data source, showing usage
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             let home = try CodexConfigSpec.makeHome()
@@ -175,7 +175,7 @@ struct CodexConfigSpec {
     struct CredentialStatus {
 
         @Test
-        func `no OAuth credentials are found until codex has logged in`() throws {
+        func `should find no API key until the person has logged in to Codex`() throws {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             let home = try CodexConfigSpec.makeHome()
             defer { try? FileManager.default.removeItem(at: home) }

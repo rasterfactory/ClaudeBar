@@ -6,7 +6,7 @@ import Testing
 @Suite
 struct SystemTemplateTests {
     @Test
-    func `the system time zone fills a template without a credential`() {
+    func `should send the Mac's time zone even without a credential`() {
         #expect(Template.fill("tz={{system.timeZone}}", with: nil) == "tz=\(TimeZone.current.identifier)")
     }
 }

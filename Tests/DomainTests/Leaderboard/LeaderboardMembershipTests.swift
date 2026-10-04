@@ -23,7 +23,7 @@ struct LeaderboardMembershipTests {
 
     // MARK: - Joining
 
-    @Test func `joining keeps the name, what is shared, and a key for this Mac`() async throws {
+    @Test func `should keep the person's name, what they share and a key for this Mac when they join`() async throws {
         let membership = try await joined(sharing: ["claude", "codex"])
 
         #expect(membership.isJoined)
@@ -35,7 +35,7 @@ struct LeaderboardMembershipTests {
         #expect(!membership.sharesCountry)
     }
 
-    @Test func `a taken name leaves you outside, with no key kept`() async throws {
+    @Test func `should leave the person outside, with no key kept, when their name is taken`() async throws {
         api.reset([.given])
         given(api).join(username: .any, publicKey: .any).willThrow(LeaderboardError.usernameTaken)
         let membership = membership()
@@ -48,7 +48,7 @@ struct LeaderboardMembershipTests {
         #expect(settings.record == nil)
     }
 
-    @Test func `a provider without token logs can't be shared, even when joining`() async throws {
+    @Test func `should refuse to join sharing a provider that keeps no token logs`() async throws {
         let membership = membership()
 
         await #expect(throws: LeaderboardError.notShareable("gemini")) {
@@ -57,13 +57,13 @@ struct LeaderboardMembershipTests {
         #expect(!membership.isJoined)
     }
 
-    @Test func `joining shares at least one provider`() async throws {
+    @Test func `should refuse to join sharing no provider`() async throws {
         await #expect(throws: LeaderboardError.nothingShared) {
             try await membership().join(as: #require(Username("tokenwhale")), sharing: [])
         }
     }
 
-    @Test func `a membership is restored from settings and its key`() async throws {
+    @Test func `should keep the person joined, with their name and what they share, after a relaunch`() async throws {
         _ = try await joined(sharing: ["codex"])
 
         let restored = membership()
@@ -73,7 +73,7 @@ struct LeaderboardMembershipTests {
         #expect(restored.sharing == ["codex"])
     }
 
-    @Test func `a saved membership whose key is gone is not joined`() async throws {
+    @Test func `should not count the person as joined when this Mac's key is gone`() async throws {
         _ = try await joined()
         keys.stored = nil
 
@@ -82,7 +82,7 @@ struct LeaderboardMembershipTests {
 
     // MARK: - Sharing
 
-    @Test func `sharing another provider is kept`() async throws {
+    @Test func `should remember which providers the person shares after they change them`() async throws {
         let membership = try await joined()
 
         try membership.share("mistral")
@@ -92,14 +92,14 @@ struct LeaderboardMembershipTests {
         #expect(settings.record?.sharing == ["mistral"])
     }
 
-    @Test func `a provider without token logs can't be ticked later either`() async throws {
+    @Test func `should refuse to share a provider that keeps no token logs after joining`() async throws {
         let membership = try await joined()
 
         #expect(throws: LeaderboardError.notShareable("gemini")) { try membership.share("gemini") }
         #expect(membership.sharing == ["claude"])
     }
 
-    @Test func `only shared providers' days leave the Mac, each provider's logins added up`() async throws {
+    @Test func `should send only shared providers' days, each one's logins added up`() async throws {
         let membership = try await joined(sharing: ["claude"])
         let days = membership.dailyTokens(from: [
             LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 100, output: 10)]),
@@ -110,7 +110,7 @@ struct LeaderboardMembershipTests {
         #expect(days == [DailyTokens(provider: "claude", day: "2026-10-04", input: 101, output: 11, cacheWrite: 0, cacheRead: 5, unsplit: 0)])
     }
 
-    @Test func `days with no tokens aren't sent`() async throws {
+    @Test func `should not send days with no tokens`() async throws {
         let membership = try await joined()
         let days = membership.dailyTokens(from: [
             LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 3), LeaderboardFixtures.stat(day: 4, input: 5)])
@@ -119,7 +119,7 @@ struct LeaderboardMembershipTests {
         #expect(days.map(\.day) == ["2026-10-04"])
     }
 
-    @Test func `not joined, nothing leaves`() {
+    @Test func `should send nothing when the person hasn't joined`() {
         let days = membership().dailyTokens(from: [
             LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 5)])
         ])
@@ -128,7 +128,7 @@ struct LeaderboardMembershipTests {
 
     // MARK: - Visibility and name
 
-    @Test func `hiding is kept once the server agrees`() async throws {
+    @Test func `should hide the person from the leaderboard once the server agrees`() async throws {
         let membership = try await joined()
 
         try await membership.setVisible(false)
@@ -137,7 +137,7 @@ struct LeaderboardMembershipTests {
         #expect(settings.record?.visible == false)
     }
 
-    @Test func `a refused change changes nothing here`() async throws {
+    @Test func `should keep the person visible when the server can't be reached to hide them`() async throws {
         let membership = try await joined()
         api.reset([.given])
         given(api).update(.any, as: .any).willThrow(LeaderboardError.unreachable)
@@ -146,7 +146,7 @@ struct LeaderboardMembershipTests {
         #expect(membership.isVisible)
     }
 
-    @Test func `a taken new name keeps the old one`() async throws {
+    @Test func `should keep the person's old name when the new one is taken`() async throws {
         let membership = try await joined()
         api.reset([.given])
         given(api).update(.any, as: .any).willThrow(LeaderboardError.usernameTaken)
@@ -155,7 +155,7 @@ struct LeaderboardMembershipTests {
         #expect(membership.username?.value == "tokenwhale")
     }
 
-    @Test func `renaming moves the membership to the new name`() async throws {
+    @Test func `should show the person under their new name once they rename`() async throws {
         let membership = try await joined()
 
         try await membership.rename(to: #require(Username("whale2")))
@@ -166,7 +166,7 @@ struct LeaderboardMembershipTests {
 
     // MARK: - The globe
 
-    @Test func `the country is shared only once the server agrees`() async throws {
+    @Test func `should share the person's country once the server agrees`() async throws {
         let membership = try await joined()
 
         try await membership.setSharesCountry(true)
@@ -175,7 +175,7 @@ struct LeaderboardMembershipTests {
         #expect(settings.record?.sharesCountry == true)
     }
 
-    @Test func `a refused opt-in leaves the country unshared`() async throws {
+    @Test func `should keep the person's country unshared when the server can't be reached`() async throws {
         let membership = try await joined()
         api.reset([.given])
         given(api).update(.any, as: .any).willThrow(LeaderboardError.unreachable)
@@ -184,7 +184,7 @@ struct LeaderboardMembershipTests {
         #expect(!membership.sharesCountry)
     }
 
-    @Test func `joining can opt in to the globe at once`() async throws {
+    @Test func `should share the person's country at once when they opt in while joining`() async throws {
         let membership = membership()
 
         try await membership.join(as: #require(Username("tokenwhale")), sharing: ["claude"], sharesCountry: true)
@@ -192,7 +192,7 @@ struct LeaderboardMembershipTests {
         #expect(membership.sharesCountry)
     }
 
-    @Test func `the globe hint shows to members who haven't opted in, until dismissed`() async throws {
+    @Test func `should show the globe hint to a member who hasn't shared their country, until they dismiss it`() async throws {
         let membership = try await joined()
         #expect(membership.showsGlobeHint)
 
@@ -202,7 +202,7 @@ struct LeaderboardMembershipTests {
         #expect(settings.record?.globeHintDismissed == true)
     }
 
-    @Test func `opting in retires the globe hint`() async throws {
+    @Test func `should stop showing the globe hint once the person shares their country`() async throws {
         let membership = try await joined()
 
         try await membership.setSharesCountry(true)
@@ -210,7 +210,7 @@ struct LeaderboardMembershipTests {
         #expect(!membership.showsGlobeHint)
     }
 
-    @Test func `the globe hint survives a restart dismissed`() async throws {
+    @Test func `should keep the globe hint dismissed after a relaunch`() async throws {
         let first = try await joined()
         first.dismissGlobeHint()
 
@@ -219,7 +219,7 @@ struct LeaderboardMembershipTests {
 
     // MARK: - Profile link
 
-    @Test func `a link is kept once the server agrees`() async throws {
+    @Test func `should keep the person's profile link once the server agrees`() async throws {
         let membership = try await joined()
         let link = try #require(ProfileLink(platform: .github, handle: "octocat"))
 
@@ -229,7 +229,7 @@ struct LeaderboardMembershipTests {
         #expect(settings.record?.link == link)
     }
 
-    @Test func `removing the link forgets it here too`() async throws {
+    @Test func `should forget the person's profile link when they remove it`() async throws {
         let membership = try await joined()
         try await membership.setLink(#require(ProfileLink(platform: .x, handle: "jack")))
 
@@ -239,7 +239,7 @@ struct LeaderboardMembershipTests {
         #expect(settings.record?.link == nil)
     }
 
-    @Test func `a refused link changes nothing here`() async throws {
+    @Test func `should keep no profile link when the server refuses it`() async throws {
         let membership = try await joined()
         api.reset([.given])
         given(api).update(.any, as: .any).willThrow(LeaderboardError.rejected("That isn't a github handle."))
@@ -250,7 +250,7 @@ struct LeaderboardMembershipTests {
         #expect(membership.link == nil)
     }
 
-    @Test func `joining can add a link at once`() async throws {
+    @Test func `should keep a profile link the person adds while joining`() async throws {
         let membership = membership()
         let link = try #require(ProfileLink(platform: .instagram, handle: "boxcee.codes"))
 
@@ -259,7 +259,7 @@ struct LeaderboardMembershipTests {
         #expect(membership.link == link)
     }
 
-    @Test func `a link survives a restart`() async throws {
+    @Test func `should keep the person's profile link after a relaunch`() async throws {
         let first = try await joined()
         try await first.setLink(#require(ProfileLink(platform: .github, handle: "octocat")))
 
@@ -268,7 +268,7 @@ struct LeaderboardMembershipTests {
 
     // MARK: - Leaving
 
-    @Test func `leaving deletes on the server, then forgets the key and the membership`() async throws {
+    @Test func `should forget this Mac's key and the membership once the server deletes the person`() async throws {
         let membership = try await joined()
 
         try await membership.leave()
@@ -278,7 +278,7 @@ struct LeaderboardMembershipTests {
         #expect(settings.record == nil)
     }
 
-    @Test func `a leave the server didn't confirm keeps you joined, key and all`() async throws {
+    @Test func `should keep the person joined, key and all, when the server doesn't confirm they left`() async throws {
         let membership = try await joined()
         api.reset([.given])
         given(api).leave(as: .any).willThrow(LeaderboardError.unreachable)

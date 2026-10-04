@@ -21,7 +21,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     // MARK: - isEnabled Tests
 
     @Test
-    func `isEnabled returns default value when not set`() {
+    func `should show or hide a provider by its default when the person never chose`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -36,7 +36,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `isEnabled returns stored value when set`() {
+    func `should show a provider the person turned on, whatever its default`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -50,7 +50,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `isEnabled returns false when explicitly set to false`() {
+    func `should hide a provider the person turned off, whatever its default`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -66,7 +66,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     // MARK: - setEnabled Tests
 
     @Test
-    func `setEnabled persists value`() {
+    func `should remember a provider turned on`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -80,7 +80,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `setEnabled can toggle value`() {
+    func `should follow a provider turned on and then off again`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -100,7 +100,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     // MARK: - Provider Isolation Tests
 
     @Test
-    func `settings are isolated per provider`() {
+    func `should keep each provider on or off independently`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -118,7 +118,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     // MARK: - Persistence Tests
 
     @Test
-    func `values persist across repository instances`() {
+    func `should remember a provider turned on across restarts`() {
         // Given
         let defaults = UserDefaults(suiteName: testSuiteName)!
         defer { cleanupDefaults() }
@@ -137,7 +137,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     // MARK: - Hidden Quota Keys (issue #140)
 
     @Test
-    func `hiddenQuotaKeys defaults to empty`() {
+    func `should hide no quotas until the person hides some (#140)`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
@@ -145,7 +145,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `setHiddenQuotaKeys persists across repository instances`() {
+    func `should remember hidden quotas across restarts (#140)`() {
         let defaults = UserDefaults(suiteName: testSuiteName)!
         defer { cleanupDefaults() }
 
@@ -158,7 +158,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `hiddenQuotaKeys is per provider`() {
+    func `should keep each provider's hidden quotas apart (#140)`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
@@ -171,7 +171,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `setHiddenQuotaKeys with empty set clears the stored keys`() {
+    func `should show every quota again once nothing is hidden (#140)`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
@@ -184,7 +184,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     // MARK: - Claude CLI Fallback
 
     @Test
-    func `claudeCliFallbackEnabled defaults to true`() {
+    func `should fall back to Claude's CLI when the person never chose`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
@@ -192,7 +192,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `setClaudeCliFallbackEnabled persists value`() {
+    func `should remember turning Claude's CLI fallback off`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
@@ -203,7 +203,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     // MARK: - Codex Verified Flag
 
     @Test
-    func `codexVerifiedAtLeastOnce defaults to false`() {
+    func `should not count Codex as verified before it ever answered`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
@@ -211,7 +211,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `setCodexVerifiedAtLeastOnce persists value`() {
+    func `should remember whether Codex has been verified`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
@@ -225,7 +225,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     // MARK: - Provider Order
 
     @Test
-    func `providerOrder defaults to empty`() {
+    func `should keep no provider order until the person arranges them`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
@@ -233,7 +233,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `setProviderOrder persists value`() {
+    func `should remember the provider order across restarts`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
@@ -246,7 +246,7 @@ struct UserDefaultsProviderSettingsRepositoryTests {
     }
 
     @Test
-    func `setProviderOrder empty clears the stored order`() {
+    func `should forget the provider order when it is cleared`() {
         let repository = makeRepository()
         defer { cleanupDefaults() }
 

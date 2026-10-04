@@ -20,7 +20,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `each product is one tab, its logins inside, whether on or off`() throws {
+    func `should list each provider once with all its logins, whether on or off`() throws {
         let (monitor, codex, _) = try monitor()
         codex.accounts[1].isEnabled = false
 
@@ -31,7 +31,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `turning a product off hides every login of it and keeps them`() throws {
+    func `should hide every login of a provider the person turns off, keeping each login's own switch`() throws {
         let (monitor, codex, _) = try monitor()
 
         monitor.setProductEnabled(monitor.productTabs[0], enabled: false)
@@ -42,7 +42,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `turning off the selected product selects another`() throws {
+    func `should select another provider when the person turns off the selected one`() throws {
         let (monitor, _, _) = try monitor()
         monitor.selectedProviderId = "codex"
 
@@ -52,7 +52,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `moving a product moves its logins together`() throws {
+    func `should move a provider's logins together when the person moves the provider`() throws {
         let (monitor, _, _) = try monitor()
 
         monitor.providers.move("claude", by: -1)
@@ -63,7 +63,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `a row names each login only when the product has several`() throws {
+    func `should name each login only when the provider has several`() throws {
         let (monitor, codex, claude) = try monitor()
         codex.accounts.rename(codex.defaultAccount, to: "personal")
 
@@ -73,7 +73,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `a product's page shows its plain login's settings`() throws {
+    func `should show the plain login's settings on a provider's page`() throws {
         let (monitor, codex, _) = try monitor()
 
         #expect(monitor.productTabs[0].page === codex.defaultAccount)

@@ -33,7 +33,7 @@ struct VercelDefinitionTests {
         }, vault: vault)
     }
 
-    @Test func `identity and disabled default survive the move`() throws {
+    @Test func `should show Vercel Gateway with its dashboard, off until turned on, sending its key only to the gateway`() throws {
         let provider = try make()
         #expect(provider.id == "vercel-gateway")
         #expect(provider.name == "Vercel Gateway")
@@ -44,7 +44,7 @@ struct VercelDefinitionTests {
     }
 
     @Test(arguments: ["95.50", "0", "1245.67", "-1.25", "0.123456789"])
-    func `the balance is exact money with no invented ceiling`(_ amount: String) async throws {
+    func `should show the credit balance as exact dollars, with no ceiling, no percentage and no window`(_ amount: String) async throws {
         for value in [amount, "\"\(amount)\""] {
             let usage = try await make(body: "{\"balance\":\(value)}").refreshPlain()
             let quota = try #require(usage.quotas.first)
@@ -56,32 +56,32 @@ struct VercelDefinitionTests {
     }
 
     @Test(arguments: ["not JSON", "{}", #"{"balance":"abc"}"#, #"{"balance":"0x10"}"#, #"{"balance":null}"#, #"{"balance":true}"#])
-    func `an invalid or absent balance fails mapping`(_ body: String) async throws {
+    func `should fail at reading the answer when Vercel reports no readable balance`(_ body: String) async throws {
         let product = try make(body: body)
         let account = product.defaultAccount
         await #expect(throws: UsageError.self) { try await product.refresh(account) }
         #expect(account.lastFailedStep == .mapping)
     }
 
-    @Test(arguments: [401, 403]) func `rejected keys need authentication`(_ status: Int) async throws {
+    @Test(arguments: [401, 403]) func `should ask to sign in again when Vercel refuses the key`(_ status: Int) async throws {
         await #expect(throws: UsageError.authenticationRequired) { try await make(status: status).refreshPlain() }
     }
 
-    @Test(arguments: [429, 500]) func `HTTP errors stay fetch errors`(_ status: Int) async throws {
+    @Test(arguments: [429, 500]) func `should fail at fetching when Vercel is rate-limiting or down`(_ status: Int) async throws {
         let product = try make(status: status)
         let account = product.defaultAccount
         await #expect(throws: UsageError.self) { try await product.refresh(account) }
         #expect(account.lastFailedStep == .fetch)
     }
 
-    @Test func `a missing key is not configured`() async throws {
+    @Test func `should be unavailable and ask for a key when none is saved or set`() async throws {
         let product = try make(vault: MemoryVault())
         let account = product.defaultAccount
         #expect(await product.isAvailable(account) == false)
         await #expect(throws: UsageError.authenticationRequired) { try await product.refresh(account) }
     }
 
-    @Test func `the environment wins for the default login, and added accounts use only their own keys`() async throws {
+    @Test func `should use the environment key for the default login and each added login's own saved key`() async throws {
         let vault = MemoryVault(["vercel-gateway.apiKey": "personal"])
         let settings = InMemoryProviderSettings()
         let provider = try make(environment: ["AI_GATEWAY_API_KEY": "environment"], vault: vault, settings: settings,
@@ -95,7 +95,7 @@ struct VercelDefinitionTests {
         await #expect(throws: UsageError.authenticationRequired) { try await provider.refresh(work) }
     }
 
-    @Test func `the key is read from the environment variable the person named`() async throws {
+    @Test func `should use the key from the environment variable the person named`() async throws {
         let settings = InMemoryProviderSettings()
         settings.setValue("MY_GATEWAY_KEY", "authEnvVar", forProvider: "vercel-gateway")
         let provider = try make(environment: ["MY_GATEWAY_KEY": "named"], vault: MemoryVault(), settings: settings,
@@ -103,7 +103,7 @@ struct VercelDefinitionTests {
         #expect(try await provider.refreshPlain().quotas.first?.dollarRemaining == 3)
     }
 
-    @Test func `a blank environment variable falls back to the saved key`() async throws {
+    @Test func `should use the saved key when the environment key is blank`() async throws {
         let provider = try make(environment: ["AI_GATEWAY_API_KEY": " \n "], replies: ["Bearer personal": #"{"balance":10}"#])
         #expect(try await provider.refreshPlain().quotas.first?.dollarRemaining == 10)
     }

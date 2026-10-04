@@ -28,7 +28,7 @@ struct CloudWatchFetchTests {
         return try #require(try JSONSerialization.jsonObject(with: response.body) as? [String: Any])
     }
 
-    @Test func `cancelling a region never returns partial spend as a successful refresh`() async throws {
+    @Test func `should cancel the refresh instead of reporting partial spend when a region is cancelled`() async throws {
         let client = MockCloudWatchClient()
         given(client).sums(namespace: .any, dimension: .any, metrics: .any, region: .any, profile: .any, from: .any, to: .any)
             .willProduce { _, _, _, region, _, _, _ in
@@ -40,7 +40,7 @@ struct CloudWatchFetchTests {
         }
     }
 
-    @Test func `each region's sums come back as rows, priced`() async throws {
+    @Test func `should total today's usage per region under the chosen profile, priced from the cloud's own list`() async throws {
         let seen = Seen()
         let body = try await fetch(call, seen: seen)
         let rows = try #require(body["rows"] as? [[String: Any]])
@@ -52,18 +52,18 @@ struct CloudWatchFetchTests {
         #expect(seen.calls.first?.3 == noon)
     }
 
-    @Test func `a failing region is left out`() async throws {
+    @Test func `should leave out a region the cloud refuses and show the others`() async throws {
         let rows = try #require(try await fetch(call, failing: ["west-2"])["rows"] as? [[String: Any]])
         #expect(rows.map { $0["region"] as? String } == ["east-1"])
     }
 
-    @Test func `every region failing is the failure`() async throws {
+    @Test func `should fail with the cloud's reason when every region refuses`() async throws {
         await #expect(throws: UsageError.executionFailed("denied in east-1")) {
             try await fetch(call, failing: ["east-1", "west-2"])
         }
     }
 
-    @Test func `a blank profile is the default credentials, a blank region list isn't ready`() async throws {
+    @Test func `should use the default credentials when no profile is set, and not be ready when no region is set`() async throws {
         let seen = Seen()
         _ = try await fetch(CloudWatchCall(namespace: "N", dimension: "D", metrics: ["M"], regions: "east-1", profile: "{{setting.profile}}"), seen: seen)
         #expect(seen.calls.first?.1 == nil)
@@ -72,7 +72,7 @@ struct CloudWatchFetchTests {
         #expect(!blank.isReady())
     }
 
-    @Test func `it round-trips as written`() throws {
+    @Test func `should keep a cloud-metrics fetch when the definition is written out and read back`() throws {
         let fetch = Fetch.cloudWatch(call)
         #expect(try JSONDecoder().decode(Fetch.self, from: JSONEncoder().encode(fetch)) == fetch)
     }

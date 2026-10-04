@@ -27,7 +27,7 @@ struct UpdatesSpec {
     struct UpdateInfrastructure {
 
         @Test
-        func `providers expose status page URLs for fallback`() throws {
+        func `should link Claude and Codex to their status pages`() throws {
             // Given — when updates fail, users can check status pages
             let claude = try ProviderFactory.builtIn("claude")
             let codex = try ProviderFactory.builtIn("codex")

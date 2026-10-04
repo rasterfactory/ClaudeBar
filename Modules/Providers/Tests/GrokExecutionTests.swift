@@ -85,7 +85,7 @@ struct GrokExecutionTests {
     // MARK: - isAvailable Tests
 
     @Test
-    func `isAvailable returns true when credentials exist`() async throws {
+    func `should be available when the Grok CLI has a login on this Mac`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -97,7 +97,7 @@ struct GrokExecutionTests {
     }
 
     @Test
-    func `isAvailable returns false when credentials missing`() async throws {
+    func `should be unavailable when the Grok CLI has no login on this Mac`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -109,7 +109,7 @@ struct GrokExecutionTests {
     // MARK: - Probe Tests
 
     @Test
-    func `provider throws authenticationRequired when no credentials`() async throws {
+    func `should ask to sign in when the Grok CLI has no login`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -121,7 +121,7 @@ struct GrokExecutionTests {
     }
 
     @Test
-    func `provider returns snapshot with account email on success`() async throws {
+    func `should show the login's email, weekly credits and Build when Grok answers`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -141,7 +141,7 @@ struct GrokExecutionTests {
     }
 
     @Test(arguments: [401,403])
-    func `provider refreshes rejected tokens and retries`(_ rejectedStatus: Int) async throws {
+    func `should renew a refused login, show the usage and save the new tokens back to Grok's file`(_ rejectedStatus: Int) async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -175,7 +175,7 @@ struct GrokExecutionTests {
     }
 
     @Test
-    func `provider proactively refreshes expired token`() async throws {
+    func `should renew an expired login before asking and save it back`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -203,7 +203,7 @@ struct GrokExecutionTests {
     }
 
     @Test
-    func `provider throws sessionExpired when refresh is rejected`() async throws {
+    func `should ask to run grok login again when the login can't be renewed`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -224,7 +224,7 @@ struct GrokExecutionTests {
     }
 
     @Test
-    func `provider throws sessionExpired when token stays rejected after refresh`() async throws {
+    func `should ask to run grok login again when the renewed login is still refused`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -251,7 +251,7 @@ struct GrokExecutionTests {
     }
 
     @Test
-    func `provider throws executionFailed on network error`() async throws {
+    func `should fail when the network is down`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -268,7 +268,7 @@ struct GrokExecutionTests {
     }
 
     @Test
-    func `provider throws executionFailed on HTTP 500`() async throws {
+    func `should report the HTTP error when Grok answers 500`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -283,7 +283,7 @@ struct GrokExecutionTests {
             try await provider.refreshPlain()
         }
     }
-    @Test func `independent auth folders never borrow the default login and keep their names`() async throws {
+    @Test func `should read each added login from its own Grok folder, keep its name, and never fall back to the default login`() async throws {
         let personal = try makeTemporaryDirectory(), work = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at:personal); try? FileManager.default.removeItem(at:work) }
         try createAuthFile(at:personal,accessToken:"personal-token")
@@ -319,7 +319,7 @@ struct GrokExecutionTests {
         #expect(settings.accounts(forProvider:"grok").isEmpty)
     }
 
-    @Test func `refresh uses the selected record issuer and optional client and retains an omitted refresh token`() async throws {
+    @Test func `should renew a login with its own issuer, and keep its renewal token when none comes back`() async throws {
         let root=try makeTemporaryDirectory()
         defer {try? FileManager.default.removeItem(at:root)}
         try createAuthFile(at:root,accessToken:"old",refreshToken:"refresh&a+b",expiresAt:"2020-01-01T00:00:00Z")
@@ -345,7 +345,7 @@ struct GrokExecutionTests {
         #expect(try saved("key",in:root) == "fresh")
         #expect(try saved("refresh_token",in:root) == "refresh&a+b")
     }
-    @Test func `an API login without a refresh token needs its key again when rejected`() async throws {
+    @Test func `should ask for the key again when a login with nothing to renew with is refused`() async throws {
         let root=try makeTemporaryDirectory()
         defer {try? FileManager.default.removeItem(at:root)}
         try createAuthFile(at:root,refreshToken:nil)

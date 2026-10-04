@@ -5,7 +5,7 @@ import Testing
 @Suite
 struct ClaudeSmokeTests {
     @Test
-    func `the usage screen script reads a plain screen`() throws {
+    func `should show the session, weekly and Opus windows with their resets when Claude prints a plain usage screen`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
 
@@ -33,7 +33,7 @@ struct ClaudeSmokeTests {
     }
 
     @Test
-    func `the api mapping reads the usage response`() async throws {
+    func `should show an over-limit session, the Max plan and extra-usage spend when Claude's usage API answers`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
 

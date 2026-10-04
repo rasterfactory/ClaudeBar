@@ -32,56 +32,56 @@ struct DailyUsageReportTests {
 
     // MARK: - Cost Delta
 
-    @Test func `cost delta is negative when today costs less`() {
+    @Test func `should show a negative cost change when today costs less than the day before`() {
         let report = makeReport(todayCost: 14.26, prevCost: 41.73)
         #expect(report.costDelta == Decimal(string: "-27.47")!)
     }
 
-    @Test func `cost delta is positive when today costs more`() {
+    @Test func `should show a positive cost change when today costs more than the day before`() {
         let report = makeReport(todayCost: 50, prevCost: 20)
         #expect(report.costDelta == 30)
     }
 
-    @Test func `cost change percent is calculated relative to previous`() {
+    @Test func `should show the cost change as a percent of the day before`() {
         let report = makeReport(todayCost: 14.26, prevCost: 41.73)
         let percent = report.costChangePercent!
         // 14.26 / 41.73 - 1 ≈ -65.8%
         #expect(percent < -65 && percent > -66)
     }
 
-    @Test func `cost change percent is nil when previous is zero`() {
+    @Test func `should show no cost change percent when the day before cost nothing`() {
         let report = makeReport(todayCost: 10, prevCost: 0)
         #expect(report.costChangePercent == nil)
     }
 
-    @Test func `formatted cost delta shows sign and currency`() {
+    @Test func `should print a cost drop with a minus sign and dollars`() {
         let report = makeReport(todayCost: 14.26, prevCost: 41.73)
         #expect(report.formattedCostDelta == "-$27.47")
     }
 
-    @Test func `formatted cost delta shows plus for positive`() {
+    @Test func `should print a cost rise with a plus sign`() {
         let report = makeReport(todayCost: 50, prevCost: 20)
         #expect(report.formattedCostDelta == "+$30.00")
     }
 
     // MARK: - Token Delta
 
-    @Test func `token delta is negative when today used fewer tokens`() {
+    @Test func `should show a negative token change when today used fewer tokens`() {
         let report = makeReport(todayTokens: 19_498_439, prevTokens: 59_706_443)
         #expect(report.tokenDelta == -40_208_004)
     }
 
-    @Test func `formatted token delta shows millions`() {
+    @Test func `should print a token change in millions`() {
         let report = makeReport(todayTokens: 19_498_439, prevTokens: 59_706_443)
         #expect(report.formattedTokenDelta == "-40.2M")
     }
 
-    @Test func `formatted token delta shows positive sign`() {
+    @Test func `should print a token rise with a plus sign`() {
         let report = makeReport(todayTokens: 50_000_000, prevTokens: 10_000_000)
         #expect(report.formattedTokenDelta == "+40.0M")
     }
 
-    @Test func `token change percent calculated correctly`() {
+    @Test func `should show the token change as a percent of the day before`() {
         let report = makeReport(todayTokens: 19_498_439, prevTokens: 59_706_443)
         let percent = report.tokenChangePercent!
         // (19.5M - 59.7M) / 59.7M ≈ -67.3%
@@ -90,22 +90,22 @@ struct DailyUsageReportTests {
 
     // MARK: - Time Delta
 
-    @Test func `time delta is positive when today has more working time`() {
+    @Test func `should show a positive time change when today has more working time`() {
         let report = makeReport(todayTime: 80160, prevTime: 70620)
         #expect(report.timeDelta == 9540) // +2h 39m
     }
 
-    @Test func `formatted time delta shows hours and minutes`() {
+    @Test func `should print a time change in hours and minutes`() {
         let report = makeReport(todayTime: 80160, prevTime: 70620)
         #expect(report.formattedTimeDelta == "+2h 39m")
     }
 
-    @Test func `formatted time delta shows negative`() {
+    @Test func `should print a time drop with a minus sign`() {
         let report = makeReport(todayTime: 3600, prevTime: 7200)
         #expect(report.formattedTimeDelta == "-1h 0m")
     }
 
-    @Test func `time change percent calculated correctly`() {
+    @Test func `should show the working time change as a percent of the day before`() {
         let report = makeReport(todayTime: 80160, prevTime: 70620)
         let percent = report.timeChangePercent!
         // 9540 / 70620 ≈ 13.5%
@@ -114,17 +114,17 @@ struct DailyUsageReportTests {
 
     // MARK: - Progress
 
-    @Test func `cost progress is ratio of today to total`() {
+    @Test func `should fill the cost bar with today's share of both days' cost`() {
         let report = makeReport(todayCost: 25, prevCost: 75)
         #expect(report.costProgress == 0.25)
     }
 
-    @Test func `token progress is ratio of today to total`() {
+    @Test func `should fill the token bar with today's share of both days' tokens`() {
         let report = makeReport(todayTokens: 1000, prevTokens: 3000)
         #expect(report.tokenProgress == 0.25)
     }
 
-    @Test func `progress is zero when both are zero`() {
+    @Test func `should leave every bar empty when both days have no usage`() {
         let report = makeReport(todayCost: 0, todayTokens: 0, todayTime: 0, prevCost: 0, prevTokens: 0, prevTime: 0)
         #expect(report.costProgress == 0)
         #expect(report.tokenProgress == 0)
@@ -167,28 +167,28 @@ struct DailyUsageReportTests {
         )
     }
 
-    @Test func `cache hit rate delta computed in percentage points`() {
+    @Test func `should show the cache hit rate change in percentage points`() {
         let report = makeCacheReport(todayHitRate: 0.92, prevHitRate: 0.85)
         #expect(abs(report.cacheHitRateDelta - 0.07) < 0.001)
     }
 
-    @Test func `formatted cache hit rate delta uses percentage points`() {
+    @Test func `should print the cache hit rate change in percentage points`() {
         let report = makeCacheReport(todayHitRate: 0.92, prevHitRate: 0.85)
         #expect(report.formattedCacheHitRateDelta == "+7.0pp")
     }
 
-    @Test func `formatted savings delta shows currency`() {
+    @Test func `should print the cache savings change in dollars`() {
         let report = makeCacheReport(todayHitRate: 0.5, prevHitRate: 0.5, todaySavings: 412.30, prevSavings: 200)
         #expect(report.formattedSavingsDelta == "+$212.30")
     }
 
-    @Test func `formatted cache token delta shows millions`() {
+    @Test func `should print the cache token change in millions`() {
         let report = makeCacheReport(todayHitRate: 0.5, prevHitRate: 0.5, todayCacheTokens: 37_000_000, prevCacheTokens: 20_000_000)
         #expect(report.formattedCacheTokenDelta == "+17.0M")
     }
 
     @Test
-    func `working time is worth a card when either day has some`() {
+    func `should show working time only when either day has some`() {
         let empty = DailyUsageStat(date: Date(), totalCost: 0, totalTokens: 10, workingTime: 0, sessionCount: 1)
         let worked = DailyUsageStat(date: Date(), totalCost: 0, totalTokens: 10, workingTime: 600, sessionCount: 1)
         #expect(!DailyUsageReport(today: empty, previous: empty).hasWorkingTime)

@@ -27,7 +27,7 @@ struct ExtensionSettingsUpgradeTests {
     }
 
     @Test
-    func `a saved value moves into the provider's settings, a secret into the vault`() throws {
+    func `should keep an extension's saved value in its provider settings and its secret in the vault after the upgrade`() throws {
         let store = JSONSettingsStore(fileURL: temp.appendingPathComponent("settings.json"))
         let settings = JSONSettingsRepository(store: store)
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -44,7 +44,7 @@ struct ExtensionSettingsUpgradeTests {
     }
 
     @Test
-    func `it runs once, so a later change is never overwritten`() throws {
+    func `should keep the person's later change when the extension upgrade runs again`() throws {
         let store = JSONSettingsStore(fileURL: temp.appendingPathComponent("settings.json"))
         let settings = JSONSettingsRepository(store: store)
         let defaults = try #require(UserDefaults(suiteName: suite))

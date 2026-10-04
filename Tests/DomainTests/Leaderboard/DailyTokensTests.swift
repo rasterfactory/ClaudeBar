@@ -13,7 +13,7 @@ struct DailyTokensTests {
                        cachedSavings: 4)
     }
 
-    @Test func `a day keeps its four token counts and its local date, nothing else`() {
+    @Test func `should share only a day's four token counts and its local date, never its cost or time`() {
         let tokens = DailyTokens(provider: "claude", stat: stat(total: 150, input: 100, output: 50, cacheWrite: 20, cacheRead: 900),
                                  calendar: calendar)
 
@@ -22,21 +22,21 @@ struct DailyTokensTests {
         #expect(tokens.total == 1070)
     }
 
-    @Test func `a log that keeps only the sum is shared as its sum`() {
+    @Test func `should share a log's sum as one count when the log keeps only the sum`() {
         let tokens = DailyTokens(provider: "mistral", stat: stat(total: 5000), calendar: calendar)
 
         #expect(tokens.unsplit == 5000)
         #expect(tokens.total == 5000)
     }
 
-    @Test func `two logins' days of one provider add up`() {
+    @Test func `should add up two logins' days of one provider`() {
         let work = DailyTokens(provider: "claude", day: "2026-10-04", input: 1, output: 2, cacheWrite: 3, cacheRead: 4, unsplit: 5)
         let personal = DailyTokens(provider: "claude", day: "2026-10-04", input: 10, output: 20, cacheWrite: 30, cacheRead: 40, unsplit: 50)
 
         #expect(work.adding(personal).total == 165)
     }
 
-    @Test func `only the given providers are summed, each one's logins per day`() {
+    @Test func `should share only the chosen providers, each one's logins added up per day`() {
         let day = calendar.date(from: DateComponents(year: 2026, month: 10, day: 4, hour: 9))!
         let stat = { (input: Int) in DailyUsageStat(date: day, totalCost: 0, totalTokens: input, workingTime: 0, sessionCount: 1, inputTokens: input) }
         let days = DailyTokens.summed([
@@ -49,7 +49,7 @@ struct DailyTokensTests {
         #expect(days.map(\.provider) == ["claude"])
     }
 
-    @Test func `the wire form names each count`() throws {
+    @Test func `should share each count under its own name and nothing more`() throws {
         let tokens = DailyTokens(provider: "codex", day: "2026-10-04", input: 1, output: 2, cacheWrite: 3, cacheRead: 4, unsplit: 0)
         let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(tokens)) as? [String: Any]
 

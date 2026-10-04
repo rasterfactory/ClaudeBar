@@ -30,7 +30,7 @@ struct MenuBarNativeIconsTests {
     }
 
     @Test(arguments: [false, true])
-    func `mask tint follows the menu bar and retains transparent negative space`(dark: Bool) throws {
+    func `should tint a native icon to the menu bar's ink and keep its see-through space`(dark: Bool) throws {
         let source = NSImage(size: NSSize(width: 32, height: 16), flipped: false) { _ in
             NSColor.red.setFill()
             NSRect(x: 8, y: 4, width: 16, height: 8).fill()
@@ -47,7 +47,7 @@ struct MenuBarNativeIconsTests {
         #expect(!source.isTemplate) // Shared artwork is never mutated.
     }
 
-    @Test func `bundled masks are marks with transparent space rather than opaque tiles`() throws {
+    @Test func `should draw every bundled menu bar icon as a mark with see-through space, not an opaque tile`() throws {
         for name in ["Claude", "Codex", "Copilot", "Cursor", "Gemini", "Antigravity", "Zai", "Bedrock", "AmpCode", "Kimi", "MiniMax", "Mistral", "OpenCode", "Omp", "Grok", "CommandCode", "Vercel"] {
             let mask = try #require(NSImage(named: name + "IconMenuBar"), "Missing bundled template for \(name)")
             let image = StatusItemLabelDriver.fittedProviderIcon(mask, ink: .black)
@@ -61,7 +61,7 @@ struct MenuBarNativeIconsTests {
     }
 
     @Test(arguments: [false, true])
-    func `all provider icons including added accounts and unknown providers use neutral ink`(dark: Bool) throws {
+    func `should draw every provider's native icon in neutral ink, including added accounts and unknown providers`(dark: Bool) throws {
         for id in ["claude", "codex", "codex.work", "gemini", "copilot", "antigravity", "zai", "bedrock", "ampcode", "kimi", "kiro", "minimax", "deepseek", "cursor", "mistral", "opencode-go", "omp", "grok", "commandcode", "vercel-gateway", "extension.unknown"] {
             let colors = try visibleColors(StatusItemLabelDriver.providerIcon(for: id, native: true, dark: dark))
             #expect(!colors.isEmpty, "Missing icon for \(id)")
@@ -70,7 +70,7 @@ struct MenuBarNativeIconsTests {
         }
     }
 
-    @Test func `native mode invalidates content and leaves colored quota pixels intact`() throws {
+    @Test func `should redraw the menu bar in native-icon mode and leave the colored quotas unchanged`() throws {
         var content = StatusItemLabelDriver.LabelContent(label: MenuBarLabel(text: "40%", status: .critical),
             primaryProviderId: "codex", primaryProviderName: "Codex", fallbackStatus: .critical,
             sessionPhase: nil, themeModeId: "dark")

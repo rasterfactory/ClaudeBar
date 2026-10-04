@@ -28,7 +28,7 @@ struct LeaderboardUploaderTests {
         return membership
     }
 
-    @Test func `the first upload sends the last thirty days`() async throws {
+    @Test func `should send the last thirty days the first time`() async throws {
         let membership = try await joined()
         logs.logins = [LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 10)])]
 
@@ -39,7 +39,7 @@ struct LeaderboardUploaderTests {
         #expect(settings.record?.lastUpload == now)
     }
 
-    @Test func `a later upload resumes from the day of the last one`() async throws {
+    @Test func `should send from the day of the last upload on`() async throws {
         let membership = try await joined()
         membership.recordUpload(at: LeaderboardFixtures.date(3, hour: 23))
 
@@ -48,7 +48,7 @@ struct LeaderboardUploaderTests {
         #expect(logs.askedFor == DateRange(first: LeaderboardFixtures.date(3), last: now, calendar: calendar))
     }
 
-    @Test func `a Mac asleep for weeks catches up thirty days at most`() async throws {
+    @Test func `should catch up thirty days at most when the Mac slept for weeks`() async throws {
         let membership = try await joined()
         membership.recordUpload(at: LeaderboardFixtures.date(1, month: 8))
 
@@ -57,7 +57,7 @@ struct LeaderboardUploaderTests {
         #expect(logs.askedFor == DateRange.last(30, endingOn: now, calendar: calendar))
     }
 
-    @Test func `a failed upload keeps where it was and says why`() async throws {
+    @Test func `should keep where it was and say why when an upload can't reach the server`() async throws {
         let membership = try await joined()
         logs.logins = [LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 10)])]
         api.reset([.given])
@@ -70,7 +70,7 @@ struct LeaderboardUploaderTests {
         #expect(uploader.lastError == .unreachable)
     }
 
-    @Test func `a good upload clears the last error`() async throws {
+    @Test func `should clear the last error once an upload goes through`() async throws {
         let membership = try await joined()
         logs.logins = [LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 10)])]
         api.reset([.given])
@@ -86,7 +86,7 @@ struct LeaderboardUploaderTests {
         #expect(membership.lastUpload == now)
     }
 
-    @Test func `a membership the server no longer knows is forgotten here`() async throws {
+    @Test func `should forget the membership and this Mac's key when the server no longer knows the person`() async throws {
         let membership = try await joined()
         logs.logins = [LoginDays(providerId: "claude", days: [LeaderboardFixtures.stat(day: 4, input: 10)])]
         api.reset([.given])
@@ -99,7 +99,7 @@ struct LeaderboardUploaderTests {
         #expect(settings.record == nil)
     }
 
-    @Test func `nothing to send still counts as up to date`() async throws {
+    @Test func `should count as up to date when there is nothing to send`() async throws {
         let membership = try await joined()
 
         await uploader(membership).uploadDue()
@@ -107,7 +107,7 @@ struct LeaderboardUploaderTests {
         #expect(membership.lastUpload == now)
     }
 
-    @Test func `an upload less than an hour old is not due yet`() async throws {
+    @Test func `should not upload again within an hour of the last upload`() async throws {
         let membership = try await joined()
         let last = now.addingTimeInterval(-59 * 60)
         membership.recordUpload(at: last)
@@ -118,7 +118,7 @@ struct LeaderboardUploaderTests {
         #expect(membership.lastUpload == last)
     }
 
-    @Test func `an upload an hour old is due, however long the Mac slept`() async throws {
+    @Test func `should upload again once the last upload is an hour old`() async throws {
         let membership = try await joined()
         membership.recordUpload(at: now.addingTimeInterval(-60 * 60))
 
@@ -127,7 +127,7 @@ struct LeaderboardUploaderTests {
         #expect(membership.lastUpload == now)
     }
 
-    @Test func `an upload you ask for goes even within the hour`() async throws {
+    @Test func `should upload at once when the person asks, even within the hour`() async throws {
         let membership = try await joined()
         membership.recordUpload(at: now.addingTimeInterval(-5 * 60))
 
@@ -137,7 +137,7 @@ struct LeaderboardUploaderTests {
         #expect(membership.lastUpload == now)
     }
 
-    @Test func `not joined, nothing is read or sent`() async {
+    @Test func `should read and send nothing when the person hasn't joined`() async {
         await uploader(membership()).uploadDue()
 
         #expect(logs.askedFor == nil)

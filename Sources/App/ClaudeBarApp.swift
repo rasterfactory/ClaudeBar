@@ -17,7 +17,7 @@ extension Notification.Name {
     static let notifySettingsChanged = Notification.Name("com.tddworks.claudebar.notifySettingsChanged")
 }
 
-@main
+/// Started by `ClaudeBarMain` — never while it hosts tests (see `LaunchMode`).
 struct ClaudeBarApp: App {
     /// A built-in provider from its bundled definition. A definition that fails
     /// to load is a packaging bug the catalog tests catch before release.

@@ -15,7 +15,7 @@ struct CodexAccountsTests {
     // MARK: - The default login stays passive until checked (#216)
 
     @Test
-    func `background refresh does not start codex before an explicit refresh succeeded`() async throws {
+    func `should not start Codex in the background, and ask to click Refresh or Connect, before the person has checked it once (#216)`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(Self.usage)
@@ -28,7 +28,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `opening the popover does not start an unchecked codex`() async throws {
+    func `should not start an unchecked Codex when the person opens the popover (#216)`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(Self.usage)
@@ -40,7 +40,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `an explicit refresh checks the session for later background refreshes`() async throws {
+    func `should keep refreshing Codex in the background once the person has refreshed it by hand`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(Self.usage)
@@ -55,7 +55,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `a refresh through the api does not check the rpc session`() async throws {
+    func `should leave the Codex CLI unchecked when the login is read through the API`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth(accountId: "account")
@@ -67,7 +67,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `codex never starts without a login`() async throws {
+    func `should ask to sign in, without starting Codex, when there is no Codex login`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         try FileManager.default.removeItem(at: stub.home.appendingPathComponent(".codex/auth.json"))
@@ -80,7 +80,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `a keychain login gets its email from the cli`() async throws {
+    func `should show a Keychain login's email as the Codex CLI reports it`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(Self.usage, account: #"{"id":3,"result":{"account":{"type":"chatgpt","email":"keychain@example.com"}}}"#)
@@ -94,7 +94,7 @@ struct CodexAccountsTests {
     // MARK: - Added accounts
 
     @Test
-    func `an added account runs codex in its own folder with file credentials only`() async throws {
+    func `should run Codex in an added login's own folder with file credentials only, and no API key`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let folder = try writeLogin(in: stub.home, "work", email: "work@example.com", accountId: "work")
@@ -111,7 +111,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `added accounts keep their own ids, names and usage`() async throws {
+    func `should keep each added login's own id, name and usage, and one login's failure its own (#326)`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let a = try writeLogin(in: stub.home, "a", email: "a@example.com", accountId: "a")
@@ -135,7 +135,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `both data sources show the login's email`() async throws {
+    func `should show the login's email whether Codex is read over RPC or the API`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let folder = try writeLogin(in: stub.home, "work", email: "signed-in@example.com", accountId: "work")
@@ -152,7 +152,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `a folder signed in to another account fails closed`() async throws {
+    func `should be unavailable, without starting Codex, when an added login's folder is signed in to another account`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let folder = try writeLogin(in: stub.home, "work", email: "other@example.com", accountId: "other")
@@ -170,7 +170,7 @@ struct CodexAccountsTests {
     // MARK: - Adding an account by its folder
 
     @Test
-    func `two folders become two accounts with their own emails`() throws {
+    func `should add two folders as two logins with their own emails`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let a = try writeLogin(in: stub.home, "account a", email: "a@example.com", accountId: "account-a")
@@ -189,7 +189,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `one login is not added twice from another folder`() throws {
+    func `should refuse a folder whose login is already listed`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let a = try writeLogin(in: stub.home, "a", email: "same@example.com", accountId: "same")
@@ -203,7 +203,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `one email in two workspaces is two accounts`() throws {
+    func `should add one email in two workspaces as two logins`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let a = try writeLogin(in: stub.home, "a", email: "same@example.com", accountId: "workspace-a")
@@ -217,7 +217,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `a folder without a login is refused`() throws {
+    func `should refuse a folder with no ChatGPT login and add nothing`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let codex = try stub.makeProvider("codex")
@@ -229,7 +229,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `the default login is not added again from another folder`() throws {
+    func `should refuse a folder holding the default login`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth(accountId: "me")
@@ -242,7 +242,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `saved accounts come back as logins of one Codex provider`() throws {
+    func `should bring saved logins back under one Codex provider, each enabled or disabled on its own`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let a = try writeLogin(in: stub.home, "a", email: "a@example.com", accountId: "a")
@@ -266,7 +266,7 @@ struct CodexAccountsTests {
     // MARK: - One provider, many logins
 
     @Test
-    func `every login runs the one definition, patched for added logins`() throws {
+    func `should read added logins over RPC and the API only, from their own folder and account`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let folder = try writeLogin(in: stub.home, "work", email: "work@example.com", accountId: "work")
@@ -283,7 +283,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `the data source choice covers every login`() throws {
+    func `should apply the person's data source choice to every login`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let folder = try writeLogin(in: stub.home, "work", email: "work@example.com", accountId: "work")
@@ -296,7 +296,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `a login whose saved values are incomplete is not added`() throws {
+    func `should not add a login whose saved values are incomplete`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let codex = try stub.makeProvider("codex")
@@ -308,7 +308,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `a login is listed once, and the default can't be removed`() throws {
+    func `should list a login once and keep the default login when asked to remove it`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let folder = try writeLogin(in: stub.home, "work", email: "work@example.com", accountId: "work")
@@ -325,7 +325,7 @@ struct CodexAccountsTests {
     }
 
     @Test
-    func `status is the worst enabled login, and the best has the most left`() async throws {
+    func `should show the worst enabled login's status and pick the login with the most left as best`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth(accountId: "me")

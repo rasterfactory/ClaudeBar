@@ -8,12 +8,12 @@ import Testing
 @MainActor
 @Suite
 struct PopThemeTests {
-    @Test func `Pop is a built-in theme, picked as a light one`() {
+    @Test func `should offer Pop among the built-in themes`() {
         #expect(ThemeRegistry.shared.theme(for: "pop")?.displayName == "Pop")
         #expect(ThemeMode(rawValue: "pop") == .pop)
     }
 
-    @Test func `Pop outlines in ink, with a hard shadow`() {
+    @Test func `should outline Pop's cards in ink with a hard shadow`() {
         let pop = PopTheme()
         #expect(pop.cardBorderWidth == 2.5)
         #expect(pop.glassBorder == PopTheme.ink)
@@ -22,16 +22,16 @@ struct PopThemeTests {
         #expect(pop.isOutlined)
     }
 
-    @Test func `badges on Pop's candy colours are written in ink`() {
+    @Test func `should write badges on Pop's candy colours in ink`() {
         #expect(PopTheme().textOnStatus == PopTheme.ink)
     }
 
-    @Test func `Pop's big numbers are in its display font, which ships with the app`() {
+    @Test func `should show Pop's big numbers in Lilita One`() {
         #expect(PopTheme().displayFontName == "LilitaOne")
     }
 
     @Test(arguments: ["light", "dark", "system", "cli", "christmas"])
-    func `every other theme looks as it did`(id: String) throws {
+    func `should keep every other theme's thin outline, no hard shadow and white badge text`(id: String) throws {
         let theme = try #require(ThemeRegistry.shared.theme(for: id))
         #expect(theme.cardBorderWidth == 1)
         #expect(theme.cardShadow == nil)

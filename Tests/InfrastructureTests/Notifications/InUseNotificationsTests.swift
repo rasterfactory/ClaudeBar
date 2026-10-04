@@ -29,7 +29,7 @@ struct InUseNotificationsTests {
     }
 
     @Test
-    func `a login worth moving to is named, with what each has left, and one button to move`() async {
+    func `should name the login worth moving to, what each has left, and offer one button to move`() async {
         let sent = await send(alert(.worthSwitching, link: "claudebar://use?provider=claude&account=work"))
 
         #expect(sent.title == "Claude: personal is at 8%")
@@ -40,7 +40,7 @@ struct InUseNotificationsTests {
     }
 
     @Test
-    func `a switch says where new sessions go now, and its button undoes it`() async {
+    func `should say where new sessions go after a switch, with a button to undo it`() async {
         let sent = await send(alert(.switched, link: "claudebar://use?provider=claude&account=default"))
 
         #expect(sent.title == "New Claude sessions now use work")

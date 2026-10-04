@@ -7,7 +7,7 @@ import Quotas
 struct InteractiveRunnerTests {
 
     @Test
-    func `run executes command and returns output`() throws {
+    func `should show what a CLI printed and its success`() throws {
         let runner = InteractiveRunner()
         // Use absolute path since 'echo' is a shell built-in
         let result = try runner.run(
@@ -21,7 +21,7 @@ struct InteractiveRunnerTests {
     }
 
     @Test
-    func `run throws when binary not found`() {
+    func `should fail when the CLI isn't installed`() {
         let runner = InteractiveRunner()
         #expect(throws: InteractiveRunner.RunError.self) {
             try runner.run(binary: "unknown-binary-xyz-123", input: "")
@@ -29,13 +29,13 @@ struct InteractiveRunnerTests {
     }
 
     @Test
-    func `Options defaults environmentExclusions to empty`() {
+    func `should keep every environment value for a CLI unless told otherwise`() {
         let options = InteractiveRunner.Options()
         #expect(options.environmentExclusions.isEmpty)
     }
 
     @Test
-    func `Options stores environmentExclusions`() {
+    func `should remember which environment values to keep from a CLI`() {
         let options = InteractiveRunner.Options(
             environmentExclusions: ["CLAUDE_CODE_OAUTH_TOKEN", "OTHER_VAR"]
         )
@@ -43,7 +43,7 @@ struct InteractiveRunnerTests {
     }
 
     @Test
-    func `run with environmentExclusions strips env vars from subprocess`() throws {
+    func `should start the CLI without the environment values it is told to drop`() throws {
         let runner = InteractiveRunner()
         // Set a test env var that we'll verify is excluded
         let testKey = "CLAUDEBAR_TEST_EXCLUSION_VAR"
@@ -61,7 +61,7 @@ struct InteractiveRunnerTests {
     }
 
     @Test
-    func `run without environmentExclusions preserves env vars in subprocess`() throws {
+    func `should start the CLI with this app's environment values when none are dropped`() throws {
         let runner = InteractiveRunner()
         let testKey = "CLAUDEBAR_TEST_PRESERVE_VAR"
         setenv(testKey, "should_be_present", 1)
@@ -80,12 +80,12 @@ struct InteractiveRunnerTests {
     // MARK: - Environment additions (issue #222)
 
     @Test
-    func `Options defaults environmentAdditions to empty`() {
+    func `should add no environment values for a CLI unless told to`() {
         #expect(InteractiveRunner.Options().environmentAdditions.isEmpty)
     }
 
     @Test
-    func `run with environmentAdditions passes env vars to subprocess`() throws {
+    func `should start the CLI with the extra environment values it is given (#222)`() throws {
         let runner = InteractiveRunner()
 
         let result = try runner.run(
@@ -100,18 +100,18 @@ struct InteractiveRunnerTests {
     // MARK: - Completion Rule (issue #271)
 
     @Test
-    func `Options defaults completionRule to nil`() {
+    func `should wait on no screen rule unless one is given`() {
         #expect(InteractiveRunner.Options().completionRule == nil)
     }
 
     @Test
-    func `Options stores completionRule`() {
+    func `should remember the screen rule it is given`() {
         let options = InteractiveRunner.Options(completionRule: .claudeUsage)
         #expect(options.completionRule == .claudeUsage)
     }
 
     @Test
-    func `run keeps waiting while the output is still a pending placeholder`() throws {
+    func `should keep waiting past a quiet spell while Claude's usage screen shows only its placeholder (#271)`() throws {
         let runner = InteractiveRunner()
         // Paints a placeholder, then goes quiet for longer than the 3s idle
         // cutoff before the real content arrives — exactly how `claude /usage`
@@ -134,7 +134,7 @@ struct InteractiveRunnerTests {
     // MARK: - Completion Rule (issue #317)
 
     @Test
-    func `run keeps waiting past a boot screen that never reached the Usage tab`() throws {
+    func `should keep waiting past a quiet spell while the CLI is still booting (#317)`() throws {
         let runner = InteractiveRunner()
         // The probe launches `claude /usage`, but the CLI only submits the command
         // once it has finished booting. For a few seconds the screen is the boot
@@ -165,7 +165,7 @@ struct InteractiveRunnerTests {
     }
 
     @Test
-    func `a settled usage screen still ends the capture before the timeout`() throws {
+    func `should stop at once on a finished usage screen rather than wait out the timeout`() throws {
         let runner = InteractiveRunner()
         // Over-waiting is its own failure: a finished screen must still stop the
         // capture at the idle cutoff instead of blocking for the whole timeout.
@@ -198,19 +198,19 @@ struct HasMeaningfulContentTests {
     // MARK: - Empty and Basic Cases
     
     @Test
-    func `empty data returns false`() {
+    func `should treat no output as the CLI having shown nothing yet`() {
         let data = Data()
         #expect(runner.hasMeaningfulContent(data) == false)
     }
     
     @Test
-    func `whitespace only returns false`() {
+    func `should treat blank space as the CLI having shown nothing yet`() {
         let data = Data("   \n\t\r\n  ".utf8)
         #expect(runner.hasMeaningfulContent(data) == false)
     }
     
     @Test
-    func `visible text returns true`() {
+    func `should treat visible text as the CLI having shown something`() {
         let data = Data("Hello, World!".utf8)
         #expect(runner.hasMeaningfulContent(data) == true)
     }
@@ -218,21 +218,21 @@ struct HasMeaningfulContentTests {
     // MARK: - CSI Sequences (ESC [ ... letter)
     
     @Test
-    func `CSI reset sequence only returns false`() {
+    func `should treat a lone style reset as the CLI having shown nothing yet`() {
         // \x1B[0m = reset all attributes
         let data = Data([0x1B, 0x5B, 0x30, 0x6D])  // ESC [ 0 m
         #expect(runner.hasMeaningfulContent(data) == false)
     }
     
     @Test
-    func `CSI cursor show sequence only returns false`() {
+    func `should treat showing the cursor as the CLI having shown nothing yet`() {
         // \x1B[?25h = show cursor
         let data = Data([0x1B, 0x5B, 0x3F, 0x32, 0x35, 0x68])  // ESC [ ? 2 5 h
         #expect(runner.hasMeaningfulContent(data) == false)
     }
     
     @Test
-    func `multiple CSI sequences only returns false`() {
+    func `should treat a run of terminal controls as the CLI having shown nothing yet`() {
         // \x1B[0m\x1B[?25h\x1B[2J = reset, show cursor, clear screen
         var data = Data()
         data.append(contentsOf: [0x1B, 0x5B, 0x30, 0x6D])        // ESC [ 0 m
@@ -244,7 +244,7 @@ struct HasMeaningfulContentTests {
     // MARK: - Charset Sequences (ESC ( or ESC ))
     
     @Test
-    func `charset designation sequence only returns false`() {
+    func `should treat character-set switches as the CLI having shown nothing yet`() {
         // \x1B(B = ASCII charset, \x1B(0 = line drawing
         var data = Data()
         data.append(contentsOf: [0x1B, 0x28, 0x42])  // ESC ( B
@@ -255,7 +255,7 @@ struct HasMeaningfulContentTests {
     // MARK: - OSC Sequences (ESC ] ... BEL or ST)
     
     @Test
-    func `OSC sequence with BEL termination returns false`() {
+    func `should treat a window title ending in a bell as the CLI having shown nothing yet`() {
         // \x1B]0;Window Title\x07 = set window title
         var data = Data()
         data.append(contentsOf: [0x1B, 0x5D])  // ESC ]
@@ -265,7 +265,7 @@ struct HasMeaningfulContentTests {
     }
     
     @Test
-    func `OSC sequence with ST termination returns false`() {
+    func `should treat a window title ending in a string terminator as the CLI having shown nothing yet`() {
         // \x1B]0;Window Title\x1B\\ = set window title (ST = ESC \)
         var data = Data()
         data.append(contentsOf: [0x1B, 0x5D])  // ESC ]
@@ -275,7 +275,7 @@ struct HasMeaningfulContentTests {
     }
     
     @Test
-    func `OSC sequence spanning multiple lines with BEL returns false`() {
+    func `should treat a multi-line window title ending in a bell as the CLI having shown nothing yet`() {
         // OSC with newlines in content
         var data = Data()
         data.append(contentsOf: [0x1B, 0x5D])  // ESC ]
@@ -285,7 +285,7 @@ struct HasMeaningfulContentTests {
     }
     
     @Test
-    func `OSC sequence spanning multiple lines with ST returns false`() {
+    func `should treat a multi-line window title ending in a string terminator as the CLI having shown nothing yet`() {
         // OSC with newlines in content, ST termination
         var data = Data()
         data.append(contentsOf: [0x1B, 0x5D])  // ESC ]
@@ -297,7 +297,7 @@ struct HasMeaningfulContentTests {
     // MARK: - Mixed ANSI + Visible Text
     
     @Test
-    func `ANSI sequences with visible text returns true`() {
+    func `should treat styled visible text as the CLI having shown something`() {
         // \x1B[0mHello\x1B[1mWorld
         var data = Data()
         data.append(contentsOf: [0x1B, 0x5B, 0x30, 0x6D])  // ESC [ 0 m
@@ -308,7 +308,7 @@ struct HasMeaningfulContentTests {
     }
     
     @Test
-    func `OSC sequence followed by visible text returns true`() {
+    func `should treat text after a window title as the CLI having shown something`() {
         var data = Data()
         data.append(contentsOf: [0x1B, 0x5D])  // ESC ]
         data.append(Data("0;Title".utf8))
@@ -318,7 +318,7 @@ struct HasMeaningfulContentTests {
     }
     
     @Test
-    func `complex mix of all escape types with visible text returns true`() {
+    func `should treat text among every kind of terminal control as the CLI having shown something`() {
         var data = Data()
         // OSC title
         data.append(contentsOf: [0x1B, 0x5D])
@@ -338,14 +338,14 @@ struct HasMeaningfulContentTests {
     // MARK: - Non-UTF8 Binary Data
     
     @Test
-    func `non-UTF8 binary data returns true`() {
+    func `should treat bytes that aren't text as the CLI having shown something`() {
         // Invalid UTF-8 sequence
         let data = Data([0xFF, 0xFE, 0x00, 0x01, 0x80, 0x81])
         #expect(runner.hasMeaningfulContent(data) == true)
     }
     
     @Test
-    func `empty non-UTF8 is still false`() {
+    func `should treat no bytes at all as the CLI having shown nothing yet, before any decoding`() {
         // This tests the empty check before UTF-8 decode
         let data = Data()
         #expect(runner.hasMeaningfulContent(data) == false)
@@ -354,19 +354,19 @@ struct HasMeaningfulContentTests {
     // MARK: - Edge Cases
     
     @Test
-    func `lone ESC character only returns false`() {
+    func `should treat a lone escape character as the CLI having shown nothing yet`() {
         let data = Data([0x1B])
         #expect(runner.hasMeaningfulContent(data) == false)
     }
     
     @Test
-    func `multiple lone ESC characters returns false`() {
+    func `should treat several lone escape characters as the CLI having shown nothing yet`() {
         let data = Data([0x1B, 0x1B, 0x1B])
         #expect(runner.hasMeaningfulContent(data) == false)
     }
     
     @Test
-    func `incomplete CSI sequence is stripped as lone ESC`() {
+    func `should treat the bracket left by an unfinished terminal control as the CLI having shown something`() {
         // ESC [ without terminating letter - the ESC gets stripped, [ remains
         // Actually this leaves "[" which is meaningful
         let data = Data([0x1B, 0x5B])  // ESC [
@@ -374,7 +374,7 @@ struct HasMeaningfulContentTests {
     }
     
     @Test
-    func `real world Claude CLI escape sequences only returns false`() {
+    func `should treat the controls Claude's CLI writes before its screen as the CLI having shown nothing yet`() {
         // Simulates what Claude CLI outputs before actual content
         // \x1B[?25l\x1B[?2004h\x1B[?25h\x1B[?2004l
         var data = Data()

@@ -47,7 +47,7 @@ struct UsageMemoryTests {
     }
 
     @Test
-    func `usage within the ttl is served from memory`() async throws {
+    func `should show the remembered usage without asking again within the cache time`() async throws {
         let source = try source(cache: #"{"ttl":60}"#, network: counting())
 
         let first = try await source.fetchUsage()
@@ -60,7 +60,7 @@ struct UsageMemoryTests {
     }
 
     @Test
-    func `usage older than the ttl is fetched again`() async throws {
+    func `should ask again once the remembered usage is older than the cache time`() async throws {
         let source = try source(cache: #"{"ttl":60}"#, network: counting())
 
         _ = try await source.fetchUsage()
@@ -71,7 +71,7 @@ struct UsageMemoryTests {
     }
 
     @Test
-    func `a ttl of zero fetches every time`() async throws {
+    func `should ask every time when the cache time is zero`() async throws {
         let source = try source(cache: #"{"ttl":0}"#, network: counting())
 
         _ = try await source.fetchUsage()
@@ -81,7 +81,7 @@ struct UsageMemoryTests {
     }
 
     @Test
-    func `without a cache every fetch asks again`() async throws {
+    func `should ask every time when the data source keeps no cache`() async throws {
         let source = try source(cache: nil, network: counting())
 
         _ = try await source.fetchUsage()
@@ -92,7 +92,7 @@ struct UsageMemoryTests {
     }
 
     @Test
-    func `a rate limit is honoured without asking again until it ends`() async throws {
+    func `should not ask again until a rate limit ends`() async throws {
         let network = MockNetworkClient()
         let calls = Calls()
         // Throttled once; any later request would succeed.

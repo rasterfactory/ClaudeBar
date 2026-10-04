@@ -26,7 +26,7 @@ struct JSONSettingsStoreTests {
     // MARK: - Flat Key Read/Write
 
     @Test
-    func `read returns nil when file does not exist`() throws {
+    func `should have no settings when settings.json does not exist`() throws {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 
@@ -35,7 +35,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `write creates file and stores value`() throws {
+    func `should create settings.json and keep the value written`() throws {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 
@@ -46,7 +46,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `write preserves existing keys`() throws {
+    func `should keep the other settings when one is written`() throws {
         let json = """
         {
             "existing": "value"
@@ -64,7 +64,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `write nil removes key`() throws {
+    func `should forget a setting written as nothing`() throws {
         let json = """
         {
             "toRemove": "goodbye"
@@ -82,7 +82,7 @@ struct JSONSettingsStoreTests {
     // MARK: - Nested Key (Dot-Notation) Read/Write
 
     @Test
-    func `read nested key from existing JSON`() throws {
+    func `should find a setting nested in settings.json by its dotted name`() throws {
         let json = """
         {
             "app": {
@@ -98,7 +98,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `write nested key creates intermediate dictionaries`() throws {
+    func `should create the sections a nested setting needs`() throws {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 
@@ -109,7 +109,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `write nested key preserves sibling keys`() throws {
+    func `should keep a nested setting's neighbours when it changes`() throws {
         let json = """
         {
             "app": {
@@ -130,7 +130,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `deeply nested key works`() throws {
+    func `should keep a setting nested three levels deep`() throws {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 
@@ -143,7 +143,7 @@ struct JSONSettingsStoreTests {
     // MARK: - Type Support
 
     @Test
-    func `reads and writes Bool values`() throws {
+    func `should keep a yes or no setting`() throws {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 
@@ -154,7 +154,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `reads and writes Int values`() throws {
+    func `should keep a whole-number setting`() throws {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 
@@ -165,7 +165,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `reads and writes Double values`() throws {
+    func `should keep a decimal setting`() throws {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 
@@ -176,7 +176,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `reads and writes array values`() throws {
+    func `should keep a list setting`() throws {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 
@@ -189,7 +189,7 @@ struct JSONSettingsStoreTests {
     // MARK: - Persistence
 
     @Test
-    func `values persist across separate store instances`() throws {
+    func `should keep settings across restarts`() throws {
         let (store1, dir) = try makeStore()
         defer { cleanup(dir) }
 
@@ -203,7 +203,7 @@ struct JSONSettingsStoreTests {
     // MARK: - Resilience
 
     @Test
-    func `handles malformed JSON gracefully`() throws {
+    func `should have no settings when settings.json is broken`() throws {
         let (store, dir) = try makeStore(initialJSON: "not valid json {{{")
         defer { cleanup(dir) }
 
@@ -212,7 +212,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `write to malformed file replaces with valid JSON`() throws {
+    func `should replace a broken settings.json with a readable one when writing`() throws {
         let (store, dir) = try makeStore(initialJSON: "broken")
         defer { cleanup(dir) }
 
@@ -223,7 +223,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `creates parent directory if needed`() throws {
+    func `should create the folders settings.json lives in`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         let deepPath = tempDir
@@ -242,7 +242,7 @@ struct JSONSettingsStoreTests {
     // MARK: - readAll
 
     @Test
-    func `readAll returns full dictionary`() throws {
+    func `should give back every setting in the file`() throws {
         let json = """
         {
             "app": { "theme": "dark" },
@@ -258,7 +258,7 @@ struct JSONSettingsStoreTests {
     }
 
     @Test
-    func `readAll returns empty dict when no file`() throws {
+    func `should give back no settings when there is no file`() throws {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 

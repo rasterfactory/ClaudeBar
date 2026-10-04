@@ -41,7 +41,7 @@ struct ClaudeCredentialTests {
     // MARK: - The credentials file
 
     @Test
-    func `no key is found when the file does not exist`() throws {
+    func `should find no Claude login when the credentials file does not exist`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
 
@@ -49,7 +49,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `the file's access token and plan are used`() async throws {
+    func `should show the usage and plan of the login in the credentials file`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(
@@ -71,7 +71,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `the file's refresh token is the one traded`() async throws {
+    func `should renew an expired login with the refresh token the credentials file holds`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(
@@ -94,7 +94,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `no key is found when the file's access token is empty`() throws {
+    func `should find no Claude login when the file's access token is empty`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(accessToken: "", refreshToken: "refresh")
@@ -103,7 +103,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `no key is found when the file is not json`() throws {
+    func `should find no Claude login when the credentials file is not JSON`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try writeRawCredentials("not valid json", in: claude)
@@ -112,7 +112,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `no key is found when the file has no claudeAiOauth`() throws {
+    func `should find no Claude login when the credentials file holds no Claude login`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try writeRawCredentials(#"{"someOtherKey":"value"}"#, in: claude)
@@ -123,7 +123,7 @@ struct ClaudeCredentialTests {
     // MARK: - Writing back
 
     @Test
-    func `a refreshed token written back is the one read next time`() async throws {
+    func `should use the renewed login next time once it is saved back`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(
@@ -152,7 +152,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `writing back keeps the fields ClaudeBar does not read`() async throws {
+    func `should keep what Claude wrote in the credentials file when the renewed login is saved back`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         // expiresAt is long past, so the token is refreshed.
@@ -180,7 +180,7 @@ struct ClaudeCredentialTests {
     // MARK: - The Keychain
 
     @Test
-    func `the Keychain item is read when there is no file`() async throws {
+    func `should use the login in the Keychain when there is no credentials file`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.keychainPassword = #"{"claudeAiOauth":{"accessToken":"keychain-token","subscriptionType":"claude_pro"}}"#
@@ -189,7 +189,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `a hex-encoded Keychain payload from an older build is decoded`() async throws {
+    func `should read a Keychain login an older build saved hex-encoded`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let json = #"{"claudeAiOauth":{"accessToken":"hex-token"}}"#
@@ -199,7 +199,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `the file is preferred over the Keychain`() async throws {
+    func `should prefer the credentials file over the Keychain`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(accessToken: "file-token")
@@ -209,7 +209,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `the Keychain is preferred over the environment`() async throws {
+    func `should prefer the Keychain over the environment token`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.keychainPassword = #"{"claudeAiOauth":{"accessToken":"keychain-token"}}"#
@@ -221,7 +221,7 @@ struct ClaudeCredentialTests {
     // MARK: - CLAUDE_CODE_OAUTH_TOKEN
 
     @Test
-    func `the environment token is used when nothing else answers`() async throws {
+    func `should use the environment token when there is no other login`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.environment = ["CLAUDE_CODE_OAUTH_TOKEN": "my-setup-token"]
@@ -230,7 +230,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `the environment token is never refreshed and never written to a file`() async throws {
+    func `should never renew the environment token or save it to a file`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.environment = ["CLAUDE_CODE_OAUTH_TOKEN": "my-setup-token"]
@@ -242,7 +242,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `the environment token is trimmed of whitespace and newlines`() async throws {
+    func `should use the environment token without its surrounding whitespace and newlines`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.environment = ["CLAUDE_CODE_OAUTH_TOKEN": "  my-setup-token\n"]
@@ -251,7 +251,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `the file is preferred over the environment token`() async throws {
+    func `should prefer the credentials file over the environment token`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         // Full-scope credentials from `claude login`
@@ -262,7 +262,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `an empty environment token is no key`() throws {
+    func `should find no Claude login when the environment token is empty`() throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.environment = ["CLAUDE_CODE_OAUTH_TOKEN": ""]
@@ -271,7 +271,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `an empty environment token falls through to the file`() async throws {
+    func `should use the credentials file when the environment token is empty`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(accessToken: "file-token")
@@ -281,7 +281,7 @@ struct ClaudeCredentialTests {
     }
 
     @Test
-    func `the file is used when the environment variable is absent`() async throws {
+    func `should use the credentials file when there is no environment token`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(accessToken: "file-token")

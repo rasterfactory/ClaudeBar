@@ -15,7 +15,7 @@ struct ShareProviderSpec {
     @Suite("Scenario: An exported provider carries no key")
     struct ExportCarriesNoKey {
         @Test
-        func `the file names the key's setting and lookup order, and contains no key`() throws {
+        func `should name the key's setting but leave the key itself out of an exported provider`() throws {
             // Given a custom provider whose API key is in the Keychain
             var draft = ProviderDraft(start: .api)
             draft.url = "https://llm.team.example/v1/usage"
@@ -38,7 +38,7 @@ struct ShareProviderSpec {
     @Suite("Scenario: Importing a CLI provider asks first")
     struct ImportingACLIAsksFirst {
         @Test
-        func `the command is shown before anything is saved or run`() throws {
+        func `should show the person the command and save nothing until they add an imported CLI provider`() throws {
             // Given a provider file whose data source is a CLI command
             var draft = ProviderDraft(start: .cli)
             draft.command = "teamtool usage --json"

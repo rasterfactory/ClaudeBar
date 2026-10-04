@@ -34,7 +34,7 @@ struct DataSourceTests {
     // MARK: - Definitions as JSON
 
     @Test
-    func `a definition decodes its three closed sums by tag`() throws {
+    func `should read a definition's key, fetch and mapping by their names, shown and with no fallback by default`() throws {
         let definition = try decode("""
         {"kind":"api","credential":{"environment":"KEY"},
          "fetch":{"http":{"url":"https://example.com/usage"}},
@@ -48,7 +48,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `a fetch with two tags is refused`() {
+    func `should reject a definition whose fetch names two ways at once`() {
         #expect(throws: DecodingError.self) {
             try decode(#"{"kind":"x","fetch":{"http":{"url":"u"},"cli":{"cli":"c"}},"mapping":{"json":{"quotas":[]}}}"#)
         }
@@ -57,7 +57,7 @@ struct DataSourceTests {
     // MARK: - Fetching usage
 
     @Test
-    func `an api key from the environment is sent as the placeholder says`() async throws {
+    func `should show the quota when the environment's API key is sent where the definition places it`() async throws {
         let network = MockNetworkClient()
         let response = HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
         given(network).request(.matching { $0.value(forHTTPHeaderField: "Authorization") == "Bearer sk-1" })
@@ -74,7 +74,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `test connection stops before mapping`() async throws {
+    func `should show the raw status, headers and body when the connection is tested`() async throws {
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"url":"https://example.com"}},
          "mapping":{"json":{"quotas":[{"kind":"weekly","usedPercent":"nowhere"}]}}}
@@ -88,7 +88,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `a missing key fails at the lookup step`() async throws {
+    func `should not be ready, and fail at finding the key, when there is no key`() async throws {
         let source = make(try decode("""
         {"kind":"api","credential":{"environment":"KEY"},"fetch":{"http":{"url":"https://example.com"}},
          "mapping":{"json":{"quotas":[]}}}
@@ -99,7 +99,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `a refused request fails at the fetch step`() async throws {
+    func `should fail at fetching, naming the HTTP status, when the server errors`() async throws {
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"url":"https://example.com"}},"mapping":{"json":{"quotas":[]}}}
         """), network: http("", status: 500))
@@ -108,7 +108,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `a rate limit carries when to try again`() async throws {
+    func `should say when to try again when the server is rate limited`() async throws {
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"url":"https://example.com"}},"mapping":{"json":{"quotas":[]}}}
         """), network: http("", status: 429, headers: ["Retry-After": "120"]))
@@ -119,7 +119,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `a response that is not json fails at the mapping step`() async throws {
+    func `should fail at reading the answer when the server doesn't answer in JSON`() async throws {
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"url":"https://example.com"}},"mapping":{"json":{"quotas":[]}}}
         """), network: http("<html>"))
@@ -130,7 +130,7 @@ struct DataSourceTests {
     // MARK: - Mapping
 
     @Test
-    func `a balance maps to money with no reset`() throws {
+    func `should show a credit balance as money left with a budget and no reset`() throws {
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"url":"https://example.com"}},
          "mapping":{"json":{"quotas":[{"kind":"model","name":"Credits","at":"$.data","leftPercent":"left"}],
@@ -145,7 +145,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `a repeated quota is named from the response and tidied`() throws {
+    func `should name each repeated quota from the answer, tidied, and skip one with no name`() throws {
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"url":"https://example.com"}},
          "mapping":{"json":{"quotas":[{"kind":"time","each":"$.limits",
@@ -160,7 +160,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `a reset in seconds from now becomes a date and a countdown`() throws {
+    func `should show when a quota resets as a countdown when the answer gives seconds from now`() throws {
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"url":"https://example.com"}},
          "mapping":{"json":{"quotas":[{"kind":"session","usedPercent":"used","resetsAt":{"secondsFromNow":"in"}}]}}}
@@ -173,7 +173,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `a screen's error phrase wins over its numbers`() throws {
+    func `should ask to sign in when the CLI screen says to log in, even beside its numbers`() throws {
         let source = make(try decode("""
         {"kind":"cli","fetch":{"cli":{"cli":"tool"}},
          "mapping":{"text":{"errors":[{"contains":["please log in"],"error":"authenticationRequired"}],
@@ -188,7 +188,7 @@ struct DataSourceTests {
     // MARK: - Where a CLI runs
 
     @Test
-    func `a json rpc fetch starts the cli in the probe directory`() async throws {
+    func `should start a JSON-RPC CLI in ClaudeBar's own trusted folder (#267)`() async throws {
         // Codex 0.150+ trust-checks the directory it starts in (#267), so the
         // app-server must start in ClaudeBar's own probe directory.
         let started = StartedProcess()
@@ -223,7 +223,7 @@ struct DataSourceTests {
 
 
     @Test
-    func `json rpc uses its declared bundled executable without a PATH install`() async throws {
+    func `should read usage with the bundled CLI when no PATH installation exists`() async throws {
         let started = StartedProcess()
         let transport = MockRPCTransport()
         given(transport).send(.any).willReturn(())
@@ -248,7 +248,7 @@ struct DataSourceTests {
     // MARK: - The path dialect
 
     @Test
-    func `paths read from the root, the current object, a header and a key`() {
+    func `should find a value from the answer's root, the current item, a response header or the item's key`() {
         let root: [String: Any] = ["a": ["b": 2, "list": [["c": 3]]]]
         let scope = JSONScope(root: root, headers: ["x-used": "7"])
         let inner = scope.moved(to: (root["a"] as? [String: Any]), key: "k")
@@ -262,7 +262,7 @@ struct DataSourceTests {
     }
 
     @Test
-    func `a placeholder with no value leaves the text out`() {
+    func `should leave a template's text out when its placeholder has no value`() {
         #expect(Template.fill("Bearer {{token}}", with: Credential(["token": "t"])) == "Bearer t")
         #expect(Template.fill("{{account}}", with: Credential(["token": "t"])) == nil)
         #expect(Template.fill("plain", with: nil) == "plain")

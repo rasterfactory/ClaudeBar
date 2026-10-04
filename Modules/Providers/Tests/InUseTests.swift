@@ -14,7 +14,7 @@ struct InUseTests {
     // MARK: - Offered, or not
 
     @Test
-    func `a product whose CLI starts on a login's folder offers In use, the plain login first in use`() throws {
+    func `should offer In use, with the plain login in use, when the provider's CLI starts on a login's folder`() throws {
         let (stub, codex, _) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
 
@@ -24,7 +24,7 @@ struct InUseTests {
     }
 
     @Test
-    func `a product whose CLI has no login folder has no In use`() throws {
+    func `should offer no In use when the provider's CLI has no login folder`() throws {
         let stub = try StubbedProvider(providerId: "gemini")
         defer { stub.cleanUp() }
 
@@ -32,7 +32,7 @@ struct InUseTests {
     }
 
     @Test
-    func `without a place to record the choice, there is no In use`() throws {
+    func `should offer no In use when there is nowhere to record the choice`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
 
@@ -43,7 +43,7 @@ struct InUseTests {
     }
 
     @Test
-    func `the logins offered are the plain login and every folder login; one login is no choice`() throws {
+    func `should offer the plain login and every folder login, and no choice when there is only one`() throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         let alone = try StubbedProvider(providerId: "codex")
@@ -57,7 +57,7 @@ struct InUseTests {
     // MARK: - Choosing
 
     @Test
-    func `choosing a login puts it in use, and records only its folder`() throws {
+    func `should put a chosen login in use and record only its folder`() throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
 
@@ -69,7 +69,7 @@ struct InUseTests {
     }
 
     @Test
-    func `the choice is recorded under the CLI's name, so two products on one CLI share it`() throws {
+    func `should share the login in use between two providers that run the same CLI`() throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         // A second product running the same CLI, on the same record.
@@ -85,7 +85,7 @@ struct InUseTests {
     }
 
     @Test
-    func `the login in use is still in use after a relaunch`() throws {
+    func `should keep the login in use after a relaunch`() throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         try #require(codex.inUse).use(work)
@@ -96,7 +96,7 @@ struct InUseTests {
     }
 
     @Test
-    func `choosing the plain login clears the record`() throws {
+    func `should clear the record when the person chooses the plain login`() throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         try #require(codex.inUse).use(work)
@@ -108,7 +108,7 @@ struct InUseTests {
     }
 
     @Test
-    func `removing the login in use goes back to the plain login`() throws {
+    func `should go back to the plain login when the login in use is removed`() throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         try #require(codex.inUse).use(work)
@@ -120,7 +120,7 @@ struct InUseTests {
     }
 
     @Test
-    func `a record naming a folder no login has is the plain login`() throws {
+    func `should use the plain login when the record names a folder no login has`() throws {
         let (stub, _, _) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         try stub.loginsInUse.use(URL(fileURLWithPath: "/tmp/gone"), for: "codex")
@@ -131,7 +131,7 @@ struct InUseTests {
     }
 
     @Test
-    func `another product's login can't be put in use`() throws {
+    func `should refuse to put another provider's login in use`() throws {
         let (stub, codex, _) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         let claudeStub = try StubbedProvider(providerId: "claude")
@@ -143,7 +143,7 @@ struct InUseTests {
     }
 
     @Test
-    func `a login is found by its name, its id, or default for the plain login`() throws {
+    func `should find a login by its name, its id, or default for the plain login`() throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
 
@@ -156,7 +156,7 @@ struct InUseTests {
     // MARK: - Worth switching
 
     @Test
-    func `when the login in use is low, the one with more left is worth switching to`() async throws {
+    func `should suggest the login with more left when the login in use is low`() async throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         try await InUseFixture.usage(stub, codex, me: 92, work: 15)
@@ -165,7 +165,7 @@ struct InUseTests {
     }
 
     @Test
-    func `nothing is worth switching to while the login in use has room, or no login has more`() async throws {
+    func `should suggest no switch while the login in use has room or no login has more left`() async throws {
         let (stub, codex, _) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
 
@@ -179,7 +179,7 @@ struct InUseTests {
     // MARK: - After each refresh: what is worth telling
 
     @Test
-    func `a login worth switching to is told once, not on every refresh`() async throws {
+    func `should tell the person once, not on every refresh, that a login is worth switching to`() async throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         try await InUseFixture.usage(stub, codex, me: 92, work: 15)
@@ -190,7 +190,7 @@ struct InUseTests {
     }
 
     @Test
-    func `after the login in use recovers, the next low is told again`() async throws {
+    func `should tell the person again when the login in use runs low after recovering`() async throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         let inUse = try #require(codex.inUse)
@@ -205,7 +205,7 @@ struct InUseTests {
     }
 
     @Test
-    func `with switch when low on, the switch is what is told`() async throws {
+    func `should switch and tell the person so when Switch when low is on`() async throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         let inUse = try #require(codex.inUse)

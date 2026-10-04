@@ -24,7 +24,7 @@ struct MistralDefinitionTests {
         return (provider, { try? FileManager.default.removeItem(at: home) })
     }
 
-    @Test func `definition keeps Mistral's identity, off until turned on`() throws {
+    @Test func `should show Mistral with its console, off until the person turns it on`() throws {
         let (provider, cleanUp) = try make(withLogs: true)
         defer { cleanUp() }
         #expect(provider.name == "Mistral")
@@ -32,7 +32,7 @@ struct MistralDefinitionTests {
         #expect(provider.plainDashboardURL?.absoluteString == "https://console.mistral.ai")
     }
 
-    @Test func `with Vibe's logs it is available and reports no quota, never a made-up one`() async throws {
+    @Test func `should be available with no quota, never a made-up one, when Vibe has logs`() async throws {
         let (provider, cleanUp) = try make(withLogs: true)
         defer { cleanUp() }
         #expect(await provider.isPlainAvailable())
@@ -41,7 +41,7 @@ struct MistralDefinitionTests {
         #expect(usage.costUsage == nil)
     }
 
-    @Test func `without Vibe it isn't available`() async throws {
+    @Test func `should be unavailable when Vibe is not installed`() async throws {
         let (provider, cleanUp) = try make(withLogs: false)
         defer { cleanUp() }
         #expect(await provider.isPlainAvailable() == false)

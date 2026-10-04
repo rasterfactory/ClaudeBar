@@ -26,14 +26,14 @@ struct AccountOrderTests {
     }
 
     @Test
-    func `logins start in the order they were added, the default first`() throws {
+    func `should list logins in the order they were added, the default first`() throws {
         let codex = try codex(saved("work", "side"))
 
         #expect(codex.accounts.map(\.accountId) == ["default", "work", "side"])
     }
 
     @Test
-    func `a moved login keeps its place after a relaunch`() throws {
+    func `should keep a moved login's place after a relaunch`() throws {
         let settings = saved("work", "side")
         let first = try codex(settings)
 
@@ -44,7 +44,7 @@ struct AccountOrderTests {
     }
 
     @Test
-    func `the default login is found wherever it sits`() throws {
+    func `should still find the default login wherever it sits`() throws {
         let codex = try codex(saved("work"))
 
         codex.accounts.move(codex.defaultAccount, to: 1)
@@ -55,7 +55,7 @@ struct AccountOrderTests {
     }
 
     @Test
-    func `a login added later joins the end of the saved order`() throws {
+    func `should put a login added later at the end of the saved order`() throws {
         let settings = saved("work", "side")
         let first = try codex(settings)
         first.accounts.move(first.accounts[2], to: 0)
@@ -66,7 +66,7 @@ struct AccountOrderTests {
     }
 
     @Test
-    func `moving past the end puts the login last`() throws {
+    func `should put a login last when it is moved past the end`() throws {
         let codex = try codex(saved("work", "side"))
 
         codex.accounts.move(codex.accounts[0], to: 99)

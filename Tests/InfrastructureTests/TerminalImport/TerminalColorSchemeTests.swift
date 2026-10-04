@@ -6,7 +6,7 @@ import Foundation
 @Suite
 struct TerminalColorSchemeTests {
 
-    @Test func `RGBColor encodes and decodes correctly`() throws {
+    @Test func `should keep an imported colour exactly when saved and loaded`() throws {
         let color = TerminalColorScheme.RGBColor(red: 0.114, green: 0.145, blue: 0.169, alpha: 1.0)
         let data = try JSONEncoder().encode(color)
         let decoded = try JSONDecoder().decode(TerminalColorScheme.RGBColor.self, from: data)
@@ -16,7 +16,7 @@ struct TerminalColorSchemeTests {
         #expect(decoded.alpha == 1.0)
     }
 
-    @Test func `TerminalColorScheme encodes and decodes with all fields`() throws {
+    @Test func `should keep an imported scheme's name, ANSI colours and optional colours when saved and loaded`() throws {
         let scheme = TerminalColorScheme(
             name: "Test",
             background: .init(red: 0.1, green: 0.1, blue: 0.1, alpha: 1.0),
@@ -42,7 +42,7 @@ struct TerminalColorSchemeTests {
         #expect(decoded.cursor == nil)
     }
 
-    @Test func `TerminalColorScheme requires exactly 16 ANSI colors`() {
+    @Test func `should not count a scheme without 16 ANSI colours as usable`() {
         let scheme = TerminalColorScheme(
             name: "Bad",
             background: .init(red: 0, green: 0, blue: 0, alpha: 1),
@@ -56,14 +56,14 @@ struct TerminalColorSchemeTests {
         #expect(scheme.isValid == false)
     }
 
-    @Test func `RGBColor luminance calculation`() {
+    @Test func `should see white as bright and black as dark`() {
         let white = TerminalColorScheme.RGBColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
         let black = TerminalColorScheme.RGBColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
         #expect(white.luminance > 0.9)
         #expect(black.luminance < 0.1)
     }
 
-    @Test func `RGBColor lightened and darkened`() {
+    @Test func `should make a colour brighter when lightened and darker when darkened`() {
         let color = TerminalColorScheme.RGBColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1.0)
         let lighter = color.lightened(by: 0.1)
         let darker = color.darkened(by: 0.1)

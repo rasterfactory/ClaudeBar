@@ -25,14 +25,14 @@ struct ShellSetupTests {
     // MARK: - Where
 
     @Test
-    func `each shell has its own file`() {
+    func `should write each shell's lines to that shell's own startup file`() {
         #expect(setup.file(for: .zsh).path == home.appendingPathComponent(".zshrc").path)
         #expect(setup.file(for: .bash).path == home.appendingPathComponent(".bash_profile").path)
         #expect(setup.file(for: .fish).path == home.appendingPathComponent(".config/fish/conf.d/claudebar-in-use.fish").path)
     }
 
     @Test
-    func `the shell is the person's login shell, zsh when unknown`() {
+    func `should set up the person's login shell, zsh when it is unknown`() {
         #expect(LoginShell.login("/bin/bash") == .bash)
         #expect(LoginShell.login("/opt/homebrew/bin/fish") == .fish)
         #expect(LoginShell.login("/bin/zsh") == .zsh)
@@ -40,7 +40,7 @@ struct ShellSetupTests {
     }
 
     @Test
-    func `a CLI is wrapped once, however many products run it`() {
+    func `should wrap a CLI once however many products run it`() {
         let lines = setup.lines(for: .zsh)
 
         #expect(lines.components(separatedBy: "function claude {").count == 2)
@@ -50,7 +50,7 @@ struct ShellSetupTests {
     // MARK: - Install and remove
 
     @Test
-    func `installing adds one block and keeps the rest of the file`() throws {
+    func `should add one block and keep the rest of the file however often it is installed`() throws {
         try write(".zshrc", "export PATH=\"$HOME/bin:$PATH\"\n")
 
         try setup.install(.zsh)
@@ -63,14 +63,14 @@ struct ShellSetupTests {
     }
 
     @Test
-    func `installing makes the file when there is none`() throws {
+    func `should create the startup file when there is none`() throws {
         try setup.install(.zsh)
 
         #expect(setup.isInstalled(.zsh))
     }
 
     @Test
-    func `removing takes out only ClaudeBar's block`() throws {
+    func `should take out only ClaudeBar's block when removed`() throws {
         try write(".zshrc", "alias ll='ls -l'\n")
         try setup.install(.zsh)
         try append(".zshrc", "export EDITOR=vim\n")
@@ -82,7 +82,7 @@ struct ShellSetupTests {
     }
 
     @Test
-    func `fish gets a file of its own, and removing deletes it`() throws {
+    func `should give fish a file of its own and delete it when removed`() throws {
         try setup.install(.fish)
         #expect(setup.isInstalled(.fish))
         #expect(try read(".config/fish/conf.d/claudebar-in-use.fish").contains("function claude"))
@@ -95,7 +95,7 @@ struct ShellSetupTests {
     // MARK: - What the lines do, run in the real shells
 
     @Test(arguments: [LoginShell.zsh, .bash])
-    func `a new session starts on the folder chosen in ClaudeBar`(shell: LoginShell) throws {
+    func `should start a new session on the folder chosen in ClaudeBar`(shell: LoginShell) throws {
         try setup.install(shell)
         try record("claude", "/Users/you/.claude-work")
 
@@ -103,7 +103,7 @@ struct ShellSetupTests {
     }
 
     @Test(arguments: [LoginShell.zsh, .bash])
-    func `with nothing chosen the CLI runs as it always did`(shell: LoginShell) throws {
+    func `should run the CLI as it always did when nothing is chosen`(shell: LoginShell) throws {
         try setup.install(shell)
 
         #expect(try run(shell, "claude") == "CLAUDE_CONFIG_DIR= args=--version")
@@ -111,7 +111,7 @@ struct ShellSetupTests {
     }
 
     @Test(arguments: [LoginShell.zsh, .bash])
-    func `an alias for the CLI is replaced by a function that runs the same program`(shell: LoginShell) throws {
+    func `should still run the aliased program on the chosen folder when the CLI has an alias`(shell: LoginShell) throws {
         let program = try fakeCLI("claude", in: "local")
         try write(shell == .zsh ? ".zshrc" : ".bash_profile", "alias claude=\"\(program.path)\"\n")
         try setup.install(shell)

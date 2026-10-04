@@ -15,12 +15,12 @@ struct ReadinessTests {
     }
 
     @Test
-    func `a data source whose required file is missing is not configured`() async {
+    func `should not be configured when a file it needs is missing`() async {
         #expect(await make(requiresFiles: ["/no/such/acme/login.json"]).isReady() == false)
     }
 
     @Test
-    func `a data source whose required files exist is configured`() async throws {
+    func `should be configured when the files it needs exist`() async throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("acme-\(UUID().uuidString).json")
         try Data("{}".utf8).write(to: file)
         defer { try? FileManager.default.removeItem(at: file) }

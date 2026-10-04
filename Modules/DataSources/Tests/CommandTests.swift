@@ -32,7 +32,7 @@ struct CommandTests {
     """
 
     @Test
-    func `a command's output is read as its response`() async throws {
+    func `should show the quota a command prints`() async throws {
         let source = make(try decode(usage), executor: executor(output: #"{"used":30}"#), environment: ["ACME_KEY": "k"])
 
         let result = try await source.fetchUsage()
@@ -41,7 +41,7 @@ struct CommandTests {
     }
 
     @Test
-    func `a non-zero exit is a failure at the fetch step, not output to map`() async throws {
+    func `should fail at fetching, naming the exit code, when the command exits with an error`() async throws {
         let source = make(try decode(usage), executor: executor(output: #"{"used":30}"#, exitCode: 2), environment: ["ACME_KEY": "k"])
 
         await #expect { try await source.fetchUsage() } throws: { error in
@@ -52,7 +52,7 @@ struct CommandTests {
     }
 
     @Test
-    func `a missing CLI says so before anything runs`() async throws {
+    func `should say the CLI is not found, and not be ready, when it isn't installed`() async throws {
         let source = make(try decode(usage), executor: executor(output: "", found: false), environment: ["ACME_KEY": "k"])
 
         await #expect { try await source.fetchUsage() } throws: { ($0 as? DataSourceError)?.reason == .cliNotFound("acme") }
@@ -60,7 +60,7 @@ struct CommandTests {
     }
 
     @Test
-    func `a CLI gone between the check and the run is still a missing CLI the definition can word`() async throws {
+    func `should say the CLI is missing in the definition's words when it disappears just before running`() async throws {
         let executor = MockCLIExecutor()
         given(executor).locate(.any).willReturn("/usr/local/bin/acme")
         given(executor).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
@@ -76,7 +76,7 @@ struct CommandTests {
     }
 
     @Test
-    func `a command can be given text on its standard input`() async throws {
+    func `should show the quota when the command is given its input text`() async throws {
         let executor = MockCLIExecutor()
         given(executor).locate(.any).willReturn("/usr/local/bin/acme")
         given(executor).execute(binary: .any, args: .any, input: .value("/usage\n/quit\n"), timeout: .any, workingDirectory: .any, autoResponses: .any)
@@ -90,20 +90,20 @@ struct CommandTests {
     }
 
     @Test
-    func `the token reaches the command through its environment only`() throws {
+    func `should hand the key to the command only through its environment`() throws {
         let environment = try ProcessEnvironment(set: ["ACME_TOKEN": "{{token}}"]).filled(with: Credential(["token": "k-1"]))
         #expect(environment.set == ["ACME_TOKEN": "k-1"])
     }
 
     @Test
-    func `an environment value naming an unknown credential means the key is missing`() {
+    func `should ask to sign in when the command's environment needs a key there isn't`() {
         #expect(throws: UsageError.authenticationRequired) {
             try ProcessEnvironment(set: ["ACME_TOKEN": "{{token}}"]).filled(with: nil)
         }
     }
 
     @Test
-    func `a command and a terminal cli decode as different cases`() throws {
+    func `should tell a piped command from a terminal CLI in the definition`() throws {
         let command = try decode(usage).fetch
         let terminal = try decode(#"{"kind":"cli","fetch":{"cli":{"cli":"acme","input":"/usage"}},"mapping":{"json":{"quotas":[]}}}"#).fetch
         guard case .command(let call) = command else { Issue.record("not a command"); return }

@@ -37,7 +37,7 @@ struct OpenCodeDefinitionTests {
             DataSources.make(source,providerId:def.id,cliExecutor:cli,network:net,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:ProviderFactory.builtInScripts,secrets:vault.scoped(to:login),environment:{ name in env.map { $0[name] } ?? (name == "OPENCODE_API_KEY" ? key : nil) },homeDirectory:home,now:{now})
         },vault:vault)
     }
-    @Test func `server fixture retains quotas resets and durations`() async throws {
+    @Test func `should show the 5-hour, weekly and monthly quotas with their resets and windows when OpenCode Go answers`() async throws {
         let p = try make()
         #expect(p.name == "OpenCode Go")
         #expect(p.defaultAccount.isEnabled)
@@ -50,28 +50,28 @@ struct OpenCodeDefinitionTests {
         #expect(qs[2].window?.length == nil)
     }
     @Test(arguments:[("rolling","\"12.5\"",87.5),("weekly","130",0.0),("monthly","-4",100.0)])
-    func `partial numeric and string windows are clamped`(_ fixture:(String,String,Double)) async throws {
+    func `should keep the percent left between 0 and 100 when OpenCode Go reports one window, as a number or text`(_ fixture:(String,String,Double)) async throws {
         let qs = try await make(body:"{\"usage\":{\"\(fixture.0)\":{\"percent\":\(fixture.1)}}}").refreshPlain().quotas
         #expect(qs.count == 1)
         #expect(qs[0].percentRemaining == fixture.2)
     }
     @Test(arguments:["<html>","{}",#"{"usage":{}}"#])
-    func `malformed or empty API responses remain failures`(_ body:String) async throws {
+    func `should fail to read usage when OpenCode Go answers with no usage`(_ body:String) async throws {
         await #expect(throws:UsageError.self) { try await make(body:body).refreshPlain() }
     }
-    @Test func `401 does not fall back to the local account`() async throws {
+    @Test func `should ask to refresh the API key, not read the local database, when OpenCode Go refuses the key`() async throws {
         await #expect(throws:UsageError.sessionExpired(hint:"Run `opencode auth login` and pick OpenCode Zen to refresh your API key.")) { try await make(status:401).refreshPlain() }
     }
-    @Test func `403 preserves subscription required`() async throws {
+    @Test func `should say a subscription is required when OpenCode Go forbids the key`() async throws {
         await #expect(throws:UsageError.subscriptionRequired) { try await make(status:403).refreshPlain() }
     }
-    @Test func `500 does not fall back`() async throws {
+    @Test func `should show the server error, not read the local database, when OpenCode Go is down`() async throws {
         await #expect(throws:UsageError.executionFailed("HTTP error: 500")) { try await make(status:500).refreshPlain() }
     }
-    @Test func `a 429 is a rate limit and does not fall back`() async throws {
+    @Test func `should show a rate limit, not read the local database, when OpenCode Go is rate-limiting`() async throws {
         await #expect { try await make(status:429).refreshPlain() } throws: { ($0 as? UsageError)?.tag == "rateLimited" }
     }
-    @Test func `with no key, the local database gives money of each cap`() async throws {
+    @Test func `should show dollars left of each cap from opencode's own database when there is no key`() async throws {
         let p = try make(key:nil)
         #expect(await p.isPlainAvailable())
         let qs = try await p.refreshPlain().quotas
@@ -84,7 +84,7 @@ struct OpenCodeDefinitionTests {
         #expect(qs[2].resetsAt == Date(timeIntervalSince1970: 1776177000))
         #expect(qs[2].window?.length == TimeInterval(2_674_800)) // the anchored month itself: Mar 14 to Apr 14
     }
-    @Test func `with no spend yet, every cap is whole and the month states no window`() async throws {
+    @Test func `should show every cap full and no monthly window when nothing has been spent yet`() async throws {
         let row = #"[{"now_ms":1775044800000,"five_hour_cost":0,"five_hour_oldest_ms":null,"weekly_cost":0,"week_end_ms":1775433600000,"monthly_cost":0,"month_start_ms":null,"month_end_ms":null}]"#
         let qs = try await make(key:nil,local:row).refreshPlain().quotas
         #expect(qs.map(\.percentLeft) == [100,100,100])
@@ -92,18 +92,18 @@ struct OpenCodeDefinitionTests {
         #expect(qs[2].resetsAt == nil)
         #expect(qs[2].window?.length == nil)
     }
-    @Test(arguments:[-5.0,6.0,20.0]) func `money left never goes below zero`(_ cost:Double) async throws {
+    @Test(arguments:[-5.0,6.0,20.0]) func `should never show less than nothing left of a cap`(_ cost:Double) async throws {
         let row = "[{\"now_ms\":1775044800000,\"five_hour_cost\":\(cost),\"weekly_cost\":0,\"week_end_ms\":1775433600000,\"monthly_cost\":0}]"
         let qs = try await make(key:nil,local:row).refreshPlain().quotas
         #expect(qs[0].dollarRemaining == Decimal(string: String(format: "%.2f", max(0, 12 - cost))))
     }
-    @Test(arguments:["not JSON","[]",#"[{}]"#]) func `malformed local rows fail`(_ local:String) async throws {
+    @Test(arguments:["not JSON","[]",#"[{}]"#]) func `should fail to read usage when opencode's database gives no readable spend`(_ local:String) async throws {
         await #expect(throws:UsageError.self) { try await make(key:nil,local:local).refreshPlain() }
     }
-    @Test func `a nonzero database exit is never healthy usage`() async throws {
+    @Test func `should fail, never show usage, when reading opencode's database fails`() async throws {
         await #expect(throws:UsageError.executionFailed("`opencode` exited with code 1")) { try await make(key:nil,exit:1).refreshPlain() }
     }
-    @Test func `missing key and CLI remain unavailable`() async throws {
+    @Test func `should be unavailable and say opencode is not found when there is no key and no CLI`() async throws {
         let p = try make(key:nil,available:false)
         #expect(!(await p.isPlainAvailable()))
         await #expect(throws:UsageError.cliNotFound("opencode")) { try await p.refreshPlain() }
@@ -148,7 +148,7 @@ struct OpenCodeDefinitionTests {
         Int64(try #require(ISO8601DateFormatter().date(from: text)).timeIntervalSince1970 * 1000)
     }
 
-    @Test func `the query adds up 5 hours, the UTC week and the anchored month — only OpenCode Go`() throws {
+    @Test func `should add up the last 5 hours, the UTC week and the anchored month of OpenCode Go spend only`() throws {
         let row = try query([
             ("2026-01-31T14:30:00Z", 1.0, "opencode-go"),   // the first message: the month's anchor
             ("2026-04-29T09:00:00Z", 2.0, "opencode-go"),
@@ -173,18 +173,18 @@ struct OpenCodeDefinitionTests {
         // The 31st in a 29-day February: the month ends on its last day.
         ("2024-01-31T09:00:00Z", "2024-02-05 12:00:00", "2024-02-29T09:00:00Z"),
     ])
-    func `the month is anchored on the first message's day, clamped to each month's last`(_ fixture: (String, String, String)) throws {
+    func `should start each month on the first message's day, or the month's last day when it is shorter`(_ fixture: (String, String, String)) throws {
         let row = try query([(fixture.0, 1, "opencode-go")], now: fixture.1)
         #expect(row["month_end_ms"] as? Int64 == (try ms(fixture.2)))
     }
 
-    @Test func `with no OpenCode Go messages the query gives zero spend and no month`() throws {
+    @Test func `should show no spend and no month when there are no OpenCode Go messages`() throws {
         let row = try query([("2026-05-04T14:00:00Z", 5, "another")], now: "2026-05-04 15:00:00")
         #expect(row["five_hour_cost"] as? Double == 0)
         #expect(row["monthly_cost"] as? Double == 0)
         #expect(row["month_start_ms"] == nil || row["month_start_ms"] is NSNull)
     }
-    @Test func `added key account never falls back to the default local database`() async throws {
+    @Test func `should use only an added login's own key, never the local database, and ask to sign in when it is gone`() async throws {
         let vault = MemoryVault()
         let p = try make(vault:vault)
         let work = try p.accounts.add(filling:["apiKey":"work"])
@@ -194,7 +194,7 @@ struct OpenCodeDefinitionTests {
         await #expect(throws:UsageError.authenticationRequired) { try await p.refresh(work) }
     }
     @Test(arguments:["opencode-go","opencode","both"])
-    func `both legacy auth file entries remain readable in XDG data home`(_ entry:String) async throws {
+    func `should use the key opencode saved in its auth file under XDG_DATA_HOME`(_ entry:String) async throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at:home) }
         let data = home.appendingPathComponent("data/opencode")

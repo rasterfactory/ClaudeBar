@@ -14,7 +14,7 @@ struct AppSettingsStatusColorTests {
     }
 
     @Test
-    func `status color policy is default when nothing is set`() {
+    func `should use the standard status colors when the person has set none`() {
         let (settings, dir, _) = makeSettings()
         defer { try? FileManager.default.removeItem(at: dir) }
         #expect(settings.statusColorPolicy == .default)
@@ -22,7 +22,7 @@ struct AppSettingsStatusColorTests {
     }
 
     @Test
-    func `overrides and high contrast persist to a reloaded instance`() {
+    func `should remember the person's status color and high contrast after relaunch`() {
         let (settings, dir, file) = makeSettings()
         defer { try? FileManager.default.removeItem(at: dir) }
         let custom = RGBColorValue(hex: "#ABCDEF")!
@@ -39,7 +39,7 @@ struct AppSettingsStatusColorTests {
     }
 
     @Test
-    func `reset clears overrides but leaves high contrast alone`() {
+    func `should drop the person's status colors but keep high contrast when they reset colors`() {
         let (settings, dir, _) = makeSettings()
         defer { try? FileManager.default.removeItem(at: dir) }
         settings.setStatusColorOverride(RGBColorValue(hex: "#112233"), for: .critical)
@@ -53,7 +53,7 @@ struct AppSettingsStatusColorTests {
     }
 
     @Test
-    func `setting an override to nil removes only that status`() {
+    func `should drop only the cleared status's color when the person clears one`() {
         let (settings, dir, _) = makeSettings()
         defer { try? FileManager.default.removeItem(at: dir) }
         settings.setStatusColorOverride(RGBColorValue(hex: "#111111"), for: .healthy)

@@ -52,7 +52,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `renders the current value immediately on start`() {
+    func `should draw the menu bar with the current state as soon as it starts`() {
         // Given
         let source = Source()
         let recorder = RenderRecorder()
@@ -69,7 +69,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `re-renders when observed state changes, without any SwiftUI hosting`() async {
+    func `should redraw the menu bar when the state it shows changes, even after the system slept (#192)`() async {
         // Given
         let source = Source()
         let recorder = RenderRecorder()
@@ -88,7 +88,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `keeps tracking across multiple consecutive changes`() async {
+    func `should redraw the menu bar for each of several changes in a row`() async {
         // Given
         let source = Source()
         let recorder = RenderRecorder()
@@ -109,7 +109,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `does not re-render when the read value is unchanged`() async {
+    func `should not redraw the menu bar when what it shows hasn't changed`() async {
         // Given — read collapses state to a constant, so writes are invisible
         let source = Source()
         let recorder = RenderRecorder()
@@ -128,7 +128,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `stop ends rendering even if observed state keeps changing`() async {
+    func `should stop redrawing the menu bar once stopped, however the state changes`() async {
         // Given
         let source = Source()
         let recorder = RenderRecorder()
@@ -148,7 +148,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `renderNow forces a redraw of the current value`() {
+    func `should repaint the menu bar on demand, as after the system wakes`() {
         // Given — e.g. after system wake, the status item may need repainting
         let source = Source()
         let recorder = RenderRecorder()
@@ -166,7 +166,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `renderNow does not stack observation registrations`() async {
+    func `should not grow memory when the menu bar repaints on every appearance change (#313)`() async {
         // Given — the menu bar calls renderNow on every appearance change,
         // which on macOS 26 fires whenever the wallpaper behind the bar
         // changes brightness. Each call used to arm another registration
@@ -198,7 +198,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `restarting does not leave a second registration armed`() async {
+    func `should read the state once per change after the menu bar is stopped and started again`() async {
         // Given — stop leaves the in-flight registration armed; a start
         // before it fires must not end up with two live re-arm chains.
         let source = Source()
@@ -227,7 +227,7 @@ struct ObservationRenderSyncTests {
     // MARK: - refreshNow (self-driven ticks)
 
     @Test
-    func `refreshNow renders when the value changed`() {
+    func `should redraw the menu bar on a countdown tick when what it shows changed`() {
         // Given — the menu bar's countdown tick re-reads the wall clock
         let source = Source()
         let recorder = RenderRecorder()
@@ -246,7 +246,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `refreshNow does not render when the value is unchanged`() {
+    func `should not redraw the menu bar on a countdown tick when what it shows is the same`() {
         // Given — a colon-less menu bar label ("2d") must not repaint on every
         // tick just because the clock advanced.
         let source = Source()
@@ -267,7 +267,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `refreshNow leaves observation armed so later state changes still render`() async {
+    func `should still redraw the menu bar for state changes after countdown ticks`() async {
         // Given — refreshNow deliberately skips re-arming observation, so a
         // ticking caller cannot accumulate one registration per tick. The
         // registration from the last real sync must survive that.
@@ -290,7 +290,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `refreshNow does nothing before start`() {
+    func `should not draw the menu bar on a countdown tick before it starts`() {
         // Given
         let source = Source()
         let recorder = RenderRecorder()
@@ -307,7 +307,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `refreshNow does nothing after stop`() {
+    func `should not redraw the menu bar on a countdown tick after it stops`() {
         // Given — the tick timer can outlive a stop by one fire
         let source = Source()
         let recorder = RenderRecorder()
@@ -327,7 +327,7 @@ struct ObservationRenderSyncTests {
     }
 
     @Test
-    func `menu bar label content stays in sync with provider refreshes`() async {
+    func `should show Claude's new 64% in the menu bar once its quotas refresh`() async {
         // Given — the real domain chain: provider snapshot → monitor → label
         let settings = MockProviderSettingsRepository()
         given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)

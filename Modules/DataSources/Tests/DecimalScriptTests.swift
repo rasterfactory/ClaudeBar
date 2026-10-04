@@ -14,7 +14,7 @@ struct DecimalScriptTests {
     }
 
     @Test
-    func `jsonDecimal keeps a number's exact digits`() throws {
+    func `should show a balance with every digit the answer gave`() throws {
         let usage = try read(#"{"balance": 0.1000000000000000055511151231257827}"#, script: """
         function read(response) {
           var balance = jsonDecimal(response.text).balance;
@@ -25,7 +25,7 @@ struct DecimalScriptTests {
     }
 
     @Test(arguments: [("12.345", "12.35"), ("12.344", "12.34"), ("-0.004", "0.00"), ("1e2", "100.00"), ("99.995", "100.00")])
-    func `decimalCents rounds half up without a float`(_ amount: String, _ cents: String) throws {
+    func `should round money to the cent, half up, without losing precision`(_ amount: String, _ cents: String) throws {
         let usage = try read("{}", script: """
         function read() {
           return { quotas: [{ type: 'model', name: 'Balance', left: { money: decimalCents('\(amount)'), currency: 'USD' } }] };
@@ -35,7 +35,7 @@ struct DecimalScriptTests {
     }
 
     @Test(arguments: [("1234567", "0.000003", "3.703701"), ("0.1", "0.2", "0.02"), ("-2.5", "4", "-10"), ("1e6", "1.5", "1500000")])
-    func `decimalMultiply multiplies exactly`(_ a: String, _ b: String, _ product: String) throws {
+    func `should multiply money exactly`(_ a: String, _ b: String, _ product: String) throws {
         let usage = try read("{}", script: """
         function read() {
           return { quotas: [{ type: 'model', name: 'Cost', left: { money: decimalMultiply('\(a)', '\(b)'), currency: 'USD' } }] };
@@ -45,7 +45,7 @@ struct DecimalScriptTests {
     }
 
     @Test(arguments: [("0.1", "0.2", "0.3"), ("1.005", "-0.005", "1"), ("12", "0.000001", "12.000001")])
-    func `decimalAdd adds exactly`(_ a: String, _ b: String, _ sum: String) throws {
+    func `should add money exactly`(_ a: String, _ b: String, _ sum: String) throws {
         let usage = try read("{}", script: """
         function read() {
           return { quotas: [{ type: 'model', name: 'Cost', left: { money: decimalAdd('\(a)', '\(b)'), currency: 'USD' } }] };

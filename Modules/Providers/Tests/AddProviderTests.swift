@@ -28,7 +28,7 @@ struct AddProviderTests {
     // MARK: - Start from API
 
     @Test
-    func `an API draft is an http fetch with the key the person saved`() throws {
+    func `should ask the API the person typed, with the key they saved, when they start from an API`() throws {
         let definition = try openRouter().definition(id: "custom-openrouter-1a2b3c")
 
         #expect(definition.id == "custom-openrouter-1a2b3c")
@@ -47,7 +47,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `a key from an environment variable, sent in its own header`() throws {
+    func `should send a key from an environment variable in the header the person chose`() throws {
         var draft = openRouter()
         draft.key = .environment("OPENROUTER_API_KEY")
         draft.sentAs = .header("X-API-Key")
@@ -60,7 +60,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `the drafted provider shows money of its limit`() async throws {
+    func `should show money of its limit, with no reset, when the drafted provider is refreshed`() async throws {
         let network = MockNetworkClient()
         given(network).request(.matching { @Sendable in $0.value(forHTTPHeaderField: "Authorization") == "Bearer sk-or-1" })
             .willReturn((Data(#"{"data":{"limit_remaining":12.4,"limit":50}}"#.utf8),
@@ -81,7 +81,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `never a balance: no limit means no percentage`() throws {
+    func `should show no percentage when the person maps no limit`() throws {
         var draft = openRouter()
         draft.limit = nil
 
@@ -92,7 +92,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `a percentage used, with its reset`() throws {
+    func `should show a percentage used with its reset when the person maps both`() throws {
         var draft = openRouter()
         draft.measure = .percentUsed
         draft.used = "$.usage.percent"
@@ -109,7 +109,7 @@ struct AddProviderTests {
     // MARK: - Start from CLI · File
 
     @Test
-    func `a CLI draft runs the command the person typed`() throws {
+    func `should run the command the person typed, from the dedicated folder, when they start from a CLI`() throws {
         var draft = ProviderDraft(start: .cli)
         draft.command = #"mytool usage --format "json""#
         draft.measure = .percentLeft
@@ -131,7 +131,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `a CLI that prints text is read by the line that names the number`() throws {
+    func `should read a CLI's text by the line that names the number`() throws {
         var draft = ProviderDraft(start: .cli)
         draft.command = "mytool status"
         draft.measure = .percentLeft
@@ -148,7 +148,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `a file draft reads the file`() throws {
+    func `should read the file the person chose when they start from a file`() throws {
         var draft = ProviderDraft(start: .file)
         draft.path = "~/.mytool/usage.json"
         draft.measure = .percentUsed
@@ -162,7 +162,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `a draft without what it needs says so`() {
+    func `should say what is missing when a draft lacks what it needs`() {
         var draft = ProviderDraft(start: .api)
         draft.name = "Nameless"
 
@@ -172,7 +172,7 @@ struct AddProviderTests {
     // MARK: - Copy a provider
 
     @Test
-    func `a copy runs the same data sources under a new id and name, as custom`() throws {
+    func `should run the same data sources under a new id and name, as custom, when a provider is copied`() throws {
         let codex = try ProviderFactory.builtIn("codex")
         var draft = ProviderDraft(start: .copy(codex))
         draft.name = "Codex (work)"
@@ -189,7 +189,7 @@ struct AddProviderTests {
     // MARK: - Map fields
 
     @Test
-    func `a response's values are offered as paths to click`() {
+    func `should offer each value of a response as a path to click`() {
         let fields = ResponseFields(Response(status: 200, body: Data(#"{"data":{"limit":50,"label":"key","items":[{"x":1}],"ok":true}}"#.utf8)))
 
         #expect(fields.map(\.path) == ["$.data.items.0.x", "$.data.label", "$.data.limit", "$.data.ok"])
@@ -199,7 +199,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `a response that isn't JSON offers its lines`() {
+    func `should offer a response's lines when it is not JSON`() {
         let fields = ResponseFields(Response(text: "Quota: 42% left\nPlan: Pro"))
 
         #expect(fields.isEmpty)
@@ -209,7 +209,7 @@ struct AddProviderTests {
     // MARK: - The catalog
 
     @Test
-    func `a saved provider comes back as custom, and is gone once removed`() throws {
+    func `should bring a saved provider back as custom until it is removed`() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("catalog-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: folder) }
         let catalog = ProviderCatalog(directory: folder)
@@ -226,7 +226,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `a minted id is never just the name, and never a built-in's`() {
+    func `should mint an id that is never just the name and never a built-in's`() {
         let catalog = ProviderCatalog(directory: FileManager.default.temporaryDirectory)
 
         let first = catalog.mintId(for: "Codex")
@@ -238,7 +238,7 @@ struct AddProviderTests {
     }
 
     @Test
-    func `a saved file holds no key`() throws {
+    func `should keep no key in a saved provider's file`() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("catalog-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: folder) }
         let catalog = ProviderCatalog(directory: folder)
@@ -265,7 +265,7 @@ final class MemoryVault: SecretVault, @unchecked Sendable {
 @Suite(.serialized)
 struct CustomRegistryTests {
     @Test
-    func `a registered custom definition is found by its lineup id until unregistered`() throws {
+    func `should find a registered custom provider by its lineup id until it is unregistered`() throws {
         var draft = ProviderDraft(start: .file)
         draft.path = "~/usage.json"
         draft.used = "$.used"
@@ -285,7 +285,7 @@ struct CustomRegistryTests {
 @Suite
 struct DraftConnectionTests {
     @Test
-    func `a connection can be tested before anything is mapped`() throws {
+    func `should let a connection be tested before anything is mapped`() throws {
         var draft = ProviderDraft(start: .api)
         draft.url = "https://example.com/usage"
         draft.name = "Example"

@@ -12,7 +12,7 @@ struct SimpleCLIExecutorTests {
     // with `/usr/bin/env` shebangs (bun/node) need their runtime findable.
 
     @Test
-    func `augmented PATH contains the binary's own directory`() {
+    func `should let a CLI find the runtime that sits beside it when launched from the menu bar`() {
         let env = SimpleCLIExecutor.augmentedEnvironment(binaryPath: "/test-omp-home/.bun/bin/omp")
         let entries = (env["PATH"] ?? "").split(separator: ":").map(String.init)
 
@@ -21,7 +21,7 @@ struct SimpleCLIExecutorTests {
     }
 
     @Test
-    func `augmented PATH keeps existing entries in front and appends common dirs`() {
+    func `should keep the person's PATH first and add the usual tool folders after it`() {
         let env = SimpleCLIExecutor.augmentedEnvironment(binaryPath: "/usr/bin/true")
         let entries = (env["PATH"] ?? "").split(separator: ":").map(String.init)
 
@@ -38,7 +38,7 @@ struct SimpleCLIExecutorTests {
     // MARK: - Execution
 
     @Test
-    func `execute captures output and exit code`() async throws {
+    func `should give back what the CLI printed and its exit code`() async throws {
         let result = try await SimpleCLIExecutor().execute(
             binary: "/bin/echo",
             args: ["kiro-output"],
@@ -53,7 +53,7 @@ struct SimpleCLIExecutorTests {
     }
 
     @Test
-    func `execute reports a non-zero exit code without throwing`() async throws {
+    func `should report a CLI's failing exit code rather than fail`() async throws {
         let result = try await SimpleCLIExecutor().execute(
             binary: "/bin/sh",
             args: ["-c", "exit 7"],
@@ -67,7 +67,7 @@ struct SimpleCLIExecutorTests {
     }
 
     @Test
-    func `execute merges stderr into the output blob`() async throws {
+    func `should give back what the CLI printed to both output and error`() async throws {
         let result = try await SimpleCLIExecutor().execute(
             binary: "/bin/sh",
             args: ["-c", "echo out; echo err 1>&2"],
@@ -82,8 +82,8 @@ struct SimpleCLIExecutorTests {
     }
 
     @Test
-    func `execute throws cliNotFound for a missing binary`() async {
-        await #expect(throws: UsageError.self) {
+    func `should say the CLI is not found when it is not installed`() async {
+        await #expect(throws: UsageError.cliNotFound("claudebar-not-a-real-cli")) {
             try await SimpleCLIExecutor().execute(
                 binary: "claudebar-not-a-real-cli",
                 args: [],
@@ -96,10 +96,10 @@ struct SimpleCLIExecutorTests {
     }
 
     @Test
-    func `execute times out rather than hanging on a long-running command`() async {
+    func `should say the command timed out, near the timeout, when a CLI never finishes`() async {
         let start = CFAbsoluteTimeGetCurrent()
 
-        await #expect(throws: UsageError.self) {
+        await #expect(throws: UsageError.executionFailed("Command timed out after 0.5 seconds")) {
             try await SimpleCLIExecutor().execute(
                 binary: "/bin/sh",
                 args: ["-c", "sleep 30"],
@@ -115,7 +115,7 @@ struct SimpleCLIExecutorTests {
     }
 
     @Test
-    func `execute survives output larger than the pipe buffer`() async throws {
+    func `should give back all of a CLI's output when it prints a lot`() async throws {
         // The previous implementation raced two DispatchQueue readers against a
         // usleep poll loop; this is the case that made that fragile.
         let result = try await SimpleCLIExecutor().execute(
@@ -132,7 +132,7 @@ struct SimpleCLIExecutorTests {
     }
 
     @Test
-    func `augmented PATH does not duplicate directories it appends`() {
+    func `should not add a tool folder the PATH already has`() {
         let env = SimpleCLIExecutor.augmentedEnvironment(binaryPath: "/opt/homebrew/bin/tool")
         let entries = (env["PATH"] ?? "").split(separator: ":").map(String.init)
 

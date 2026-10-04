@@ -6,12 +6,12 @@ import Domain
 @Suite
 struct HookInstallerTests {
     @Test
-    func `hook command contains marker function`() {
+    func `should carry ClaudeBar's marker so the installed hook can be recognised as ClaudeBar's`() {
         #expect(HookInstaller.hookCommand.contains(HookInstaller.hookMarker))
     }
 
     @Test
-    func `hook command uses curl to POST to localhost`() {
+    func `should send each Claude Code event to ClaudeBar on this Mac`() {
         #expect(HookInstaller.hookCommand.contains("curl"))
         #expect(HookInstaller.hookCommand.contains("POST"))
         #expect(HookInstaller.hookCommand.contains("localhost"))
@@ -19,12 +19,12 @@ struct HookInstallerTests {
     }
 
     @Test
-    func `hook command reads port from discovery file`() {
+    func `should find ClaudeBar's port in the file ClaudeBar leaves for it`() {
         #expect(HookInstaller.hookCommand.contains("claudebar-hook-port"))
     }
 
     @Test
-    func `all expected events are covered`() {
+    func `should listen to the seven session events Claude Code reports`() {
         let events = HookInstaller.hookEvents
         #expect(events.contains("SessionStart"))
         #expect(events.contains("SessionEnd"))
@@ -37,7 +37,7 @@ struct HookInstallerTests {
     }
 
     @Test
-    func `isInstalled returns false when no settings file exists`() {
+    func `should count the hook not installed when Claude Code has no settings file`() {
         // When there's no settings file at all, isInstalled should be false
         // This tests the code path, not the actual file system
         let settings = HookInstaller.readSettings()
@@ -48,7 +48,7 @@ struct HookInstallerTests {
     }
 
     @Test
-    func `hookMarker is a valid function name`() {
+    func `should mark the hook with a name the shell accepts as a function name`() {
         // The marker should be a valid bash function identifier
         let marker = HookInstaller.hookMarker
         #expect(!marker.isEmpty)
@@ -58,7 +58,7 @@ struct HookInstallerTests {
     // MARK: - Probe sessions (issue #222)
 
     @Test
-    func `hook command exits before POSTing when the session is a ClaudeBar probe`() {
+    func `should send nothing when the session is ClaudeBar's own Claude run (#222)`() {
         let command = HookInstaller.hookCommand
 
         // The guard references the probe marker and returns before any POST.

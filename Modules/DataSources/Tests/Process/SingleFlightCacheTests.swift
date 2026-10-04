@@ -6,8 +6,8 @@ import Testing
 @Suite("SingleFlightCache")
 struct SingleFlightCacheTests {
 
-    @Test("Recomputes only once for repeated lookups of the same key")
-    func cachesRepeatedLookups() {
+    @Test
+    func `should work out a value only once when it is asked for again`() {
         let cache = SingleFlightCache<Int>()
         let counter = Counter()
 
@@ -19,8 +19,8 @@ struct SingleFlightCacheTests {
         #expect(counter.count == 1)
     }
 
-    @Test("Keeps separate values per key")
-    func separatesKeys() {
+    @Test
+    func `should keep a separate value for each key`() {
         let cache = SingleFlightCache<String>()
 
         let a = cache.value(for: "a", ttl: { _ in 60 }, compute: { "value-a" })
@@ -30,8 +30,8 @@ struct SingleFlightCacheTests {
         #expect(b == "value-b")
     }
 
-    @Test("Recomputes after the entry expires")
-    func recomputesAfterExpiry() async throws {
+    @Test
+    func `should work the value out again once it has expired`() async throws {
         let cache = SingleFlightCache<Int>()
         let counter = Counter()
 
@@ -43,8 +43,8 @@ struct SingleFlightCacheTests {
         #expect(second == 2)
     }
 
-    @Test("TTL can depend on the computed value")
-    func ttlVariesByValue() async throws {
+    @Test
+    func `should keep a found value longer than a missing one when the lifetime depends on the value`() async throws {
         let cache = SingleFlightCache<Int?>()
         let counter = Counter()
 
@@ -65,8 +65,8 @@ struct SingleFlightCacheTests {
         #expect(cached == 1)
     }
 
-    @Test("Invalidating a key forces recomputation of only that key")
-    func invalidateSingleKey() {
+    @Test
+    func `should work out again only the value that was forgotten`() {
         let cache = SingleFlightCache<Int>()
         let counterA = Counter()
         let counterB = Counter()
@@ -83,8 +83,8 @@ struct SingleFlightCacheTests {
         #expect(b == 1)
     }
 
-    @Test("Invalidating all keys forces recomputation everywhere")
-    func invalidateAll() {
+    @Test
+    func `should work out every value again once all are forgotten`() {
         let cache = SingleFlightCache<Int>()
         let counter = Counter()
 
@@ -95,8 +95,8 @@ struct SingleFlightCacheTests {
         #expect(counter.count == 2)
     }
 
-    @Test("Concurrent misses on one key collapse into a single computation")
-    func collapsesConcurrentMisses() {
+    @Test
+    func `should work a value out once when many ask for it at the same time`() {
         let cache = SingleFlightCache<Int>()
         let counter = Counter()
         let results = Results()

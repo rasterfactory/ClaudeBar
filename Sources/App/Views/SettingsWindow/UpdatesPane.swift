@@ -12,14 +12,18 @@ struct UpdatesPane: View {
     @Environment(\.sparkleUpdater) private var sparkleUpdater
     #endif
 
-    private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    private var status: UpdateStatus {
+        #if ENABLE_SPARKLE
+        UpdateStatus(updater: sparkleUpdater)
+        #else
+        .installed
+        #endif
     }
 
     var body: some View {
         SettingsPane(
             title: "Updates",
-            subtitle: "You're on version \(appVersion)."
+            subtitle: status.summary
         ) {
             #if ENABLE_SPARKLE
             if sparkleUpdater?.isAvailable == true {
@@ -71,7 +75,7 @@ struct UpdatesPane: View {
 
         SettingsCard {
             SettingsRow(
-                title: "Check for Updates",
+                title: status.actionTitle,
                 subtitle: lastCheckText
             ) {
                 Button {
@@ -83,11 +87,11 @@ struct UpdatesPane: View {
                                 .scaleEffect(0.6)
                                 .frame(width: 14, height: 14)
                         } else {
-                            Image(systemName: "arrow.clockwise")
+                            Image(systemName: status.availableVersion == nil ? "arrow.clockwise" : "arrow.down.circle")
                                 .font(.system(size: 11, weight: .semibold))
                         }
 
-                        Text(sparkleUpdater?.isCheckingForUpdates == true ? "Checking..." : "Check Now")
+                        Text(sparkleUpdater?.isCheckingForUpdates == true ? "Checking..." : status.buttonTitle)
                             .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
                     }
                     .foregroundStyle(.white)

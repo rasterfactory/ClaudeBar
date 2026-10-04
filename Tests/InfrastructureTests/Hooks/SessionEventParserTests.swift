@@ -6,7 +6,7 @@ import Foundation
 @Suite
 struct SessionEventParserTests {
     @Test
-    func `parses valid SessionStart event`() {
+    func `should recognise a session start with its session id and folder`() {
         let json = """
         {"session_id": "abc-123", "hook_event_name": "SessionStart", "cwd": "/tmp/project"}
         """
@@ -20,7 +20,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `parses valid TaskCompleted event`() {
+    func `should recognise a completed task`() {
         let json = """
         {"session_id": "xyz", "hook_event_name": "TaskCompleted", "cwd": "/home/user/code"}
         """
@@ -31,7 +31,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `parses valid SubagentStart event`() {
+    func `should recognise a subagent starting`() {
         let json = """
         {"session_id": "test", "hook_event_name": "SubagentStart", "cwd": "/tmp"}
         """
@@ -42,7 +42,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `parses valid SubagentStop event`() {
+    func `should recognise a subagent stopping`() {
         let json = """
         {"session_id": "test", "hook_event_name": "SubagentStop", "cwd": "/tmp"}
         """
@@ -53,7 +53,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `parses valid Stop event`() {
+    func `should recognise a session stopping`() {
         let json = """
         {"session_id": "test", "hook_event_name": "Stop", "cwd": "/tmp"}
         """
@@ -64,7 +64,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `parses valid SessionEnd event`() {
+    func `should recognise a session ending`() {
         let json = """
         {"session_id": "test", "hook_event_name": "SessionEnd", "cwd": "/tmp"}
         """
@@ -75,7 +75,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `parses valid UserPromptSubmit event`() {
+    func `should recognise a submitted prompt`() {
         let json = """
         {"session_id": "test", "hook_event_name": "UserPromptSubmit", "cwd": "/tmp"}
         """
@@ -86,7 +86,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `returns nil for missing session_id`() {
+    func `should ignore an event that names no session`() {
         let json = """
         {"hook_event_name": "SessionStart", "cwd": "/tmp"}
         """
@@ -97,7 +97,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `returns nil for missing hook_event_name`() {
+    func `should ignore an event that names no event`() {
         let json = """
         {"session_id": "abc", "cwd": "/tmp"}
         """
@@ -108,7 +108,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `returns nil for unknown event name`() {
+    func `should ignore an event it does not know`() {
         let json = """
         {"session_id": "abc", "hook_event_name": "UnknownEvent", "cwd": "/tmp"}
         """
@@ -119,7 +119,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `returns nil for invalid JSON`() {
+    func `should ignore a message that is not JSON`() {
         let data = "not json".data(using: .utf8)!
 
         let event = SessionEventParser.parse(data)
@@ -128,7 +128,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `uses empty string for missing cwd`() {
+    func `should leave the folder empty when the event names none`() {
         let json = """
         {"session_id": "abc", "hook_event_name": "SessionStart"}
         """
@@ -139,7 +139,7 @@ struct SessionEventParserTests {
     }
 
     @Test
-    func `ignores extra fields in payload`() {
+    func `should still recognise an event that carries extra fields`() {
         let json = """
         {"session_id": "abc", "hook_event_name": "TaskCompleted", "cwd": "/tmp", "extra_field": "value", "number": 42}
         """

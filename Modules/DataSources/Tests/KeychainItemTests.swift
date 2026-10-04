@@ -17,24 +17,24 @@ struct KeychainItemTests {
         }).find()?.credential
     }
 
-    @Test func `a go-keyring password is read as what it encodes`() throws {
+    @Test func `should read the token a go-keyring password encodes`() throws {
         let encoded = "go-keyring-base64:" + Data("gho_abc123".utf8).base64EncodedString()
         let credential = try read(#"{"service":"gh:github.com","token":"$","encoding":"goKeyringBase64"}"#, password: encoded)
         #expect(credential?["token"] == "gho_abc123")
     }
 
-    @Test func `a go-keyring item stored plain is read as it is`() throws {
+    @Test func `should read a go-keyring item stored plain as it is`() throws {
         let credential = try read(#"{"service":"gh:github.com","token":"$","encoding":"goKeyringBase64"}"#, password: "gho_plain")
         #expect(credential?["token"] == "gho_plain")
     }
 
-    @Test func `an account narrows which item is read`() throws {
+    @Test func `should read the keychain item of the named account when several logins share a service`() throws {
         let calls = Calls()
         _ = try read(#"{"service":"gh:github.com","account":"octocat","token":"$"}"#, password: "t", calls: calls)
         #expect(calls.arguments.first == ["find-generic-password", "-s", "gh:github.com", "-a", "octocat", "-w"])
     }
 
-    @Test func `account and encoding are not credential fields, and round-trip`() throws {
+    @Test func `should keep a keychain item's account and encoding apart from its key, and when written out and read back`() throws {
         let item = try JSONDecoder().decode(KeychainCredential.self,
             from: Data(#"{"service":"gh:github.com","account":"octocat","encoding":"goKeyringBase64","token":"$"}"#.utf8))
         #expect(item.fields == ["token": "$"])

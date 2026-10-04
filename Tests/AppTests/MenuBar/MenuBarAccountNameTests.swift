@@ -7,21 +7,21 @@ import Testing
 @Suite
 struct MenuBarAccountNameTests {
     @Test
-    func `an email shows its name before the at sign`() {
+    func `should show an email login by its name before the at sign`() {
         let names = MenuBarAccountName.names(["codex": "me@example.com", "codex.a": "work@acme.com"])
 
         #expect(names == ["codex": "me", "codex.a": "work"])
     }
 
     @Test
-    func `a long email name is cut to eight characters`() {
+    func `should cut a long email name to eight characters`() {
         let names = MenuBarAccountName.names(["codex.a": "henry.personal@example.com"])
 
         #expect(names["codex.a"] == "henry.p…")
     }
 
     @Test
-    func `a given name keeps up to twelve characters`() {
+    func `should show up to twelve characters of a name the person gave`() {
         let names = MenuBarAccountName.names(["claude": "Side Project", "claude.w": "Work — Acme Corp"])
 
         #expect(names["claude"] == "Side Project")
@@ -29,7 +29,7 @@ struct MenuBarAccountNameTests {
     }
 
     @Test
-    func `names that shorten alike are numbered, never widened`() {
+    func `should number logins whose short names match, never widening them`() {
         let names = MenuBarAccountName.names([
             "codex.a": "same-long-one@example.com",
             "codex.b": "same-long-two@example.com",
@@ -41,7 +41,7 @@ struct MenuBarAccountNameTests {
     }
 
     @Test
-    func `the same name on two logins is numbered`() {
+    func `should number two logins that share a name`() {
         let names = MenuBarAccountName.names(["claude": "Work", "claude.w": "Work"])
 
         #expect(names["claude"] == "Work·1")

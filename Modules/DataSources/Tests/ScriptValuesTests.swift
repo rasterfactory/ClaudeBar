@@ -20,19 +20,19 @@ struct ScriptValuesTests {
         return try #require(try mapper.read(Response(text: "{}"), facts: MappingFacts(), providerId: "acme").quotas.first)
     }
 
-    @Test func `filled values reach the script`() throws {
+    @Test func `should hand a script the settings the person filled in`() throws {
         let quota = try read(["limit": "40", "manual": "12"])
         #expect(quota.percentRemaining == 40)
         #expect(quota.resetText == "manual 12")
     }
 
-    @Test func `a value still holding its template is left out`() throws {
+    @Test func `should leave out a setting the person left blank`() throws {
         let quota = try read(["limit": "{{setting.limit}}", "manual": "{{setting.manual}}"])
         #expect(quota.percentRemaining == 7)
         #expect(quota.resetText == "no manual")
     }
 
-    @Test func `values survive a round trip`() throws {
+    @Test func `should keep a script's setting templates when its definition is saved and read back`() throws {
         let mapping = try JSONDecoder().decode(ScriptMapping.self, from: Data(#"{"file":"s.js","values":{"limit":"{{setting.limit}}"}}"#.utf8))
         #expect(mapping.values == ["limit": "{{setting.limit}}"])
         #expect(try JSONDecoder().decode(ScriptMapping.self, from: JSONEncoder().encode(mapping)) == mapping)

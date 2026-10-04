@@ -21,7 +21,7 @@ struct ShellEnvironmentTests {
     final class Calls: @unchecked Sendable { var count = 0 }
 
     @Test
-    func `the app's own environment answers first`() {
+    func `should use the app's own environment value without asking the login shell`() {
         let calls = Calls()
         let environment = ShellEnvironment(process: ["GLM_KEY": "from-process"], cliExecutor: shell(answering: "from-shell", calls: calls))
         #expect(environment.value("GLM_KEY") == "from-process")
@@ -29,7 +29,7 @@ struct ShellEnvironmentTests {
     }
 
     @Test
-    func `a variable only the login shell exports is read from it once`() {
+    func `should find a variable only the login shell exports and ask the shell only once (#170)`() {
         let calls = Calls()
         let environment = ShellEnvironment(process: [:], cliExecutor: shell(answering: "from-shell", calls: calls))
         #expect(environment.value("GLM_KEY") == "from-shell")
@@ -38,7 +38,7 @@ struct ShellEnvironmentTests {
     }
 
     @Test
-    func `a variable set nowhere is nil and asked again later`() {
+    func `should find nothing and ask the login shell again later when the variable is set nowhere`() {
         let calls = Calls()
         let environment = ShellEnvironment(process: [:], cliExecutor: shell(answering: nil, calls: calls))
         #expect(environment.value("GLM_KEY") == nil)

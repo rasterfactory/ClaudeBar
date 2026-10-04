@@ -38,7 +38,7 @@ struct NotifyPayloadBuilderTests {
     // MARK: - Nothing to say
 
     @Test
-    func `no readings produce the empty payload`() {
+    func `should send the phone nothing when no quota is known`() {
         let payload = builder.payload(readings: [])
 
         #expect(payload == .empty)
@@ -50,7 +50,7 @@ struct NotifyPayloadBuilderTests {
     // MARK: - The worst quota leads
 
     @Test
-    func `the worst status leads the tile`() {
+    func `should lead the tile with the worst window, in its color`() {
         // Given one window of each severity, from three different providers
         let readings = [
             reading(80, provider: "claude", name: "Claude", quotaType: .weekly),
@@ -69,7 +69,7 @@ struct NotifyPayloadBuilderTests {
     // MARK: - Ordering
 
     @Test
-    func `readings tied on status are ordered by how little is left`() {
+    func `should order windows of the same status by how little is left`() {
         let payload = builder.payload(readings: [
             reading(40, quotaType: .session),
             reading(30, quotaType: .weekly),
@@ -80,7 +80,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `readings tied on how little is left are ordered by provider name`() {
+    func `should order windows with as much left by provider name`() {
         let payload = builder.payload(readings: [
             reading(30, provider: "zai", name: "Z.ai"),
             reading(30, provider: "claude", name: "Claude"),
@@ -90,7 +90,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `readings tied on provider name are ordered by quota key`() {
+    func `should order one provider's equal windows session before weekly`() {
         let payload = builder.payload(readings: [
             reading(30, quotaType: .weekly),
             reading(30, quotaType: .session),
@@ -100,7 +100,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `the same readings in a different order build the same payload`() {
+    func `should send the same tile whatever order the quotas arrive in`() {
         // The driver drops a payload identical to the last one, so an unstable
         // order would mean republishing forever.
         let readings = [
@@ -121,7 +121,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `only the first six windows reach the metrics row`() {
+    func `should show only the six lowest windows on the tile`() {
         // Six is the gateway's ceiling, and more than six is unreadable on a
         // Lock Screen anyway.
         let readings = [
@@ -146,7 +146,7 @@ struct NotifyPayloadBuilderTests {
     // MARK: - Labels
 
     @Test
-    func `labels omit the provider name when every window is one provider's`() {
+    func `should label windows without the provider name when one provider reports them all`() {
         let payload = builder.payload(readings: [
             reading(70, quotaType: .session),
             reading(80, quotaType: .weekly),
@@ -156,7 +156,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `labels name the provider when more than one is reporting`() {
+    func `should name the provider beside each window when several providers report`() {
         let payload = builder.payload(readings: [
             reading(70, provider: "claude", name: "Claude"),
             reading(80, provider: "codex", name: "Codex"),
@@ -166,7 +166,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `a quota's compact title wins over the window's short label`() {
+    func `should label a window with its quota's own short title over 7d`() {
         // A probe that already named the window better than "7d" knows more
         // about it than the quota type does.
         let payload = builder.payload(readings: [
@@ -179,7 +179,7 @@ struct NotifyPayloadBuilderTests {
     // MARK: - The bar
 
     @Test
-    func `the tile bar follows the worst percentage based quota`() {
+    func `should fill the tile's bar from the lowest percentage window`() {
         let payload = builder.payload(readings: [
             reading(70, quotaType: .weekly),
             reading(45, quotaType: .session),
@@ -189,7 +189,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `a money headline keeps the bar rather than dropping it`() {
+    func `should keep the bar from the next percentage window when a dollar balance leads the tile`() {
         // Given a nearly spent credit balance as the worst reading
         let readings = [
             reading(
@@ -215,7 +215,7 @@ struct NotifyPayloadBuilderTests {
     // MARK: - Numbers
 
     @Test
-    func `a percentage renders what is remaining, not what is used`() {
+    func `should show the percentage left, not the percentage used`() {
         let payload = builder.payload(readings: [reading(42)])
 
         #expect(payload.tile?.metrics.first?.value == "42")
@@ -224,7 +224,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `a money based quota renders its balance with no percent unit`() {
+    func `should show a dollar balance with no percent sign and no bar`() {
         let payload = builder.payload(readings: [
             reading(
                 60,
@@ -245,7 +245,7 @@ struct NotifyPayloadBuilderTests {
     // MARK: - The gauge
 
     @Test
-    func `the gauge shows the window the user selected`() {
+    func `should show the window the person pinned on the widget gauge`() {
         // Given a worse window than the one the user pinned
         let readings = [
             reading(8, provider: "claude", name: "Claude"),
@@ -266,7 +266,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `the gauge falls back to the headline when the selection is automatic`() {
+    func `should show the worst window on the widget gauge when none is pinned`() {
         let payload = builder.payload(readings: [
             reading(8, provider: "claude", name: "Claude"),
             reading(70, provider: "codex", name: "Codex", quotaType: .weekly),
@@ -278,7 +278,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `the gauge falls back to the headline when the selected window stops reporting`() {
+    func `should show the worst window on the widget gauge when the pinned one stops reporting`() {
         // A provider the user switched off, or a probe that stopped returning
         // that window, must not leave the widget blank.
         let payload = builder.payload(
@@ -296,7 +296,7 @@ struct NotifyPayloadBuilderTests {
     // MARK: - Surfaces the user turned off
 
     @Test
-    func `turning the tile off yields a payload with no tile`() {
+    func `should send no Live Activity tile when the person turns it off`() {
         let payload = builder.payload(readings: [reading(42)], includesTile: false)
 
         #expect(payload.tile == nil)
@@ -304,7 +304,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `turning the gauge off yields a payload with no gauge`() {
+    func `should send no widget gauge when the person turns it off`() {
         let payload = builder.payload(readings: [reading(42)], includesGauge: false)
 
         #expect(payload.gauge == nil)
@@ -312,7 +312,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `turning the Home Screen tile off yields a payload with no screen tile`() {
+    func `should send no Home Screen tile when the person turns it off`() {
         let payload = builder.payload(readings: [reading(42)], includesScreenTile: false)
 
         #expect(payload.screenTile == nil)
@@ -320,7 +320,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `the Home Screen tile survives the Live Activity being turned off`() {
+    func `should still send the Home Screen tile when the Live Activity is turned off`() {
         // The two surfaces switch on and off separately, which is the whole
         // reason the payload carries them as two fields. A user who wants a tile
         // that stays and nothing on their Lock Screen must still get one.
@@ -331,7 +331,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `the Home Screen tile is the Live Activity tile, one value on two surfaces`() {
+    func `should send the Home Screen the same tile as the Live Activity`() {
         // The gateway derives both routes' content contracts from one module and
         // takes the same body on either, so the client sends one body to both.
         // Building the two separately here could only produce two pictures of
@@ -348,7 +348,7 @@ struct NotifyPayloadBuilderTests {
     // MARK: - The summary line
 
     @Test
-    func `the summary names the provider, the window, the percentage and the countdown`() {
+    func `should summarise the provider, window, percentage left and time until reset`() {
         // Given a window that resets in a bit over two hours. The countdown
         // ticks while the test runs, so only its shape is asserted.
         let payload = builder.payload(readings: [
@@ -363,7 +363,7 @@ struct NotifyPayloadBuilderTests {
     }
 
     @Test
-    func `two readings that tie on everything visible still order deterministically`() {
+    func `should order two accounts with the same name and window the same way every time`() {
         // An aggregating provider can report two accounts under one display
         // name, so the name is not a unique key and neither is the pair of name
         // and window. Swift's sort is not stable, so without a total comparator

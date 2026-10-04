@@ -30,7 +30,7 @@ struct DefinitionPatchTests {
     // MARK: - Round trip
 
     @Test
-    func `a definition survives being written out and read back`() throws {
+    func `should keep a definition when it is written out and read back`() throws {
         let rpc = try definition()
 
         let again = try JSONDecoder().decode(DataSourceDefinition.self, from: JSONEncoder().encode(rpc))
@@ -41,7 +41,7 @@ struct DefinitionPatchTests {
     // MARK: - Merge patch (RFC 7396)
 
     @Test
-    func `a patch replaces only the fields it names`() throws {
+    func `should change only what a login's patch names and keep the rest of the definition`() throws {
         let patched = try definition().patched(with: patch("""
         { "requiresFiles": ["{{account.codexHome}}/auth.json"] }
         """))
@@ -53,7 +53,7 @@ struct DefinitionPatchTests {
     }
 
     @Test
-    func `a null in the patch removes the field`() throws {
+    func `should drop what a login's patch sets to null`() throws {
         let patched = try definition().patched(with: patch("""
         { "fallback": null, "verifyBeforeBackground": null }
         """))
@@ -63,7 +63,7 @@ struct DefinitionPatchTests {
     }
 
     @Test
-    func `nested objects merge, arrays are replaced`() throws {
+    func `should merge a login's patch into nested parts of the definition and replace its lists whole`() throws {
         let patched = try definition().patched(with: patch("""
         { "fetch": { "jsonRpc": { "args": ["-c", "x", "app-server"],
                                   "environment": { "set": { "CODEX_HOME": "/tmp/a" } } } } }
@@ -82,7 +82,7 @@ struct DefinitionPatchTests {
     // MARK: - Filling a login's values
 
     @Test
-    func `a login's values fill every account placeholder`() throws {
+    func `should fill every account placeholder with the login's own values`() throws {
         let template = try definition().patched(with: patch("""
         { "requiresFiles": ["{{account.codexHome}}/auth.json"],
           "identity": { "field": "account", "equals": "{{account.chatgptAccountId}}" } }
@@ -96,7 +96,7 @@ struct DefinitionPatchTests {
     }
 
     @Test
-    func `other placeholders are left for the fetch`() throws {
+    func `should leave placeholders other than the login's for the fetch to fill`() throws {
         let template = try definition("""
         { "kind": "api",
           "fetch": { "http": { "url": "https://example.com", "headers": { "Authorization": "Bearer {{token}}" } } },
@@ -113,7 +113,7 @@ struct DefinitionPatchTests {
     }
 
     @Test
-    func `a value the login doesn't have stays visible as unfilled`() throws {
+    func `should name a value the login doesn't have as unfilled`() throws {
         let template = try definition().patched(with: patch("""
         { "requiresFiles": ["{{account.codexHome}}/auth.json"] }
         """))

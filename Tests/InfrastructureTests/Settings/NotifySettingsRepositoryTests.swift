@@ -91,7 +91,7 @@ struct NotifySettingsRepositoryTests {
     // MARK: - Defaults
 
     @Test
-    func `isNotifyEnabled defaults to off`() {
+    func `should keep Notify! off until the person turns it on`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -101,7 +101,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `both surfaces default to on`() {
+    func `should show the Lock Screen tile and the widget once Notify! is linked, unless turned off`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -112,7 +112,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `the Home Screen widget defaults to on`() {
+    func `should show the Home Screen tile once Notify! is linked, unless turned off`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -124,7 +124,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `the device id defaults to empty`() {
+    func `should have no linked phone to begin with`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -132,7 +132,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `the gauge selection defaults to empty`() {
+    func `should choose no gauge quota to begin with`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -142,7 +142,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `both handles default to nil`() {
+    func `should know of no Lock Screen tile or widget to begin with`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -151,7 +151,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `no token is stored to begin with`() {
+    func `should have no Notify! token to begin with`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -162,7 +162,7 @@ struct NotifySettingsRepositoryTests {
     // MARK: - Setters
 
     @Test
-    func `setNotifyEnabled persists value`() {
+    func `should remember Notify! turned on`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -171,7 +171,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyDeviceId persists value`() {
+    func `should remember the linked phone`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -180,7 +180,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyLiveActivityEnabled persists value`() {
+    func `should remember the Lock Screen tile turned off`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -189,7 +189,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyWidgetEnabled persists value`() {
+    func `should remember the widget turned off`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -198,7 +198,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyScreenWidgetEnabled persists value`() {
+    func `should remember the Home Screen tile turned off`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -207,7 +207,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyGaugeProviderId persists value`() {
+    func `should remember the gauge's provider`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -216,7 +216,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyGaugeQuotaKey persists value`() {
+    func `should remember the gauge's quota`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -225,7 +225,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyActivityId persists value`() {
+    func `should remember the Lock Screen tile it started`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -234,7 +234,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyWidgetId persists value`() {
+    func `should remember the widget it created`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -243,7 +243,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyScreenWidgetId persists value`() {
+    func `should remember the Home Screen tile it created`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -254,7 +254,7 @@ struct NotifySettingsRepositoryTests {
     // MARK: - Forgetting a Handle
 
     @Test
-    func `setNotifyActivityId nil removes the handle`() {
+    func `should forget the Lock Screen tile once it is cleared`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -267,7 +267,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyWidgetId nil removes the handle`() {
+    func `should forget the widget once it is cleared`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -278,7 +278,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `setNotifyScreenWidgetId nil removes the handle`() {
+    func `should forget the Home Screen tile once it is cleared`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -294,7 +294,7 @@ struct NotifySettingsRepositoryTests {
     // MARK: - Device Token
 
     @Test
-    func `the device token round trips through the secure store`() {
+    func `should keep the Notify! token in secure storage`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -306,7 +306,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `saveNotifyDeviceToken trims a pasted token`() {
+    func `should trim the spaces and newline a pasted token arrives with`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -317,7 +317,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `deleteNotifyDeviceToken clears the token`() {
+    func `should forget the Notify! token when it is removed`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -329,7 +329,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `saving a blank token clears the link instead of storing it`() {
+    func `should unlink when the token is saved blank`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -343,7 +343,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `saving a whitespace only token clears the link instead of storing it`() {
+    func `should unlink when the token is saved as only whitespace`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -355,7 +355,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `the device token never reaches the settings file`() throws {
+    func `should never write the Notify! token to settings.json`() throws {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -374,7 +374,7 @@ struct NotifySettingsRepositoryTests {
     // MARK: - Device Link
 
     @Test
-    func `notifyDeviceLink is nil until a token is saved`() {
+    func `should have no link to the phone until a token is saved`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -384,7 +384,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `notifyDeviceLink is nil when the device id is malformed`() {
+    func `should have no link to the phone when its id is malformed`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -396,7 +396,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `notifyDeviceLink carries both halves once they are saved`() throws {
+    func `should link the phone once both its id and token are saved`() throws {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -411,7 +411,7 @@ struct NotifySettingsRepositoryTests {
     // MARK: - Gauge Selection
 
     @Test
-    func `notifyGaugeSelection is automatic when no provider is chosen`() {
+    func `should pick the gauge quota automatically when no provider is chosen`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -423,7 +423,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `notifyGaugeSelection is automatic when no quota window is chosen`() {
+    func `should pick the gauge quota automatically when no quota is chosen`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -433,7 +433,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `notifyGaugeSelection names the window when both halves are chosen`() {
+    func `should show the chosen quota on the gauge when provider and quota are both chosen`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
 
@@ -448,7 +448,7 @@ struct NotifySettingsRepositoryTests {
     // MARK: - When the Keychain refuses
 
     @Test
-    func `a token the Keychain refuses is still stored, and still round trips`() throws {
+    func `should still keep the Notify! token when the Keychain refuses it`() throws {
         // Given a secure store that drops everything, which is what a locally built ClaudeBar
         // actually has: the user presses Save and, without this fallback, nothing is kept and
         // nothing says so.
@@ -467,7 +467,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `a token the Keychain refuses is reported as not secure`() throws {
+    func `should say the Notify! token is not secure when the Keychain refuses it`() throws {
         let fixture = makeRefusedFixture()
         defer {
             UserDefaults.standard.removePersistentDomain(forName: fixture.suiteName)
@@ -482,7 +482,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `a refused token still never reaches the settings file`() throws {
+    func `should never write the Notify! token to settings.json when the Keychain refuses it`() throws {
         let fixture = makeRefusedFixture()
         defer {
             UserDefaults.standard.removePersistentDomain(forName: fixture.suiteName)
@@ -501,7 +501,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `removing a refused token clears the fallback too`() throws {
+    func `should forget the Notify! token from the fallback store when the Keychain refused it`() throws {
         let fixture = makeRefusedFixture()
         defer {
             UserDefaults.standard.removePersistentDomain(forName: fixture.suiteName)
@@ -522,7 +522,7 @@ struct NotifySettingsRepositoryTests {
     // MARK: - Saving a link
 
     @Test
-    func `saving the same device again keeps the surfaces already standing on it`() throws {
+    func `should keep the tile and widgets already on the phone when the same phone is saved again`() throws {
         // Given a linked device with all three surfaces published
         let fixture = makeFixture()
         defer { cleanup(fixture) }
@@ -546,7 +546,7 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
-    func `linking a different device forgets the previous one's surfaces`() throws {
+    func `should forget the previous phone's tile and widgets when a different phone is linked`() throws {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
         fixture.repository.saveNotifyDeviceLink(try #require(NotifyDeviceLink(deviceId: Self.deviceId, token: Self.token)))

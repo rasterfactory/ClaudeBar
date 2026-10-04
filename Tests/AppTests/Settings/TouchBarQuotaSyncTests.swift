@@ -8,7 +8,7 @@ import Infrastructure
 @Suite @MainActor
 struct TouchBarQuotaSyncTests {
     @Test
-    func `touchbar and menubar percentages match exactly for fractional values without rounding up`() {
+    func `should show the same whole percent on the Touch Bar as in the menu bar, never rounding up a fraction`() {
         // Test cases from user: 6.8% used -> menubar 6%, touchbar must also be 6% (not 7%)
         // 56.7% used -> menubar 56%, touchbar must also be 56% (not 57%)
         let testValues: [(percentRemaining: Double, expectedUsedInt: Int, expectedRemainingInt: Int)] = [
@@ -61,7 +61,7 @@ struct TouchBarQuotaSyncTests {
     }
 
     @Test
-    func `touchbar quota view draws matching text`() {
+    func `should draw the Touch Bar gauge for a quota the menu bar shows as 6% used`() {
         let quota = UsageQuota(
             percentRemaining: 93.2, // percentUsed = 6.8
             quotaType: .session,

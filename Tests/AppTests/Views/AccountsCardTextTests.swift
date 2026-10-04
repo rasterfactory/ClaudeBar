@@ -23,20 +23,20 @@ struct AccountsCardTextTests {
     }
 
     @Test
-    func `the count says how many logins there are`() throws {
+    func `should say how many accounts the provider has`() throws {
         #expect(AccountsCardText(provider: try codex()).count == "1 account")
         #expect(AccountsCardText(provider: try codex([login("a", folder: "/tmp/a", madeBy: .folder)])).count == "2 accounts")
     }
 
     @Test
-    func `the ways to add are the definition's, easiest first`() throws {
+    func `should offer Codex's ways to add an account, easiest first`() throws {
         let text = AccountsCardText(provider: try codex())
 
         #expect(text.ways.map(\.label) == ["Sign in with browser", "Choose Signed-in Folder"])
     }
 
     @Test
-    func `a provider someone added asks for its key`() throws {
+    func `should offer only to enter an API key for a provider the person added`() throws {
         var draft = ProviderDraft(start: .api)
         draft.url = "https://openrouter.ai/api/v1/auth/key"
         draft.key = .apiKey
@@ -51,7 +51,7 @@ struct AccountsCardTextTests {
     }
 
     @Test
-    func `an API account is described and recovered without mentioning a CLI or folder`() throws {
+    func `should describe, re-sign and remove an API account without mentioning a CLI or folder`() throws {
         let settings = JSONSettingsRepository(store: JSONSettingsStore(
             fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("accounts-card-\(UUID()).json")))
         let provider = try ProviderFactory.make("deepseek", settings: settings,
@@ -64,21 +64,21 @@ struct AccountsCardTextTests {
     }
 
     @Test
-    func `signing in yourself uses the definition's own command`() throws {
+    func `should show Codex's own sign-in command for a chosen folder`() throws {
         let text = AccountsCardText(provider: try codex())
 
         #expect(text.signInCommand(in: "/Users/me/work") == #"CODEX_HOME=/Users/me/work codex -c 'cli_auth_credentials_store="file"' login"#)
     }
 
     @Test
-    func `a folder with a space survives being pasted into a terminal`() throws {
+    func `should quote a folder with a space so the sign-in command works when pasted into a terminal`() throws {
         let text = AccountsCardText(provider: try codex())
 
         #expect(text.signInCommand(in: "/Users/me/My Work")?.hasPrefix("CODEX_HOME='/Users/me/My Work' codex") == true)
     }
 
     @Test
-    func `removing says what goes with the account`() throws {
+    func `should say what goes with an account when the person removes it`() throws {
         let made = "/Users/me/.claudebar/accounts/codex/\(UUID().uuidString.lowercased())"
         let provider = try codex([login("a", folder: made, madeBy: .signIn), login("b", folder: "/Users/me/codex-b", madeBy: .folder)])
         let text = AccountsCardText(provider: provider)
@@ -88,7 +88,7 @@ struct AccountsCardTextTests {
     }
 
     @Test
-    func `a login ClaudeBar made signs in again from the card, one the person chose is told how`() throws {
+    func `should sign a login ClaudeBar made in again from the card, and tell the person how for one they chose`() throws {
         let made = "/Users/me/.claudebar/accounts/codex/\(UUID().uuidString.lowercased())"
         let provider = try codex([login("a", folder: made, madeBy: .signIn), login("b", folder: "/Users/me/codex-b", madeBy: .folder)])
         let text = AccountsCardText(provider: provider)
@@ -97,7 +97,7 @@ struct AccountsCardTextTests {
         #expect(text.reauthHelp(for: provider.accounts[2]) == #"Sign in again yourself: CODEX_HOME=/Users/me/codex-b codex -c 'cli_auth_credentials_store="file"' login — then refresh."#)
     }
 
-    @Test func `a path form keeps its folder and asks for CLI sign-in rather than a new key`() throws {
+    @Test func `should keep a folder account's folder on removal and ask to sign in with the CLI, not for a new key`() throws {
         let json = #"{"profile":{"id":"example","name":"Example"},"cli":"example","defaultDataSource":"file","dataSources":[{"kind":"file","fetch":{"file":{"path":"/tmp/example.json"}},"mapping":{"json":{"quotas":[]}}}],"settings":[{"id":"home","label":"Home Folder","scope":"account","kind":"path"}],"accounts":{"patch":{}}}"#
         let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
         let account = ProviderAccountConfig(accountId: "work", label: "Work", probeConfig: ["home": "/tmp/work profile"], madeBy: .form)
@@ -108,7 +108,7 @@ struct AccountsCardTextTests {
         #expect(text.reauthHelp(for: provider.accounts[1]) == "Sign in again in /tmp/work profile with your CLI, then refresh.")
     }
 
-    @Test func `the default login's re-sign-in help is its key lookup's own hint`() throws {
+    @Test func `should show the provider's own sign-in hint when the default login's key is refused`() throws {
         let json = #"{"profile":{"id":"example","name":"Example"},"defaultDataSource":"api","dataSources":[{"kind":"api","credential":{"sqlite":{"path":"~/example.db","query":"SELECT 1","fields":{},"hint":"Sign in again in Example, then refresh."}},"fetch":{"http":{"url":"https://example.test"}},"mapping":{"json":{"quotas":[]}}}]}"#
         let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
         let provider = ProviderFactory.make(try ProviderDefinition.parse(Data(json.utf8)), settings: settings)

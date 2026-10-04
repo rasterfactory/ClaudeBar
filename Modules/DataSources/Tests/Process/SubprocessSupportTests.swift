@@ -9,10 +9,10 @@ import Testing
 @Suite("SubprocessSupport")
 struct SubprocessSupportTests {
 
-    @Test("Captures output at each Foundation quality of service", arguments: [
+    @Test(arguments: [
         QualityOfService.userInteractive, .userInitiated, .utility, .background, .default,
     ])
-    func capturesStandardOutput(qualityOfService: QualityOfService) async throws {
+    func `should hear what a program prints at every quality of service`(qualityOfService: QualityOfService) async throws {
         let result = try await SubprocessSupport.run(
             executablePath: "/bin/echo",
             arguments: ["hello"],
@@ -24,8 +24,8 @@ struct SubprocessSupportTests {
         #expect(result.isSuccess)
     }
 
-    @Test("Returns a non-zero exit code instead of throwing")
-    func nonZeroExitIsNotAnError() async throws {
+    @Test
+    func `should report a failing program's exit code without failing the run`() async throws {
         let result = try await SubprocessSupport.run(
             executablePath: "/usr/bin/false",
             arguments: []
@@ -35,8 +35,8 @@ struct SubprocessSupportTests {
         #expect(!result.isSuccess)
     }
 
-    @Test("Captures standard error separately from standard output")
-    func capturesStandardError() async throws {
+    @Test
+    func `should hear a program's errors apart from what it prints`() async throws {
         let result = try await SubprocessSupport.run(
             executablePath: "/bin/sh",
             arguments: ["-c", "echo out; echo err 1>&2; exit 3"]
@@ -48,8 +48,8 @@ struct SubprocessSupportTests {
         #expect(result.exitCode == 3)
     }
 
-    @Test("Writes input to the child's standard input")
-    func forwardsInput() async throws {
+    @Test
+    func `should hand a program the input it is given`() async throws {
         let result = try await SubprocessSupport.run(
             executablePath: "/bin/cat",
             arguments: [],
@@ -59,8 +59,8 @@ struct SubprocessSupportTests {
         #expect(result.standardOutput == "piped-value")
     }
 
-    @Test("Closes standard input when no input is supplied")
-    func closesStdinWithoutInput() async throws {
+    @Test
+    func `should not leave a program waiting for input when there is none`() async throws {
         // `cat` with a closed stdin exits cleanly instead of hanging forever.
         let result = try await SubprocessSupport.run(
             executablePath: "/bin/cat",
@@ -71,8 +71,8 @@ struct SubprocessSupportTests {
         #expect(result.exitCode == 0)
     }
 
-    @Test("Collects output far larger than the OS pipe buffer")
-    func handlesOutputLargerThanPipeBuffer() async throws {
+    @Test
+    func `should hear everything a program prints when it is far more than a pipe holds`() async throws {
         // ~290 KB, several times the ~64 KB pipe buffer. The previous
         // `waitUntilExit()`-then-read ordering deadlocks on exactly this.
         let result = try await SubprocessSupport.run(
@@ -86,8 +86,8 @@ struct SubprocessSupportTests {
         #expect(result.standardOutput.hasSuffix("50000\n"))
     }
 
-    @Test("Reports a signalled child as a non-zero exit code")
-    func reportsSignalledChild() async throws {
+    @Test
+    func `should report a program killed by a signal as failed`() async throws {
         let result = try await SubprocessSupport.run(
             executablePath: "/bin/sh",
             arguments: ["-c", "kill -TERM $$"]
@@ -96,8 +96,8 @@ struct SubprocessSupportTests {
         #expect(!result.isSuccess)
     }
 
-    @Test("Throws when the executable does not exist")
-    func throwsForMissingExecutable() async {
+    @Test
+    func `should fail when the program does not exist`() async {
         await #expect(throws: (any Error).self) {
             try await SubprocessSupport.run(
                 executablePath: "/nonexistent/claudebar-not-a-binary",
@@ -106,8 +106,8 @@ struct SubprocessSupportTests {
         }
     }
 
-    @Test("Runs in the requested working directory")
-    func honoursWorkingDirectory() async throws {
+    @Test
+    func `should run a program in the folder it is asked to`() async throws {
         let result = try await SubprocessSupport.run(
             executablePath: "/bin/pwd",
             arguments: [],
@@ -117,8 +117,8 @@ struct SubprocessSupportTests {
         #expect(result.standardOutput.contains("tmp"))
     }
 
-    @Test("Cancelling the calling task tears the child down")
-    func cancellationTearsDownChild() async throws {
+    @Test
+    func `should stop the program promptly when its run is cancelled`() async throws {
         let task = Task {
             try await SubprocessSupport.run(
                 executablePath: "/bin/sh",

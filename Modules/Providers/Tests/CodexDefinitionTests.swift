@@ -16,7 +16,7 @@ struct CodexDefinitionTests {
     // MARK: - The definition
 
     @Test
-    func `codex json keeps the definition laws`() throws {
+    func `should offer Codex over RPC first, then the API, with a hidden terminal fallback and OpenAI's usage dashboard`() throws {
         let codex = try ProviderFactory.builtIn("codex")
 
         #expect(codex.id == "codex")
@@ -30,7 +30,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `codex uses rpc until the person picks api`() throws {
+    func `should read Codex over RPC until the person picks the API`() throws {
         let rpc = try StubbedProvider(providerId: "codex")
         let api = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { rpc.cleanUp(); api.cleanUp() }
@@ -42,7 +42,7 @@ struct CodexDefinitionTests {
     // MARK: - RPC
 
     @Test
-    func `rpc reads the session and weekly windows`() async throws {
+    func `should show the session and weekly windows with their resets when Codex answers over RPC`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":30,"resetsAt":1735000000,"windowDurationMins":300},"secondary":{"usedPercent":50,"resetsAt":1735500000}}}}"#)
@@ -60,7 +60,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `rpc gives a free plan its session at full`() async throws {
+    func `should show a free plan's session full, labelled Free plan`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"free"}}}"#)
@@ -73,7 +73,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `rpc adds the extra buckets after session and weekly`() async throws {
+    func `should show Spark's windows after the session and weekly ones`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":30,"resetsAt":1735000000},"secondary":{"usedPercent":10}},"rateLimitsByLimitId":{"codex":{"limitId":"codex","primary":{"usedPercent":30,"resetsAt":1735000000}},"codex_spark":{"limitId":"codex_spark","limitName":"Codex Spark","primary":{"usedPercent":40,"resetsAt":1735100000},"secondary":{"usedPercent":20,"windowDurationMins":10080}}}}}"#)
@@ -90,7 +90,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `rpc skips the main bucket and buckets without windows`() async throws {
+    func `should show neither the main bucket twice nor buckets that have no window`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":30}},"rateLimitsByLimitId":{"codex":{"limitId":"codex","primary":{"usedPercent":30}},"codex_spark":{"limitId":"codex_spark","limitName":"Codex Spark"},"codex_other":{"limitId":"codex_other","limitName":"Other","primary":{"usedPercent":5}}}}}"#)
@@ -102,7 +102,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `when rpc fails the terminal answers`() async throws {
+    func `should show the terminal's windows, answered by Terminal, when RPC fails`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(#"{"id":2,"error":{"message":"Authentication required"}}"#)
@@ -122,7 +122,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `when rpc and the terminal both fail the rpc failure is reported and the last usage kept`() async throws {
+    func `should report the RPC failure and keep the last usage when RPC and the terminal both fail`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         // First refresh: initialize, usage, the account. Second: initialize, then an RPC error.
@@ -152,7 +152,7 @@ struct CodexDefinitionTests {
     // MARK: - Terminal
 
     @Test
-    func `the terminal says when codex is not logged in`() async throws {
+    func `should ask to sign in when the terminal says Codex is not logged in`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "tty", providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerTerminal("Error: Not logged in. Please log in with `codex login`.")
@@ -165,7 +165,7 @@ struct CodexDefinitionTests {
     // MARK: - API
 
     @Test
-    func `api prefers the usage headers`() async throws {
+    func `should show the usage the API's headers report over its body`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -180,7 +180,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `api falls back to the body without headers`() async throws {
+    func `should show the usage in the API's body when it sends no usage headers`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -194,7 +194,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `api adds extra limits after session and weekly`() async throws {
+    func `should show Spark's windows after the session and weekly ones when read through the API`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -209,7 +209,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `api reads the plan and the credits`() async throws {
+    func `should show the plan and the credits spent from the balance`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -225,7 +225,7 @@ struct CodexDefinitionTests {
 
     // https://github.com/tddworks/ClaudeBar/issues/444
     @Test
-    func `api without credits shows no cost`() async throws {
+    func `should show no cost when the account has no credits (#444)`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -237,7 +237,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `api with nothing to say is no usage, not a failure`() async throws {
+    func `should show no quotas, not a failure, when the API reports nothing`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -249,7 +249,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `api without a key says so at the lookup step`() async throws {
+    func `should be unavailable and ask to sign in when there is no Codex login for the API`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         let codex = try stub.make("codex")
@@ -260,7 +260,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `api refused even after a refresh means log in again`() async throws {
+    func `should ask to sign in again when the API refuses the login`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth()
@@ -271,7 +271,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `api refreshes an old token, uses it, and writes it back`() async throws {
+    func `should renew an old login and save the new tokens back to Codex's file`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth(token: "old-token", accountId: "acct-1", lastRefresh: Date().addingTimeInterval(-9 * 86400))
@@ -293,7 +293,7 @@ struct CodexDefinitionTests {
     }
 
     @Test
-    func `an expired refresh token means log in again`() async throws {
+    func `should ask to sign in again when the saved login can no longer be renewed`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth(lastRefresh: Date().addingTimeInterval(-9 * 86400))

@@ -6,7 +6,7 @@ import Foundation
 struct ClaudePassTests {
 
     @Test
-    func `creates pass with count and URL`() {
+    func `should keep how many guest passes are left and the link to share`() {
         // Given
         let url = URL(string: "https://claude.ai/referral/ABC123")!
 
@@ -19,7 +19,7 @@ struct ClaudePassTests {
     }
 
     @Test
-    func `creates pass with URL only when count is unknown`() {
+    func `should keep the link to share when the number of passes left is unknown`() {
         let url = URL(string: "https://claude.ai/referral/ABC123")!
         let pass = GuestPass(referralURL: url)
 
@@ -28,7 +28,7 @@ struct ClaudePassTests {
     }
 
     @Test
-    func `hasPassesAvailable returns true when passes remain`() {
+    func `should have passes to share when some are left`() {
         let pass = GuestPass(
             passesRemaining: 3,
             referralURL: URL(string: "https://claude.ai/referral/ABC123")!
@@ -38,7 +38,7 @@ struct ClaudePassTests {
     }
 
     @Test
-    func `hasPassesAvailable returns false when no passes remain`() {
+    func `should have no passes to share when none are left`() {
         let pass = GuestPass(
             passesRemaining: 0,
             referralURL: URL(string: "https://claude.ai/referral/ABC123")!
@@ -48,14 +48,14 @@ struct ClaudePassTests {
     }
 
     @Test
-    func `hasPassesAvailable returns true when count is unknown`() {
+    func `should offer passes to share when the number left is unknown`() {
         let pass = GuestPass(referralURL: URL(string: "https://claude.ai/referral/ABC123")!)
 
         #expect(pass.hasPassesAvailable == true)
     }
 
     @Test
-    func `displayText formats correctly for multiple passes`() {
+    func `should print 3 passes left`() {
         let pass = GuestPass(
             passesRemaining: 3,
             referralURL: URL(string: "https://claude.ai/referral/ABC123")!
@@ -65,7 +65,7 @@ struct ClaudePassTests {
     }
 
     @Test
-    func `displayText formats correctly for single pass`() {
+    func `should print 1 pass left`() {
         let pass = GuestPass(
             passesRemaining: 1,
             referralURL: URL(string: "https://claude.ai/referral/ABC123")!
@@ -75,7 +75,7 @@ struct ClaudePassTests {
     }
 
     @Test
-    func `displayText formats correctly for no passes`() {
+    func `should print No passes left when none are left`() {
         let pass = GuestPass(
             passesRemaining: 0,
             referralURL: URL(string: "https://claude.ai/referral/ABC123")!
@@ -85,14 +85,14 @@ struct ClaudePassTests {
     }
 
     @Test
-    func `displayText shows share message when count is unknown`() {
+    func `should print Share Claude Code when the number left is unknown`() {
         let pass = GuestPass(referralURL: URL(string: "https://claude.ai/referral/ABC123")!)
 
         #expect(pass.displayText == "Share Claude Code")
     }
 
     @Test
-    func `conforms to Sendable and Equatable`() {
+    func `should treat two passes with the same count and link as the same`() {
         let pass1 = GuestPass(
             passesRemaining: 3,
             referralURL: URL(string: "https://claude.ai/referral/ABC123")!

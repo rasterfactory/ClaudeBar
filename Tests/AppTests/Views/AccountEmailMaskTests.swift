@@ -6,21 +6,21 @@ import Testing
 /// a name the person gave a login is theirs and shows as it is.
 @Suite
 struct AccountEmailMaskTests {
-    @Test func `an email keeps its first letters and its ending`() {
+    @Test func `should show only an email's first letters and its ending when emails are hidden (#375)`() {
         #expect(AccountEmailMask.masked("sam@example.com") == "s•••@e•••.com")
         #expect(AccountEmailMask.masked("work@corp.example.co.uk") == "w•••@c•••.uk")
     }
 
-    @Test func `a name that isn't an email shows as it is`() {
+    @Test func `should show a name the person gave a login as it is when emails are hidden`() {
         #expect(AccountEmailMask.masked("Work") == "Work")
         #expect(AccountEmailMask.masked("Claude") == "Claude")
     }
 
-    @Test func `an email inside a sentence is masked where it stands`() {
+    @Test func `should hide an email inside a sentence where it stands`() {
         #expect(AccountEmailMask.masked("a@b.io is at 18%") == "a•••@b•••.io is at 18%")
     }
 
-    @Test func `the menu bar's short name of a masked email stays short`() {
+    @Test func `should keep the menu bar's short name of a hidden email short`() {
         let names = MenuBarAccountName.names(["claude": AccountEmailMask.masked("sam@example.com"),
                                               "claude.work": AccountEmailMask.masked("work@corp.com")])
         #expect(names["claude"] == "s•••")

@@ -24,7 +24,7 @@ struct SessionMonitorTests {
     // MARK: - Session Lifecycle
 
     @Test
-    func `starts with no active session`() {
+    func `should show no session and no recent sessions before Claude Code starts one`() {
         let monitor = SessionMonitor()
 
         #expect(monitor.activeSession == nil)
@@ -33,7 +33,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `SessionStart creates active session`() {
+    func `should show an active session in its folder when Claude Code starts one`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(eventName: .sessionStart))
@@ -46,7 +46,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `SessionEnd moves session to recent and clears active`() {
+    func `should move the session to recent sessions as ended when Claude Code ends it`() {
         let monitor = SessionMonitor()
         let startDate = Date()
         let endDate = startDate.addingTimeInterval(60)
@@ -62,7 +62,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `SessionEnd for different session ID is ignored`() {
+    func `should keep the running session when another session ends`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(sessionId: "session-1", eventName: .sessionStart))
@@ -73,7 +73,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `new SessionStart ends previous session`() {
+    func `should move the previous session to recent sessions when a new one starts`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(sessionId: "session-1", eventName: .sessionStart))
@@ -87,7 +87,7 @@ struct SessionMonitorTests {
     // MARK: - Task Tracking
 
     @Test
-    func `TaskCompleted increments task count`() {
+    func `should count each task Claude Code finishes in the session`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(eventName: .sessionStart))
@@ -98,7 +98,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `TaskCompleted for wrong session ID is ignored`() {
+    func `should not count a task another session finished`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(sessionId: "session-1", eventName: .sessionStart))
@@ -108,7 +108,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `TaskCompleted without active session is ignored`() {
+    func `should show no session when a task finishes with no session running`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(eventName: .taskCompleted))
@@ -119,7 +119,7 @@ struct SessionMonitorTests {
     // MARK: - Subagent Tracking
 
     @Test
-    func `SubagentStart changes phase to subagentsWorking`() {
+    func `should show agents working when a subagent starts in the session`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(eventName: .sessionStart))
@@ -130,7 +130,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `SubagentStop returns to active when no subagents remain`() {
+    func `should go back to active when the session's last subagent stops`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(eventName: .sessionStart))
@@ -142,7 +142,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `multiple subagents tracked correctly`() {
+    func `should keep two agents working when one of three subagents stops`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(eventName: .sessionStart))
@@ -158,7 +158,7 @@ struct SessionMonitorTests {
     // MARK: - Stop
 
     @Test
-    func `Stop sets phase to stopped`() {
+    func `should show the session stopped with no agents when Claude stops`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(eventName: .sessionStart))
@@ -170,7 +170,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `Stop for wrong session is ignored`() {
+    func `should keep the session active when another session stops`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(sessionId: "session-1", eventName: .sessionStart))
@@ -180,7 +180,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `UserPromptSubmit revives a stopped session to active`() {
+    func `should bring a stopped session back to active when the person sends a prompt`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(eventName: .sessionStart))
@@ -191,7 +191,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `UserPromptSubmit for wrong session is ignored`() {
+    func `should keep the session stopped when the person prompts another session`() {
         let monitor = SessionMonitor()
 
         monitor.processEvent(makeEvent(sessionId: "session-1", eventName: .sessionStart))
@@ -204,7 +204,7 @@ struct SessionMonitorTests {
     // MARK: - Recent Sessions
 
     @Test
-    func `recent sessions are ordered most recent first`() {
+    func `should list the most recent session first`() {
         let monitor = SessionMonitor()
         let now = Date()
 
@@ -220,7 +220,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `recent sessions are capped at max`() {
+    func `should keep only the latest sessions up to the limit`() {
         let monitor = SessionMonitor(maxRecentSessions: 3)
         let now = Date()
 
@@ -239,7 +239,7 @@ struct SessionMonitorTests {
     // MARK: - Complex Scenarios
 
     @Test
-    func `full session lifecycle with tasks and subagents`() {
+    func `should follow a session through subagents and tasks and keep its task count once it ends`() {
         let monitor = SessionMonitor()
 
         // Start session
@@ -272,7 +272,7 @@ struct SessionMonitorTests {
     // MARK: - Permission Prompts
 
     @Test
-    func `Notification moves the active session to awaitingInput`() {
+    func `should show the session needs the person, with the prompt, when Claude Code asks for permission`() {
         let monitor = SessionMonitor()
         monitor.processEvent(makeEvent(eventName: .sessionStart))
 
@@ -283,7 +283,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `Notification is ignored when it belongs to another session`() {
+    func `should keep the session active when another session asks for permission`() {
         let monitor = SessionMonitor()
         monitor.processEvent(makeEvent(eventName: .sessionStart))
 
@@ -294,7 +294,7 @@ struct SessionMonitorTests {
     }
 
     @Test
-    func `UserPromptSubmit releases a session waiting on input`() {
+    func `should drop the prompt and go back to active when the person answers the session`() {
         let monitor = SessionMonitor()
         monitor.processEvent(makeEvent(eventName: .sessionStart))
         monitor.processEvent(makeEvent(eventName: .notification, message: "blocked"))

@@ -33,7 +33,7 @@ struct ScriptFetchTests {
     }
 
     @Test
-    func `a script runs from its own folder and its output is the response`() async throws {
+    func `should show what a script prints when it runs from its own folder`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try script("probe.sh", #"cat left.json"#)
         try Data(#"{"weekly":{"left":62}}"#.utf8).write(to: folder.appendingPathComponent("left.json"))
@@ -44,7 +44,7 @@ struct ScriptFetchTests {
     }
 
     @Test
-    func `settings reach the script as environment variables, secrets from the vault`() async throws {
+    func `should hand a script its settings as environment variables and its secrets from the vault`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try script("probe.sh", #"echo "{\"weekly\":{\"left\":${#CLAUDEBAR_API_KEY}$CLAUDEBAR_REGION}}""#)
 
@@ -56,7 +56,7 @@ struct ScriptFetchTests {
     }
 
     @Test
-    func `a script that fails is a failure at the fetch step`() async throws {
+    func `should fail at the fetch step when the script fails`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try script("probe.sh", "exit 3")
 
@@ -66,7 +66,7 @@ struct ScriptFetchTests {
     }
 
     @Test
-    func `a script that isn't there is not ready`() async throws {
+    func `should not be ready when the script is not there`() async throws {
         defer { try? FileManager.default.removeItem(at: folder) }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
@@ -76,7 +76,7 @@ struct ScriptFetchTests {
     }
 
     @Test
-    func `a script runs nothing it isn't given, and says what it runs`() throws {
+    func `should declare only the script's own command as what it reaches, and no URL`() throws {
         let fetch = try JSONDecoder().decode(Fetch.self, from: Data(#"{"script":{"run":"./probe.sh","folder":"/tmp/x"}}"#.utf8))
 
         #expect(fetch.connection.commands == [["/bin/sh", "-c", "./probe.sh"]])

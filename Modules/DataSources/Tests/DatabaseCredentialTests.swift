@@ -47,7 +47,7 @@ struct DatabaseCredentialTests {
     }
 
     @Test
-    func `a key is read from another app's database, which is never written`() async throws {
+    func `should use a key kept in another app's database without ever changing that database`() async throws {
         let (file, cleanUp) = try database("CREATE TABLE items(key TEXT, value TEXT); INSERT INTO items VALUES ('auth', '\(Self.token)');")
         defer { cleanUp() }
         let before = try Data(contentsOf: file)
@@ -60,7 +60,7 @@ struct DatabaseCredentialTests {
     }
 
     @Test
-    func `a query that changes the database is refused`() async throws {
+    func `should refuse, at finding the key, a lookup that would change the other app's database`() async throws {
         let (file, cleanUp) = try database("CREATE TABLE items(value TEXT);")
         defer { cleanUp() }
         let (source, _) = try source(#"{"sqlite":{"path":"\#(file.path)","query":"DELETE FROM items","fields":{"token":"$.token"}}}"#)
@@ -69,7 +69,7 @@ struct DatabaseCredentialTests {
     }
 
     @Test
-    func `a database with no such row has no key`() async throws {
+    func `should ask to sign in when the other app's database holds no key`() async throws {
         let (file, cleanUp) = try database("CREATE TABLE items(key TEXT, value TEXT);")
         defer { cleanUp() }
         let (source, _) = try source(#"{"sqlite":{"path":"\#(file.path)","query":"SELECT value AS token FROM items","fields":{"token":"$.token"}}}"#)
@@ -78,7 +78,7 @@ struct DatabaseCredentialTests {
     }
 
     @Test
-    func `a claim of the key fills a template, whatever lookup found the key`() async throws {
+    func `should send what the key says about its owner, wherever the key was found`() async throws {
         let (source, sent) = try source(#"{"setting":"token"}"#)
 
         _ = try await source.fetchResponse()
@@ -87,7 +87,7 @@ struct DatabaseCredentialTests {
     }
 
     @Test
-    func `a lookup's hint is what Settings says to do`() throws {
+    func `should show the definition's hint in Settings and name the database file in the lookup order`() throws {
         let lookup = try JSONDecoder().decode(CredentialLookup.self, from: Data(#"{"sqlite":{"path":"~/x.db","query":"SELECT 1","fields":{},"hint":"Sign in again in Acme."}}"#.utf8))
         #expect(lookup.hint == "Sign in again in Acme.")
         #expect(lookup.lookupOrder == ["~/x.db"])

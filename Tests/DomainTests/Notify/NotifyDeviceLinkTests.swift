@@ -8,7 +8,7 @@ struct NotifyDeviceLinkTests {
     // MARK: - Pasted URLs
 
     @Test
-    func `a notification URL parses into an id and a token`() {
+    func `should read the device id and token from a pasted notification link`() {
         // Given the URL the Notify! app puts on the clipboard
         let pasted = "https://push.getnotifyapp.com/notify/ABCD1234?token=s3cr3t-t0k3n"
 
@@ -21,7 +21,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `the live activity URL form parses`() {
+    func `should read the device id and token from a pasted Live Activity link`() {
         let link = NotifyDeviceLink(pastedText: "https://push.getnotifyapp.com/live-activity/ABCD1234?token=s3cr3t")
 
         #expect(link?.deviceId == "ABCD1234")
@@ -29,7 +29,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `the widgets URL form parses`() {
+    func `should read the device id and token from a pasted widgets link`() {
         let link = NotifyDeviceLink(pastedText: "https://push.getnotifyapp.com/widgets/ABCD1234?token=s3cr3t")
 
         #expect(link?.deviceId == "ABCD1234")
@@ -37,7 +37,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a URL with no token fails`() {
+    func `should refuse a pasted link that has no token`() {
         // The gateway will not talk to us without the secret, so a URL that
         // lost its query is worth rejecting in the settings pane rather than
         // discovering as a 403 later.
@@ -47,7 +47,7 @@ struct NotifyDeviceLinkTests {
     // MARK: - Pasted pairs
 
     @Test
-    func `an id and token separated by a space parse`() {
+    func `should read an id and token pasted with a space between them`() {
         let link = NotifyDeviceLink(pastedText: "ABCD1234 s3cr3t")
 
         #expect(link?.deviceId == "ABCD1234")
@@ -55,7 +55,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `an id and token separated by a comma parse`() {
+    func `should read an id and token pasted with a comma between them`() {
         let link = NotifyDeviceLink(pastedText: "ABCD1234,s3cr3t")
 
         #expect(link?.deviceId == "ABCD1234")
@@ -63,7 +63,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `an id and token separated by a colon parse`() {
+    func `should read an id and token pasted with a colon between them`() {
         let link = NotifyDeviceLink(pastedText: "ABCD1234:s3cr3t")
 
         #expect(link?.deviceId == "ABCD1234")
@@ -73,22 +73,22 @@ struct NotifyDeviceLinkTests {
     // MARK: - Rejected input
 
     @Test
-    func `an id that is too short fails`() {
+    func `should refuse a pasted id shorter than eight characters`() {
         #expect(NotifyDeviceLink(pastedText: "ABC1234 s3cr3t") == nil)
     }
 
     @Test
-    func `an id that is too long fails`() {
+    func `should refuse a pasted id longer than thirty-two characters`() {
         #expect(NotifyDeviceLink(pastedText: "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q s3cr3t") == nil)
     }
 
     @Test
-    func `an id with non alphanumeric characters fails`() {
+    func `should refuse a pasted id with characters other than letters and digits`() {
         #expect(NotifyDeviceLink(pastedText: "ABCD_1234 s3cr3t") == nil)
     }
 
     @Test
-    func `an empty string fails`() {
+    func `should refuse an empty or blank paste`() {
         #expect(NotifyDeviceLink(pastedText: "") == nil)
         #expect(NotifyDeviceLink(pastedText: "   \n ") == nil)
     }
@@ -96,7 +96,7 @@ struct NotifyDeviceLinkTests {
     // MARK: - Trimming
 
     @Test
-    func `whitespace around the pasted text is trimmed`() {
+    func `should ignore spaces and newlines around a pasted link`() {
         // A copy out of a chat message or an email arrives with a newline on
         // the end more often than not.
         let link = NotifyDeviceLink(pastedText: "  https://push.getnotifyapp.com/notify/ABCD1234?token=s3cr3t\n")
@@ -106,7 +106,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `whitespace around a typed id and token is trimmed`() {
+    func `should ignore spaces around a typed id and token`() {
         let link = NotifyDeviceLink(deviceId: "  ABCD1234  ", token: "  s3cr3t  ")
 
         #expect(link?.deviceId == "ABCD1234")
@@ -116,7 +116,7 @@ struct NotifyDeviceLinkTests {
     // MARK: - Device id shape
 
     @Test
-    func `isValidDeviceId accepts the id lengths the gateway issues`() {
+    func `should accept the id lengths Notify! issues, from eight to thirty-two characters`() {
         // Eight for an iPhone, "WB" plus fourteen for the web, and the
         // thirty two character ceiling.
         #expect(NotifyDeviceLink.isValidDeviceId("ABCD1234"))
@@ -125,7 +125,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `isValidDeviceId rejects an id outside the eight to thirty two range`() {
+    func `should refuse an id outside eight to thirty-two characters`() {
         #expect(!NotifyDeviceLink.isValidDeviceId("ABC1234"))
         #expect(!NotifyDeviceLink.isValidDeviceId("A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q"))
     }
@@ -133,7 +133,7 @@ struct NotifyDeviceLinkTests {
     // MARK: - Half a link
 
     @Test
-    func `a URL with no token still names its device`() {
+    func `should find the device id in a pasted link that has no token`() {
         // The gateway's own /link response hands back a notification_url with
         // the token deliberately stripped, so this shape is real rather than a
         // typo, and half an answer is still worth filling into a field.
@@ -144,17 +144,17 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a bare device id is its own answer`() {
+    func `should find the device id when the person pastes the id alone`() {
         #expect(NotifyDeviceLink.deviceId(inPastedText: "  ABC12345  ") == "ABC12345")
     }
 
     @Test
-    func `an id and token pair reports just the id`() {
+    func `should find just the device id in a pasted id and token`() {
         #expect(NotifyDeviceLink.deviceId(inPastedText: "ABC12345 sekret-token") == "ABC12345")
     }
 
     @Test
-    func `text naming no usable device id reports nothing`() {
+    func `should find no device id in text that names none`() {
         #expect(NotifyDeviceLink.deviceId(inPastedText: "") == nil)
         #expect(NotifyDeviceLink.deviceId(inPastedText: "not a link") == nil)
         #expect(NotifyDeviceLink.deviceId(inPastedText: "https://push.getnotifyapp.com/notify/short") == nil)
@@ -163,7 +163,7 @@ struct NotifyDeviceLinkTests {
     // MARK: - Device Kind
 
     @Test
-    func `a GRP id with five characters is a group`() {
+    func `should know a GRP id with five more characters as a group`() {
         // Given the group namespace, which is eight characters in total, exactly
         // the length of a legacy device id
         // When & Then: the prefix is the only thing that separates the two, and
@@ -172,17 +172,17 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a WB id with fourteen characters is a browser`() {
+    func `should know a WB id with fourteen more characters as a browser`() {
         #expect(NotifyDeviceKind.kind(ofDeviceId: "WB9K4TR2ZQ7M1XPD") == .web)
     }
 
     @Test
-    func `an MC id with fourteen characters is a Mac`() {
+    func `should know an MC id with fourteen more characters as a Mac`() {
         #expect(NotifyDeviceKind.kind(ofDeviceId: "MC3F7Q2ZKM4H2QZ1") == .mac)
     }
 
     @Test
-    func `an IO id with fourteen characters is an app device`() {
+    func `should know an IO id with fourteen more characters as an app device with both Lock Screen surfaces`() {
         // The newer iOS namespace. Unlike the legacy format it is unambiguous:
         // no Mac listener has ever minted one, so a tile can be started on it
         // without the gateway needing to settle the question.
@@ -192,7 +192,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `an app device id longer than eight characters still carries both surfaces`() {
+    func `should offer both Lock Screen surfaces, unexplained, to an app device id of a length nobody has seen yet`() {
         // App device ids are not one fixed shape and more formats are coming, so
         // the rule is which namespaces CANNOT show a surface, never which lengths
         // may. A twelve character id nobody has taught this code about is a
@@ -206,12 +206,12 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a bare eight character id is an app device`() {
+    func `should know a bare eight-character id as an app device`() {
         #expect(NotifyDeviceKind.kind(ofDeviceId: "ABCD1234") == .appDevice)
     }
 
     @Test
-    func `a lowercase eight character id is still an app device`() {
+    func `should know a lowercase or mixed-case eight-character id as an app device`() {
         // iOS mints the legacy format in uppercase, but older Mac listeners
         // minted it mixed case, so lowercase ids are real ids somebody can paste
         // today and reading one as a stranger would refuse a working phone.
@@ -220,7 +220,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a prefix with the wrong number of characters after it is not that namespace`() {
+    func `should not know an id whose prefix is followed by the wrong number of characters`() {
         // The length is part of the grammar rather than decoration. "WB" plus
         // thirteen and "GRP" plus six sit in no namespace at all, so they land on
         // unrecognized and the gateway gets the last word, which is the only
@@ -230,14 +230,14 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a WB prefix on an eight character id is an ordinary app device`() {
+    func `should know an eight-character id starting with WB as an ordinary app device`() {
         // Eight characters is the legacy grammar whatever those characters spell,
         // so this is a phone whose id merely begins with two familiar letters.
         #expect(NotifyDeviceKind.kind(ofDeviceId: "WBA1B2C3") == .appDevice)
     }
 
     @Test
-    func `a prefix followed by lowercase characters is not that namespace`() {
+    func `should not read a prefix as its namespace when lowercase characters follow it`() {
         // "GRP", "WB" and "MC" are uppercase only namespaces, so a lowercase tail
         // means some other kind of id: sixteen characters belong to no namespace,
         // and eight are the legacy device grammar again.
@@ -247,7 +247,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a Mac and a browser can keep a widget but cannot show a Live Activity`() {
+    func `should let a Mac or a browser keep a widget but not show a Live Activity`() {
         // The two surfaces are gated differently and only one of them is gated by
         // the namespace. The gateway refuses a Live Activity start for a Mac or a
         // browser outright, naming them, but it is equally explicit that widgets
@@ -262,7 +262,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a group carries neither surface, being no device at all`() {
+    func `should offer a group neither a Live Activity nor a widget`() {
         // A group is a fan-out target. It has members, and no Lock Screen and no
         // widget list of its own for anything to sit in.
         #expect(NotifyDeviceKind.group.supportsLiveActivity == false)
@@ -271,14 +271,14 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `an app device carries both Lock Screen surfaces`() {
+    func `should offer an app device both a Live Activity and a widget`() {
         #expect(NotifyDeviceKind.appDevice.supportsLiveActivity)
         #expect(NotifyDeviceKind.appDevice.supportsWidget)
         #expect(NotifyDeviceKind.appDevice.supportsAnySurface)
     }
 
     @Test
-    func `an app device, a Mac and a browser can all keep a Home Screen widget`() {
+    func `should let an app device, a Mac, a browser or an unknown device keep a Home Screen widget`() {
         // The gateway is explicit that screen widgets carry no device type gate
         // at all and that legacy, IO, WB and MC ids can each own one. Only the
         // iOS app draws them, but which device draws what is Notify!'s business
@@ -290,7 +290,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a group can keep no Home Screen widget either`() {
+    func `should not let a group keep a Home Screen widget, and say why`() {
         // The one exception, and for the reason it keeps no Lock Screen widget:
         // a group is a fan-out target with no screen of its own for a tile to
         // stay on.
@@ -299,7 +299,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `an id from a namespace nobody knows yet is allowed through`() {
+    func `should let an id from an unknown namespace through to both surfaces`() {
         // Refusing an unknown shape would break the day Notify! mints a new
         // namespace, and ClaudeBar would be wrong about a device it has never
         // heard of. Letting it through costs one request and lets the gateway,
@@ -312,7 +312,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `each reason is present exactly when its own surface is unavailable`() {
+    func `should explain a surface exactly when it is unavailable`() {
         // The pane shows these sentences in place of a control, so a kind that
         // works with a reason attached would explain away a switch that is fine,
         // and one that does not work without a reason would leave a dead control
@@ -324,7 +324,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a Mac is told its widget still works`() {
+    func `should tell a Mac person that the iPhone shows Live Activities and the widget still works`() {
         // The whole point of gating the two surfaces separately: a Mac user who
         // reads only that a Live Activity is unavailable would reasonably give up
         // on the feature, when half of it works for them.
@@ -335,7 +335,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a group link parses and reports itself as a group`() {
+    func `should accept a pasted group link as a group with no Lock Screen surfaces`() {
         // Given the URL Notify! hands out for a group
         let pasted = "https://push.getnotifyapp.com/notify/GRPA1B2C?token=s3cr3t"
 
@@ -352,7 +352,7 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
-    func `a Mac link carries a widget but not a Live Activity`() {
+    func `should offer a Mac link a widget but not a Live Activity`() {
         // A Mac link is a real link and half the feature works on it. Only the
         // Live Activity is refused, and by the gateway rather than by ClaudeBar:
         // it names a Mac of either generation and a web push browser as devices
@@ -367,14 +367,14 @@ struct NotifyDeviceLinkTests {
     // MARK: - Device description
 
     @Test
-    func `a device with a platform describes itself with the platform in parentheses`() {
+    func `should describe a device as its name with its platform in parentheses`() {
         let info = NotifyDeviceInfo(deviceId: "ABCD1234", name: "Apollo", platform: "iOS")
 
         #expect(info.displayDescription == "Apollo (iOS)")
     }
 
     @Test
-    func `a device with no platform describes itself by name alone`() {
+    func `should describe a device by its name alone when it has no platform`() {
         #expect(NotifyDeviceInfo(deviceId: "ABCD1234", name: "Apollo").displayDescription == "Apollo")
         #expect(NotifyDeviceInfo(deviceId: "ABCD1234", name: "Apollo", platform: "").displayDescription == "Apollo")
     }

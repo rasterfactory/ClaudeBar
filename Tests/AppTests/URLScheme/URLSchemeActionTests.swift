@@ -10,7 +10,7 @@ struct URLSchemeActionTests {
         ("claudebar://refresh", .refresh),
         ("claudebar://settings", .settings),
     ])
-    func `the documented URLs are actions`(string: String, expected: URLSchemeAction) {
+    func `should open, refresh or show settings for each documented link`(string: String, expected: URLSchemeAction) {
         let url = URL(string: string)!
         #expect(URLSchemeAction(url: url) == expected)
     }
@@ -20,13 +20,13 @@ struct URLSchemeActionTests {
         ("claudebar:///refresh", .refresh),
         ("claudebar:///settings", .settings),
     ])
-    func `the three-slash spelling is the same action`(string: String, expected: URLSchemeAction) {
+    func `should treat the three-slash spelling of a link as the same action`(string: String, expected: URLSchemeAction) {
         let url = URL(string: string)!
         #expect(URLSchemeAction(url: url) == expected)
     }
 
     @Test
-    func `scheme and action are matched case-insensitively`() {
+    func `should accept a link whatever its letter case`() {
         let url = URL(string: "CLAUDEBAR://Open")!
         #expect(URLSchemeAction(url: url) == .open)
     }
@@ -48,7 +48,7 @@ struct URLSchemeActionTests {
         "claudebar://user:pass@settings",
         "https://open",
     ])
-    func `anything that is not exactly a documented URL is nil`(string: String) {
+    func `should ignore any link that is not exactly a documented one`(string: String) {
         let url = URL(string: string)!
         #expect(URLSchemeAction(url: url) == nil)
     }
@@ -60,7 +60,7 @@ struct URLSchemeActionTests {
         ("claudebar:///use?provider=codex&account=default", "codex", "default"),
         ("claudebar://use?account=Work%20%E2%80%94%20Acme&provider=claude", "claude", "Work — Acme"),
     ])
-    func `use names a provider and one of its logins`(string: String, provider: String, account: String) {
+    func `should pick the named provider's login for new terminal sessions from a use link`(string: String, provider: String, account: String) {
         #expect(URLSchemeAction(url: URL(string: string)!) == .use(provider: provider, account: account))
     }
 
@@ -76,7 +76,7 @@ struct URLSchemeActionTests {
         "claudebar://use?provider=claude&account=work#top",
         "claudebar://guest@use?provider=claude&account=work",
     ])
-    func `a use URL that isn't exactly a provider and a login is nil`(string: String) {
+    func `should ignore a use link that isn't exactly one provider and one login`(string: String) {
         #expect(URLSchemeAction(url: URL(string: string)!) == nil)
     }
 }

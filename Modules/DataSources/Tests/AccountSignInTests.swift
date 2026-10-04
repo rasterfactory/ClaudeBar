@@ -54,7 +54,7 @@ struct AccountSignInTests {
     }
 
     @Test
-    func `the login runs in a new folder with only its home variable added`() async throws {
+    func `should run the vendor's login in a new folder with only its home variable added`() async throws {
         let launch = Launch()
         let folders = InMemoryLoginFolders()
 
@@ -69,7 +69,7 @@ struct AccountSignInTests {
     }
 
     @Test
-    func `a cli bundled inside an app is found where the definition says`() async throws {
+    func `should find a CLI bundled inside an app where the definition says`() async throws {
         let launch = Launch()
         let bundled = SignInCall(cli: "codex", args: ["login"], homeVariable: "CODEX_HOME",
                                  alsoAt: ["~/Applications/Codex.app/Contents/Resources/codex"])
@@ -81,7 +81,7 @@ struct AccountSignInTests {
     }
 
     @Test
-    func `an unavailable explicit CLI never signs in with a different bundled copy`() async throws {
+    func `should refuse sign-in when the chosen CLI is missing even if a bundled copy exists`() async throws {
         let explicit = SignInCall(cli: "/custom/missing", args: ["login"], homeVariable: "TOOL_HOME", alsoAt: ["/bundled/tool"])
         let folders = InMemoryLoginFolders()
         await #expect(throws: SignInError.cliNotFound("/custom/missing")) {
@@ -91,7 +91,7 @@ struct AccountSignInTests {
     }
 
     @Test
-    func `without the cli nothing is made`() async throws {
+    func `should make no folder when the CLI is not installed`() async throws {
         let folders = InMemoryLoginFolders()
 
         await #expect(throws: SignInError.cliNotFound("codex")) {
@@ -101,7 +101,7 @@ struct AccountSignInTests {
     }
 
     @Test
-    func `a login that does not finish leaves no folder`() async throws {
+    func `should leave no folder when the login does not finish`() async throws {
         let folders = InMemoryLoginFolders()
 
         await #expect(throws: SignInError.didNotFinish) {
@@ -111,7 +111,7 @@ struct AccountSignInTests {
     }
 
     @Test
-    func `a login that times out leaves no folder`() async throws {
+    func `should leave no folder when the login times out`() async throws {
         let folders = InMemoryLoginFolders()
         let process = MockSignInProcess()
         given(process).run(executable: .any, arguments: .any, environment: .any, directory: .any, timeout: .any)
@@ -123,7 +123,7 @@ struct AccountSignInTests {
     }
 
     @Test
-    func `an existing folder is never signed into`() async throws {
+    func `should never sign into a folder that already exists`() async throws {
         let folders = InMemoryLoginFolders([folder])
 
         await #expect(throws: SignInError.folderExists) {
@@ -133,7 +133,7 @@ struct AccountSignInTests {
     }
 
     @Test
-    func `the sign-in command reads from a definition`() throws {
+    func `should unset nothing, look nowhere else and wait five minutes when the definition gives only the command`() throws {
         let json = #"{ "cli": "claude", "args": ["auth", "login"], "homeVariable": "CLAUDE_CONFIG_DIR" }"#
 
         let decoded = try JSONDecoder().decode(SignInCall.self, from: Data(json.utf8))
@@ -148,7 +148,7 @@ struct AccountSignInTests {
 @Suite
 struct DiskLoginFoldersTests {
     @Test
-    func `a login folder is made private, never over another, and can be deleted`() throws {
+    func `should make a login folder private, never over another, and gone once deleted`() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("login-folders-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
         let folder = root.appendingPathComponent("codex/login")

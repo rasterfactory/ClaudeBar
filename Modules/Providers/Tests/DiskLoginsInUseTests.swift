@@ -9,12 +9,12 @@ struct DiskLoginsInUseTests {
     private let root = FileManager.default.temporaryDirectory.appendingPathComponent("in-use-\(UUID().uuidString)", isDirectory: true)
 
     @Test
-    func `nothing recorded is the plain login`() {
+    func `should use the plain login when nothing is recorded in use`() {
         #expect(DiskLoginsInUse(root: root).folder(for: "claude") == nil)
     }
 
     @Test
-    func `a chosen folder is written as a plain path the shell can read`() throws {
+    func `should record a chosen login's folder as a plain path the shell can read`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let record = DiskLoginsInUse(root: root)
 
@@ -25,7 +25,7 @@ struct DiskLoginsInUseTests {
     }
 
     @Test
-    func `going back to the plain login leaves an empty file`() throws {
+    func `should leave an empty record when the person goes back to the plain login`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let record = DiskLoginsInUse(root: root)
         try record.use(URL(fileURLWithPath: "/Users/you/.claude-work"), for: "claude")
@@ -37,7 +37,7 @@ struct DiskLoginsInUseTests {
     }
 
     @Test
-    func `each provider has its own record`() throws {
+    func `should keep a separate in-use record for each provider`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let record = DiskLoginsInUse(root: root)
 

@@ -21,7 +21,7 @@ struct AddProviderSpec {
     struct FromAnAPI {
 
         @Test
-        func `Ken adds OpenRouter and sees its credits, with no reset and no percentage`() async throws {
+        func `should show Ken OpenRouter's credits, with no reset and no percentage, after adding it`() async throws {
             // Given — Ken has an OpenRouter key
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent("add-provider-\(UUID().uuidString)")
             defer { try? FileManager.default.removeItem(at: folder) }
@@ -66,7 +66,7 @@ struct AddProviderSpec {
         }
 
         @Test
-        func `the saved file names the key but never holds it`() throws {
+        func `should keep Ken's key out of the saved provider file, naming it only`() throws {
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent("add-provider-\(UUID().uuidString)")
             defer { try? FileManager.default.removeItem(at: folder) }
             var draft = ProviderDraft(start: .api)

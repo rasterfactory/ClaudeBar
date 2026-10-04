@@ -43,7 +43,7 @@ struct QuotaDisplaySpec {
         }
 
         @Test
-        func `account email and tier are displayed after refresh`() async throws {
+        func `should show the account's email and Claude Max plan once quotas are read`() async throws {
             // Given — CLI returns output with account metadata
             let world = try ClaudeConfigSpec.World()
             world.cliAnswers("""
@@ -95,7 +95,7 @@ struct QuotaDisplaySpec {
         }
 
         @Test
-        func `healthy session and warning weekly quotas display with correct status`() async throws {
+        func `should show a healthy session at 65% and a warning weekly at 35%`() async throws {
             // Given — CLI returns 65% session (healthy) and 35% weekly (warning)
             let world = try ClaudeConfigSpec.World()
             world.cliAnswers("""
@@ -136,7 +136,7 @@ struct QuotaDisplaySpec {
         }
 
         @Test
-        func `exhausted session shows depleted status`() async throws {
+        func `should show the session depleted when 0% is left`() async throws {
             // Given — 0% left
             let world = try ClaudeConfigSpec.World()
             world.cliAnswers("""
@@ -169,7 +169,7 @@ struct QuotaDisplaySpec {
     struct DisplayMode {
 
         @Test
-        func `Used mode shows inverted percentage`() {
+        func `should show 35% used when 65% is left and the person views usage as used`() {
             // Given — 65% remaining
             let quota = UsageQuota(
                 percentRemaining: 65,
@@ -183,7 +183,7 @@ struct QuotaDisplaySpec {
         }
 
         @Test
-        func `depleted quota shows 100% used`() {
+        func `should show 100% used when nothing is left`() {
             let quota = UsageQuota(
                 percentRemaining: 0,
                 quotaType: .session,
@@ -205,7 +205,7 @@ struct QuotaDisplaySpec {
         }
 
         @Test
-        func `unavailable provider has no snapshot after refresh`() async {
+        func `should show no quotas when Claude isn't available`() async {
             // Given — CLI not found
             let probe = MockUsageProbe()
 
@@ -229,7 +229,7 @@ struct QuotaDisplaySpec {
         }
 
         @Test
-        func `session expired error is stored on provider`() async {
+        func `should show no quotas and tell the person the session expired when the login is refused`() async {
             // Given — API returns 401
             let probe = MockUsageProbe()
             given(probe).isAvailable().willReturn(true)
@@ -264,7 +264,7 @@ struct QuotaDisplaySpec {
     struct OverQuota {
 
         @Test
-        func `negative percentage is depleted status`() {
+        func `should show depleted and keep -98% when Copilot is over its quota`() {
             let quota = UsageQuota(
                 percentRemaining: -98,
                 quotaType: .session,

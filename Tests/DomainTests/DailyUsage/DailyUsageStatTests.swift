@@ -4,7 +4,7 @@ import Testing
 
 @Suite
 struct DailyUsageStatTests {
-    @Test func `formats cost as USD currency`() {
+    @Test func `should print a day's cost in dollars`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 14.26,
@@ -15,12 +15,12 @@ struct DailyUsageStatTests {
         #expect(stat.formattedCost == "$14.26")
     }
 
-    @Test func `formats zero cost`() {
+    @Test func `should print $0.00 for a day with no cost`() {
         let stat = DailyUsageStat.empty(for: Date())
         #expect(stat.formattedCost == "$0.00")
     }
 
-    @Test func `formats large token count as millions`() {
+    @Test func `should print a large token count in millions`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -31,7 +31,7 @@ struct DailyUsageStatTests {
         #expect(stat.formattedTokens == "19.5M")
     }
 
-    @Test func `formats medium token count as thousands`() {
+    @Test func `should print a medium token count in thousands`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -42,7 +42,7 @@ struct DailyUsageStatTests {
         #expect(stat.formattedTokens == "1.2K")
     }
 
-    @Test func `formats small token count as raw number`() {
+    @Test func `should print a small token count as it is`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -53,7 +53,7 @@ struct DailyUsageStatTests {
         #expect(stat.formattedTokens == "500")
     }
 
-    @Test func `formats working time with hours and minutes`() {
+    @Test func `should print working time in hours and minutes`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -64,7 +64,7 @@ struct DailyUsageStatTests {
         #expect(stat.formattedWorkingTime == "22h 16m")
     }
 
-    @Test func `formats working time with minutes and seconds only`() {
+    @Test func `should print working time under an hour in minutes and seconds`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -75,7 +75,7 @@ struct DailyUsageStatTests {
         #expect(stat.formattedWorkingTime == "5m 30s")
     }
 
-    @Test func `empty stat has all zeros`() {
+    @Test func `should count an empty day as no cost, no tokens and no working time`() {
         let stat = DailyUsageStat.empty(for: Date())
         #expect(stat.isEmpty)
         #expect(stat.totalCost == 0)
@@ -83,7 +83,7 @@ struct DailyUsageStatTests {
         #expect(stat.workingTime == 0)
     }
 
-    @Test func `non-empty stat with tokens is not empty`() {
+    @Test func `should not count a day with tokens as empty`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -96,7 +96,7 @@ struct DailyUsageStatTests {
 
     // MARK: - Cache
 
-    @Test func `totalTokensWithCache sums all token types`() {
+    @Test func `should count every kind of token, cache included, in the day's total`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -112,14 +112,14 @@ struct DailyUsageStatTests {
         #expect(stat.totalTokensWithCache == 11_500)
     }
 
-    @Test func `a log that keeps only the total counts that total`() {
+    @Test func `should count a log's total when it keeps only the total (#198)`() {
         // Claude Desktop's buddy-tokens.json, Mistral's session totals (#198).
         let stat = DailyUsageStat(date: Date(), totalCost: 0, totalTokens: 74_422, workingTime: 0, sessionCount: 1)
         #expect(stat.totalTokensWithCache == 74_422)
         #expect(stat.formattedTotalTokensWithCache == "74.4K")
     }
 
-    @Test func `cacheHitRate is cache_read divided by cache_read plus input`() {
+    @Test func `should show the cache hit rate as cache reads out of cache reads and input`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -136,12 +136,12 @@ struct DailyUsageStatTests {
         #expect(stat.cacheHitRate == 0.9)
     }
 
-    @Test func `cacheHitRate is zero when no input or cache reads`() {
+    @Test func `should show a zero cache hit rate when there is no input and no cache read`() {
         let stat = DailyUsageStat.empty(for: Date())
         #expect(stat.cacheHitRate == 0)
     }
 
-    @Test func `formattedHitRate displays as percentage`() {
+    @Test func `should print the cache hit rate as a percentage`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -157,7 +157,7 @@ struct DailyUsageStatTests {
         #expect(stat.formattedHitRate == "90.0%")
     }
 
-    @Test func `formattedSavings shows USD amount`() {
+    @Test func `should print cache savings in dollars`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -173,7 +173,7 @@ struct DailyUsageStatTests {
         #expect(stat.formattedSavings == "$412.30")
     }
 
-    @Test func `formattedCacheTokens sums creation and read with M suffix`() {
+    @Test func `should print cache writes and reads together in millions`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 0,
@@ -189,7 +189,7 @@ struct DailyUsageStatTests {
         #expect(stat.formattedCacheTokens == "37.0M")
     }
 
-    @Test func `existing init still works without cache fields`() {
+    @Test func `should show no cache use for a day recorded without cache counts`() {
         let stat = DailyUsageStat(
             date: Date(),
             totalCost: 5,

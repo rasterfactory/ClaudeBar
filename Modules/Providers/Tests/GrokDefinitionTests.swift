@@ -62,7 +62,7 @@ struct GrokDefinitionTests {
     """
 
     @Test
-    func `parses overall credit usage and product quotas`() async throws {
+    func `should show the weekly credits and each product, and no on-demand while its cap is zero`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
         let snapshot = try await parse(data, providerId: "grok")
@@ -73,7 +73,7 @@ struct GrokDefinitionTests {
     }
 
     @Test
-    func `maps credit usage percent to remaining`() async throws {
+    func `should show the weekly credits left`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
         let snapshot = try await parse(data, providerId: "grok")
@@ -83,7 +83,7 @@ struct GrokDefinitionTests {
     }
 
     @Test
-    func `maps product usage to model specific quotas`() async throws {
+    func `should show what is left of Build, Imagine and Voice`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
         let snapshot = try await parse(data, providerId: "grok")
@@ -99,7 +99,7 @@ struct GrokDefinitionTests {
     }
 
     @Test
-    func `parses period end as reset time with weekly window`() async throws {
+    func `should reset the credits when the weekly billing period ends`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
         let snapshot = try await parse(data, providerId: "grok")
@@ -111,7 +111,7 @@ struct GrokDefinitionTests {
     }
 
     @Test
-    func `passes account email through`() async throws {
+    func `should show the login's email`() async throws {
         let data = Data(Self.sampleResponse.utf8)
 
         let snapshot = try await parse(data, providerId: "grok", accountEmail: "user@example.com")
@@ -120,7 +120,7 @@ struct GrokDefinitionTests {
     }
 
     @Test
-    func `monthly period maps to monthly time limit`() async throws {
+    func `should show the credits as monthly when the billing period is monthly`() async throws {
         let json = """
         {
           "config": {
@@ -138,7 +138,7 @@ struct GrokDefinitionTests {
     }
 
     @Test
-    func `includes on demand quota once a cap is configured`() async throws {
+    func `should show on-demand spend once it has a cap`() async throws {
         let json = """
         {
           "config": {
@@ -157,7 +157,7 @@ struct GrokDefinitionTests {
     }
 
     @Test
-    func `handles integer usage percentages`() async throws {
+    func `should show the credits as Usage, with no guessed window, when no period is stated`() async throws {
         let json = """
         {
           "config": {
@@ -176,14 +176,14 @@ struct GrokDefinitionTests {
     }
 
     @Test
-    func `handles empty response with no quotas`() async throws {
+    func `should show no quotas when Grok reports nothing`() async throws {
         let snapshot = try await parse(Data("{}".utf8), providerId: "grok")
 
         #expect(snapshot.quotas.isEmpty)
     }
 
     @Test
-    func `shows full remaining when billing has a period but no usage percentages`() async throws {
+    func `should show no quota, not a made-up 100%, when billing names a period but no usage`() async throws {
         let json = """
         {
           "config": {
@@ -207,7 +207,7 @@ struct GrokDefinitionTests {
     }
 
     @Test
-    func `throws parseFailed on invalid JSON`() async throws {
+    func `should fail when Grok's billing answer isn't JSON`() async throws {
         await #expect(throws: UsageError.parseFailed("Failed to parse billing response as JSON")) {
             try await parse(Data("not json".utf8), providerId: "grok")
         }
@@ -216,19 +216,19 @@ struct GrokDefinitionTests {
     // MARK: - Product Name Tests
 
     @Test
-    func `strips Grok prefix from product names`() async throws {
+    func `should name Grok's products without the Grok prefix`() async throws {
         #expect(try await productName("GrokBuild") == "Build")
         #expect(try await productName("GrokImagine") == "Imagine")
         #expect(try await productName("GrokVoice") == "Voice")
     }
 
     @Test
-    func `splits camel case for unknown products`() async throws {
+    func `should name an unknown product in separate words`() async throws {
         #expect(try await productName("SomeNewProduct") == "Some New Product")
     }
 
     @Test
-    func `keeps bare Grok product name`() async throws {
+    func `should name a product called just Grok as Grok`() async throws {
         #expect(try await productName("Grok") == "Grok")
     }
 }

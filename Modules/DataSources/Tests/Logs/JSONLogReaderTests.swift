@@ -22,7 +22,7 @@ struct JSONLogReaderTests {
                                                           tokens: UsageLog.Tokens(total: "$.used"), cost: "$.spent")))
     }
 
-    @Test func `a file is one record, its time read from the path in the rule's zone`() throws {
+    @Test func `should count a summary file as one record, timed by its path in the rule's time zone`() throws {
         let url = try file("run-20261003T2330/summary.json", #"{"used":1200,"spent":"0.75"}"#)
         let records = reader(at: .fromPath(rule)).records(in: [url])
         #expect(records.count == 1)
@@ -31,20 +31,20 @@ struct JSONLogReaderTests {
         #expect(records[0].at == ISO8601DateFormatter().date(from: "2026-10-03T23:30:00Z"))
     }
 
-    @Test func `a path without the pattern, a malformed file or one without usage is skipped`() throws {
+    @Test func `should not count a file whose path carries no time, that is broken, or that says nothing about usage`() throws {
         let noTime = try file("other/summary.json", #"{"used":1}"#)
         let broken = try file("run-20261003T0100/summary.json", "{ nope")
         let empty = try file("run-20261003T0200/summary.json", #"{"title":"x"}"#)
         #expect(reader(at: .fromPath(rule)).records(in: [noTime, broken, empty]).isEmpty)
     }
 
-    @Test func `the time may be a field instead`() throws {
+    @Test func `should time a summary file by a field inside it when the rule says so`() throws {
         let url = try file("a/summary.json", #"{"when":"2026-10-03T08:00:00Z","used":5}"#)
         #expect(reader(at: "$.when").records(in: [url]).first?.at == ISO8601DateFormatter().date(from: "2026-10-03T08:00:00Z"))
     }
 
     @Test(arguments: ["America/Los_Angeles", "Asia/Shanghai"])
-    func `a field with a format is read in the rule's zone, local unless it names one`(zone: String) throws {
+    func `should time a written-out date in the rule's time zone, or this Mac's when it names none`(zone: String) throws {
         let url = try file("desk/today.json", #"{"day":"2026-05-28","used":74422}"#)
         let local = UsageLog.At.Formatted(field: "$.day", format: "yyyy-MM-dd")
         let named = UsageLog.At.Formatted(field: "$.day", format: "yyyy-MM-dd", timeZone: zone)
@@ -58,24 +58,24 @@ struct JSONLogReaderTests {
     }
 
     @Test(arguments: ["2026-02-30", "May 28 2026", "2026-05-28T08:00:00Z"])
-    func `a field that doesn't read in the format is skipped`(text: String) throws {
+    func `should not count a file whose date doesn't fit the rule's format`(text: String) throws {
         let url = try file("desk/today.json", #"{"day":"\#(text)","used":5}"#)
         #expect(reader(at: .formatted(.init(field: "$.day", format: "yyyy-MM-dd"))).records(in: [url]).isEmpty)
     }
 
     @Test(arguments: ["-5", "74422.5", "\"lots\""])
-    func `a count that isn't a whole number of tokens is skipped`(count: String) throws {
+    func `should not count a file whose token count isn't a whole, positive number`(count: String) throws {
         let url = try file("a/summary.json", #"{"when":"2026-10-03T08:00:00Z","used":\#(count)}"#)
         #expect(reader(at: "$.when").records(in: [url]).isEmpty)
     }
 
-    @Test func `at decodes a field with a format`() throws {
+    @Test func `should keep a dated-field time rule when the definition is written out and read back`() throws {
         let formatted = try JSONDecoder().decode(UsageLog.At.self, from: Data(#"{"field":"$.day","format":"yyyy-MM-dd"}"#.utf8))
         #expect(formatted == .formatted(.init(field: "$.day", format: "yyyy-MM-dd")))
         #expect(try JSONDecoder().decode(UsageLog.At.self, from: JSONEncoder().encode(formatted)) == formatted)
     }
 
-    @Test func `at decodes from text or from a path rule`() throws {
+    @Test func `should read a time rule given as a field or as a path pattern, and keep it when written out and read back`() throws {
         let field = try JSONDecoder().decode(UsageLog.At.self, from: Data(#""$.ts""#.utf8))
         let path = try JSONDecoder().decode(UsageLog.At.self, from: Data(#"{"fromPath":"x_(\\d+)","format":"yyyyMMdd","timeZone":"UTC"}"#.utf8))
         #expect(field == .field("$.ts"))

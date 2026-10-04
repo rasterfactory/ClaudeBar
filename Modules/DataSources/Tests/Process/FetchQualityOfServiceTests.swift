@@ -14,30 +14,30 @@ import Testing
 @Suite("Probe quality of service")
 struct FetchQualityOfServiceTests {
 
-    @Test("Options capture the ambient probe QoS at construction")
-    func optionsCaptureAmbientQoS() async {
+    @Test
+    func `should run a CLI at the priority of the refresh that asked for it (#204)`() async {
         await FetchContext.$qualityOfService.withValue(.utility) {
             let options = InteractiveRunner.Options()
             #expect(options.qualityOfService == .utility)
         }
     }
 
-    @Test("Options default to .default outside a bound scope")
-    func optionsDefaultOutsideScope() {
+    @Test
+    func `should run a CLI at default priority when no refresh set one`() {
         let options = InteractiveRunner.Options()
         #expect(options.qualityOfService == .default)
     }
 
-    @Test("An explicit QoS overrides the ambient value")
-    func explicitQoSWins() async {
+    @Test
+    func `should run a CLI at an explicitly given priority over the refresh's`() async {
         await FetchContext.$qualityOfService.withValue(.utility) {
             let options = InteractiveRunner.Options(qualityOfService: .userInitiated)
             #expect(options.qualityOfService == .userInitiated)
         }
     }
 
-    @Test("Captured QoS survives the hop off the cooperative pool")
-    func qosSurvivesThreadHop() async throws {
+    @Test
+    func `should keep a background refresh's low priority once the CLI work leaves the async pool (#204)`() async throws {
         // Reading the task local from the queue the executor dispatches to would
         // yield `.default`; reading the captured copy must still yield `.utility`.
         let captured: QualityOfService = await FetchContext.$qualityOfService
@@ -53,8 +53,8 @@ struct FetchQualityOfServiceTests {
         #expect(captured == .utility)
     }
 
-    @Test("The task local itself is lost across the same hop")
-    func taskLocalIsLostAcrossHop() async {
+    @Test
+    func `should lose a background refresh's priority if it were read only after leaving the async pool (#204)`() async {
         // Documents *why* the capture exists: this is the value the runner would
         // have read had it kept consulting the task local directly.
         let observed: QualityOfService = await FetchContext.$qualityOfService

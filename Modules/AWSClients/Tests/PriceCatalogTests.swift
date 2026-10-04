@@ -14,7 +14,7 @@ struct PriceCatalogTests {
         }
     }
 
-    @Test func `a model's prices come back as exact texts per million tokens`() async {
+    @Test func `should give exact price texts per million tokens, and none for an unknown model`() async {
         let catalog = SDKPriceCatalog(pricing: Prices(models: [
             "anthropic.claude-sonnet-4": BedrockModel(id: "anthropic.claude-sonnet-4", displayName: "Claude Sonnet 4", vendor: "Anthropic",
                                                       inputPricePer1M: Decimal(string: "3.00")!, outputPricePer1M: 15),
@@ -24,11 +24,11 @@ struct PriceCatalogTests {
         #expect(prices["acme.unknown"] == nil)
     }
 
-    @Test func `another service has no prices here`() async {
+    @Test func `should have no prices for a service other than Bedrock`() async {
         #expect(await SDKPriceCatalog(pricing: Prices(models: [:])).prices(service: "AmazonEC2", ids: ["x"]).isEmpty)
     }
 
-    @Test func `the bundled table knows a cross-region model by its base id`() throws {
+    @Test func `should price a cross-region model like its base model in the bundled price table`() throws {
         let regional = try #require(DefaultBedrockPricing.model(for: "us.anthropic.claude-opus-4-5-20251101-v1:0"))
         let base = try #require(DefaultBedrockPricing.model(for: "anthropic.claude-opus-4-5-20251101-v1:0"))
         #expect(regional.inputPricePer1M == base.inputPricePer1M)
@@ -38,7 +38,7 @@ struct PriceCatalogTests {
 }
 
 @Suite struct ProfileResolutionTests {
-    @Test func `a named static profile resolves its own keys instead of requiring SSO`() async throws {
+    @Test func `should resolve a named static profile without requiring SSO`() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }

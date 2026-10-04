@@ -31,7 +31,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `a provider's logins share one tab`() throws {
+    func `should show a provider's logins under one tab`() throws {
         let (_, codex, all, providers) = try lineup()
 
         let tabs = ProductTab.tabs(of: all, in: providers)
@@ -42,7 +42,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `a tab keeps the person's order and leaves out paused logins`() throws {
+    func `should keep the person's order in a tab and leave out paused logins`() throws {
         let (_, codex, _, providers) = try lineup()
         codex.accounts.move(codex.accounts[2], to: 0)
         codex.accounts[1].isEnabled = false
@@ -54,7 +54,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `a tab knows every login it holds`() throws {
+    func `should hold every one of its provider's logins in a tab, and no other's`() throws {
         let (_, _, all, providers) = try lineup()
 
         let codex = try #require(ProductTab.tabs(of: all, in: providers).last)
@@ -65,7 +65,7 @@ struct ProductTabsTests {
     }
 
     @Test
-    func `the monitor selects by tab position and knows the selected tab`() throws {
+    func `should select the second tab with ⌘2 and keep it selected for any of its logins`() throws {
         let (claude, codex, _, _) = try lineup()
         let monitor = QuotaMonitor(providers: Providers([claude, codex], make: { _ in fatalError("no providers added") }),
                                    clock: SystemClock())

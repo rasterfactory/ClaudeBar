@@ -35,7 +35,7 @@ struct ThemesSpec {
         }
 
         @Test
-        func `each provider has unique id and display name`() {
+        func `should give Claude and Codex their own id and lineup name`() {
             // Given — all providers
             let settings = Self.makeSettings()
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)

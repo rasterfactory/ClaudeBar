@@ -8,7 +8,7 @@ struct UsageSnapshotTests {
     // MARK: - Creating Snapshots
 
     @Test
-    func `snapshot captures quotas for a provider`() {
+    func `should hold the provider's quotas as read`() {
         // Given
         let quota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
 
@@ -22,7 +22,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `snapshot can hold multiple quota types`() {
+    func `should hold the session, weekly and model quotas together`() {
         // Given
         let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
         let weeklyQuota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude")
@@ -42,7 +42,7 @@ struct UsageSnapshotTests {
     // MARK: - Finding Quotas
 
     @Test
-    func `snapshot can find session quota by type`() {
+    func `should find the session quota among the provider's quotas`() {
         // Given
         let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
         let weeklyQuota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude")
@@ -56,7 +56,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `snapshot can find weekly quota by type`() {
+    func `should find the weekly quota among the provider's quotas`() {
         // Given
         let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
         let weeklyQuota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude")
@@ -70,7 +70,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `snapshot returns nil when quota type not found`() {
+    func `should find no weekly quota when the provider reports none`() {
         // Given
         let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
         let snapshot = UsageSnapshot(providerId: "claude", quotas: [sessionQuota], capturedAt: Date())
@@ -83,7 +83,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `quota types round trip persisted quota keys`() {
+    func `should read back each kind of quota from its saved key and reject an unknown key`() {
         #expect(QuotaType(quotaKey: QuotaType.session.quotaKey) == .session)
         #expect(QuotaType(quotaKey: QuotaType.weekly.quotaKey) == .weekly)
         #expect(QuotaType(quotaKey: QuotaType.modelSpecific("opus").quotaKey) == .modelSpecific("opus"))
@@ -93,7 +93,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `snapshot can find dynamic quota by persisted key`() {
+    func `should find a model's quota and a time-limit quota by their saved keys`() {
         // Given
         let opusQuota = UsageQuota(percentRemaining: 80, quotaType: .modelSpecific("opus"), providerId: "claude")
         let mcpQuota = UsageQuota(percentRemaining: 40, quotaType: .timeLimit("mcp"), providerId: "claude")
@@ -115,7 +115,7 @@ struct UsageSnapshotTests {
     // MARK: - Overall Status
 
     @Test
-    func `overall status is healthy when all quotas are healthy`() {
+    func `should show the provider healthy when every quota is healthy`() {
         // Given
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
@@ -128,7 +128,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `overall status reflects worst quota when one is warning`() {
+    func `should warn for the provider when one quota is in warning`() {
         // Given
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
@@ -141,7 +141,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `overall status reflects worst quota when one is critical`() {
+    func `should show the provider critical when one quota is critical`() {
         // Given
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
@@ -154,7 +154,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `overall status is depleted when any quota is depleted`() {
+    func `should show the provider depleted when any quota is depleted`() {
         // Given
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
@@ -169,7 +169,7 @@ struct UsageSnapshotTests {
     // MARK: - Freshness
 
     @Test
-    func `snapshot knows how old it is`() {
+    func `should know the usage was read two minutes ago`() {
         // Given
         let capturedAt = Date().addingTimeInterval(-120) // 2 minutes ago
         let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: capturedAt)
@@ -182,7 +182,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `snapshot is stale after 5 minutes`() {
+    func `should call the usage stale when it was read over 5 minutes ago`() {
         // Given
         let capturedAt = Date().addingTimeInterval(-360) // 6 minutes ago
         let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: capturedAt)
@@ -192,7 +192,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `snapshot is fresh within 5 minutes`() {
+    func `should call the usage fresh when it was read within 5 minutes`() {
         // Given
         let capturedAt = Date().addingTimeInterval(-60) // 1 minute ago
         let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: capturedAt)
@@ -204,7 +204,7 @@ struct UsageSnapshotTests {
     // MARK: - Finding Lowest Quota
 
     @Test
-    func `snapshot finds the quota with lowest percentage`() {
+    func `should find the quota with the least left`() {
         // Given
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
@@ -226,7 +226,7 @@ struct UsageSnapshotTests {
     // MARK: - Account Information
 
     @Test
-    func `snapshot captures account information`() {
+    func `should show the login's email, organization and plan`() {
         // Given & When
         let snapshot = UsageSnapshot(
             providerId: "claude",
@@ -244,7 +244,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `snapshot account info is optional`() {
+    func `should show no email, organization or plan when the provider gives none`() {
         // Given & When
         let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date())
 
@@ -257,7 +257,7 @@ struct UsageSnapshotTests {
     // MARK: - Model Specific Quotas
 
     @Test
-    func `snapshot filters model specific quotas`() {
+    func `should list only the per-model quotas among the provider's quotas`() {
         // Given
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
@@ -279,7 +279,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `snapshot returns empty array when no model specific quotas`() {
+    func `should list no per-model quotas when the provider reports none`() {
         // Given
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
@@ -297,7 +297,7 @@ struct UsageSnapshotTests {
     // MARK: - Empty Snapshot Factory
 
     @Test
-    func `empty snapshot factory creates snapshot with no quotas`() {
+    func `should show a provider with no quotas yet as healthy`() {
         // When
         let snapshot = UsageSnapshot.empty(for: "claude")
 
@@ -310,7 +310,7 @@ struct UsageSnapshotTests {
     // MARK: - Age Description
 
     @Test
-    func `age description shows just now for recent snapshots`() {
+    func `should say Just now when the usage was read under a minute ago`() {
         // Given - snapshot from 30 seconds ago
         let snapshot = UsageSnapshot(
             providerId: "claude",
@@ -323,7 +323,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `age description shows minutes for older snapshots`() {
+    func `should say 2m ago when the usage was read two minutes ago`() {
         // Given - snapshot from 2 minutes ago
         let snapshot = UsageSnapshot(
             providerId: "claude",
@@ -336,7 +336,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `age description shows hours for old snapshots`() {
+    func `should say 2h ago when the usage was read two hours ago`() {
         // Given - snapshot from 2 hours ago
         let snapshot = UsageSnapshot(
             providerId: "claude",
@@ -351,7 +351,7 @@ struct UsageSnapshotTests {
     // MARK: - Session and Weekly Quota Accessors
 
     @Test
-    func `sessionQuota returns session quota when present`() {
+    func `should show the session quota when the provider reports one`() {
         // Given
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
@@ -364,7 +364,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `weeklyQuota returns weekly quota when present`() {
+    func `should show the weekly quota when the provider reports one`() {
         // Given
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
@@ -379,7 +379,7 @@ struct UsageSnapshotTests {
     // MARK: - Quota Groups
 
     @Test
-    func `ungrouped snapshot has no quota groups and one unnamed bucket`() {
+    func `should show every quota in one untitled section when the provider groups none`() {
         let quotas = [
             UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
             UsageQuota(percentRemaining: 70, quotaType: .weekly, providerId: "claude"),
@@ -394,7 +394,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `grouped quotas bucket by group in first-appearance order`() {
+    func `should show one section per group in the order the provider reports them, each with its worst status and lowest quota`() {
         let quotas = [
             UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Codex 5h"), providerId: "omp", group: "Codex"),
             UsageQuota(percentRemaining: 40, quotaType: .timeLimit("Codex 7d"), providerId: "omp", group: "Codex"),
@@ -412,7 +412,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `grouped metrics become note-only sections after quota sections`() {
+    func `should show a grouped note with no quotas as its own section after the quota sections`() {
         let quotas = [
             UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
         ]
@@ -429,7 +429,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `note on a quota-bearing group renders as its own row`() {
+    func `should show a note as its own row when its group also has quotas`() {
         // A metric whose group title collides with a quota group attaches
         // its note to that section - the presentation policy must surface
         // it as a row, never drop it (note-only sections keep the note in
@@ -449,7 +449,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `group notes accumulate in first appearance order`() {
+    func `should show every note of a group in the order the provider reports them`() {
         let quotas = [
             UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
         ]
@@ -471,7 +471,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `note placement is header-inline for note-only groups and nil without a note`() {
+    func `should show a note-only section's note in its header and place nothing when a section has no note`() {
         let noteOnly = QuotaGroup(title: "Copilot", quotas: [], note: "No usage reported")
         #expect(noteOnly.notePlacement == .headerInline("No usage reported"))
 
@@ -482,7 +482,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `ungrouped metrics do not create sections`() {
+    func `should show no sections when the provider's notes belong to no group`() {
         let metrics = [
             ExtensionMetric(label: "Health", value: "OK", unit: ""),
         ]
@@ -503,7 +503,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `hiding a quota leaves the rest of the usage as it was`() {
+    func `should keep the other quotas and the login's details when the person hides a quota (#140)`() {
         let usage = gemini().hiding(["model:gemini-2.0-flash"])
 
         #expect(usage.quotas.map(\.quotaType) == [.session, .weekly])
@@ -512,7 +512,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `hiding nothing, or keys no longer reported, changes nothing`() {
+    func `should change nothing when the person hides nothing or only quotas no longer reported (#140)`() {
         let usage = gemini()
 
         #expect(usage.hiding([]) == usage)
@@ -520,14 +520,14 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `hiding every quota keeps them all — there is always something to watch`() {
+    func `should keep every quota when the person hides them all, so there is always something to watch (#140)`() {
         let usage = gemini()
 
         #expect(usage.hiding(["session", "weekly", "model:gemini-2.0-flash"]) == usage)
     }
 
     @Test
-    func `a hidden quota no longer sets the status or the lowest quota`() {
+    func `should leave a hidden quota out of the provider's status and lowest quota (#140)`() {
         let usage = gemini(flashLeft: 10)
 
         #expect(usage.overallStatus == .critical)
@@ -536,7 +536,7 @@ struct UsageSnapshotTests {
     }
 
     @Test
-    func `hiding works inside a group and keeps note-only sections`() {
+    func `should hide a quota inside its group and keep the note-only sections (#140)`() {
         let quotas = [
             UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Codex 5h"), providerId: "omp", group: "Codex"),
             UsageQuota(percentRemaining: 40, quotaType: .timeLimit("Codex 7d"), providerId: "omp", group: "Codex"),

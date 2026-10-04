@@ -10,7 +10,7 @@ import Testing
 @Suite
 struct CLIMissingTests {
     @Test
-    func `a terminal fetch reports a missing CLI as the fact its definition words`() async throws {
+    func `should report a CLI that isn't installed as missing, not as a failed connection (#198)`() async throws {
         let executor = MockCLIExecutor()
         given(executor).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willThrow(UsageError.cliNotFound("acme"))
@@ -26,7 +26,7 @@ struct CLIMissingTests {
     }
 
     @Test
-    func `the terminal runner's missing binary is cliNotFound`() async throws {
+    func `should report the CLI as not found when it isn't on this Mac`() async throws {
         let executor = DefaultCLIExecutor()
 
         await #expect(throws: UsageError.cliNotFound("claudebar-no-such-cli")) {

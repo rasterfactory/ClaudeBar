@@ -9,13 +9,13 @@ import Domain
 struct QuotaCardTextTests {
     // MARK: - Caption
 
-    @Test func `a glass theme keeps the full caption`() {
+    @Test func `should caption a quota Remaining or Used in full on a glass theme`() {
         #expect(QuotaCardText.caption(mode: .remaining, isOutlined: false) == "Remaining")
         #expect(QuotaCardText.caption(mode: .used, isOutlined: false) == "Used")
         #expect(QuotaCardText.caption(mode: .pace, isOutlined: false) == "Remaining")
     }
 
-    @Test func `an outlined theme says left or used, beside the number`() {
+    @Test func `should caption a quota left or used beside the number on an outlined theme`() {
         #expect(QuotaCardText.caption(mode: .remaining, isOutlined: true) == "left")
         #expect(QuotaCardText.caption(mode: .used, isOutlined: true) == "used")
         #expect(QuotaCardText.caption(mode: .pace, isOutlined: true) == "left")
@@ -23,31 +23,31 @@ struct QuotaCardTextTests {
 
     // MARK: - Reset line
 
-    @Test func `a countdown splits into its lead and the time`() {
+    @Test func `should pick out the time of a reset countdown in bold`() {
         let line = QuotaCardText.ResetLine("Resets in 2h 4m")
         #expect(line.lead == "Resets in")
         #expect(line.time == "2h 4m")
     }
 
-    @Test func `a reset day splits after Resets`() {
+    @Test func `should pick out the day and time a quota resets in bold`() {
         let line = QuotaCardText.ResetLine("Resets Tue 9:00")
         #expect(line.lead == "Resets")
         #expect(line.time == "Tue 9:00")
     }
 
-    @Test func `resetting soon picks out soon`() {
+    @Test func `should pick out soon in bold when a quota resets soon`() {
         let line = QuotaCardText.ResetLine("Resets soon")
         #expect(line.lead == "Resets")
         #expect(line.time == "soon")
     }
 
-    @Test func `a narrow card keeps only the time`() {
+    @Test func `should show only the reset time on a narrow card`() {
         let line = QuotaCardText.ResetLine(time: "3d 10h 59m")
         #expect(line.lead.isEmpty)
         #expect(line.time == "3d 10h 59m")
     }
 
-    @Test func `any other text is all lead, nothing in bold`() {
+    @Test func `should show any other reset text plainly, with nothing in bold`() {
         let line = QuotaCardText.ResetLine("Renews monthly")
         #expect(line.lead == "Renews monthly")
         #expect(line.time == nil)
@@ -57,12 +57,12 @@ struct QuotaCardTextTests {
 /// The words on a budget card as an outlined theme (Pop) prints them.
 @Suite
 struct BudgetCardTextTests {
-    @Test func `extra usage is a month's spend, API cost just a spend`() {
+    @Test func `should label extra usage as this month's spend and API cost as a spend`() {
         #expect(QuotaCardText.spentLabel(for: .extraUsage) == "SPENT THIS MONTH")
         #expect(QuotaCardText.spentLabel(for: .apiCost) == "SPENT")
     }
 
-    @Test func `the budget's status reads as a phrase, not a badge`() {
+    @Test func `should say how a budget is going as a phrase, not a badge`() {
         #expect(QuotaCardText.budgetPhrase(.withinBudget) == "On track")
         #expect(QuotaCardText.budgetPhrase(.approachingLimit) == "Near limit")
         #expect(QuotaCardText.budgetPhrase(.overBudget) == "Over budget")

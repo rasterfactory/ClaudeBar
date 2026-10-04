@@ -13,7 +13,7 @@ struct DeepSeekCredentialMigrationTests {
     }
 
     @Test
-    func `a legacy key migrates once and is shared by settings and the default vault scope`() {
+    func `should keep the old DeepSeek key for the default login only, moved once, while an added login keeps its own key`() {
         let suite = "DeepSeekMigration.\(UUID())"
         let legacy = UserDefaults(suiteName: suite)!
         let secure = UserDefaults(suiteName: suite + ".secure")!
@@ -36,7 +36,7 @@ struct DeepSeekCredentialMigrationTests {
     }
 
     @Test
-    func `a refused migration keeps the existing login and refuses destructive deletion`() {
+    func `should keep the old DeepSeek key and refuse to delete it when the Keychain refuses to store it`() {
         let suite = "DeepSeekFailedMigration.\(UUID())"
         let legacy = UserDefaults(suiteName: suite)!
         defer { legacy.removePersistentDomain(forName: suite) }

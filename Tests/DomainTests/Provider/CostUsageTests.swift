@@ -8,7 +8,7 @@ struct CostUsageTests {
     // MARK: - Initialization
 
     @Test
-    func `creates cost usage with all fields`() {
+    func `should keep the cost, API and wall time, and lines added and removed`() {
         // Given
         let cost = CostUsage(
             totalCost: Decimal(string: "5.50")!,
@@ -29,7 +29,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `defaults kind to API cost`() {
+    func `should count a cost as API cost unless told otherwise`() {
         let cost = CostUsage(
             totalCost: 1,
             apiDuration: 0,
@@ -40,7 +40,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `creates extra usage kind`() {
+    func `should count a cost as extra usage when told so`() {
         let cost = CostUsage(
             totalCost: 1,
             apiDuration: 0,
@@ -54,7 +54,7 @@ struct CostUsageTests {
     // MARK: - Formatting
 
     @Test
-    func `formats cost as currency`() {
+    func `should print a cost in US dollars with two decimals`() {
         // Given
         let cost = CostUsage(
             totalCost: Decimal(string: "0.55")!,
@@ -67,7 +67,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `formats large cost as currency`() {
+    func `should print a cost over a thousand dollars in US dollars`() {
         // Given
         let cost = CostUsage(
             totalCost: Decimal(string: "1234.56")!,
@@ -90,7 +90,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `formats API duration with hours minutes seconds`() {
+    func `should print API time of over an hour as hours, minutes and seconds`() {
         // Given
         let cost = CostUsage(
             totalCost: 0,
@@ -103,7 +103,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `formats API duration with minutes and seconds only`() {
+    func `should print API time under an hour as minutes and seconds`() {
         // Given
         let cost = CostUsage(
             totalCost: 0,
@@ -116,7 +116,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `formats API duration with seconds only`() {
+    func `should print API time under a minute as seconds`() {
         // Given
         let cost = CostUsage(
             totalCost: 0,
@@ -129,7 +129,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `formats code changes`() {
+    func `should print code changes as lines added and removed`() {
         // Given
         let cost = CostUsage(
             totalCost: 0,
@@ -147,7 +147,7 @@ struct CostUsageTests {
     // MARK: - Budget Calculation
 
     @Test
-    func `calculates budget remaining`() {
+    func `should show what is left of the budget`() {
         let cost = CostUsage(
             totalCost: 5,
             budget: 20,
@@ -159,7 +159,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `floors budget remaining at zero when overspent`() {
+    func `should show nothing left of the budget when it is overspent`() {
         let cost = CostUsage(
             totalCost: 25,
             budget: 20,
@@ -171,7 +171,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `budget remaining is nil without a budget`() {
+    func `should show no budget left when there is no budget`() {
         let cost = CostUsage(
             totalCost: 5,
             apiDuration: 0,
@@ -182,7 +182,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `calculates budget status within budget`() {
+    func `should be within budget at half the budget`() {
         // Given
         let cost = CostUsage(
             totalCost: 5,
@@ -198,7 +198,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `calculates budget status approaching limit`() {
+    func `should be approaching the limit at 85 percent of the budget`() {
         // Given
         let cost = CostUsage(
             totalCost: 8.5,
@@ -214,7 +214,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `calculates budget status over budget`() {
+    func `should be over budget past the budget`() {
         // Given
         let cost = CostUsage(
             totalCost: 12,
@@ -230,7 +230,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `calculates budget percent used`() {
+    func `should show half the budget used`() {
         // Given
         let cost = CostUsage(
             totalCost: 5,
@@ -246,7 +246,7 @@ struct CostUsageTests {
     }
 
     @Test
-    func `budget percent used handles zero budget`() {
+    func `should show no budget used when the budget is zero`() {
         // Given
         let cost = CostUsage(
             totalCost: 5,
@@ -264,7 +264,7 @@ struct CostUsageTests {
     // MARK: - Equatable
 
     @Test
-    func `cost usage is equatable`() {
+    func `should treat two costs with the same amount and time as the same, and different amounts as different`() {
         // Given
         let capturedAt = Date()
         let cost1 = CostUsage(totalCost: 5, apiDuration: 100, providerId: "claude", capturedAt: capturedAt)
@@ -283,7 +283,7 @@ struct BudgetStatusTests {
     // MARK: - Factory Method
 
     @Test
-    func `creates within budget status for low usage`() {
+    func `should be within budget at half the budget`() {
         // When
         let status = BudgetStatus.from(cost: 5, budget: 10)
 
@@ -292,7 +292,7 @@ struct BudgetStatusTests {
     }
 
     @Test
-    func `creates approaching limit status at 80 percent`() {
+    func `should be approaching the limit at 80 percent of the budget`() {
         // When
         let status = BudgetStatus.from(cost: 8, budget: 10)
 
@@ -301,7 +301,7 @@ struct BudgetStatusTests {
     }
 
     @Test
-    func `creates over budget status at 100 percent`() {
+    func `should be over budget at exactly the budget`() {
         // When
         let status = BudgetStatus.from(cost: 10, budget: 10)
 
@@ -310,7 +310,7 @@ struct BudgetStatusTests {
     }
 
     @Test
-    func `creates over budget status when exceeding budget`() {
+    func `should be over budget past the budget`() {
         // When
         let status = BudgetStatus.from(cost: 15, budget: 10)
 
@@ -319,7 +319,7 @@ struct BudgetStatusTests {
     }
 
     @Test
-    func `handles zero budget gracefully`() {
+    func `should be within budget when the budget is zero`() {
         // When
         let status = BudgetStatus.from(cost: 5, budget: 0)
 
@@ -330,45 +330,45 @@ struct BudgetStatusTests {
     // MARK: - Display Properties
 
     @Test
-    func `badge text for within budget`() {
+    func `should badge within budget ON TRACK`() {
         #expect(BudgetStatus.withinBudget.badgeText == "ON TRACK")
     }
 
     @Test
-    func `badge text for approaching limit`() {
+    func `should badge approaching the limit NEAR LIMIT`() {
         #expect(BudgetStatus.approachingLimit.badgeText == "NEAR LIMIT")
     }
 
     @Test
-    func `badge text for over budget`() {
+    func `should badge over budget OVER BUDGET`() {
         #expect(BudgetStatus.overBudget.badgeText == "OVER BUDGET")
     }
 
     @Test
-    func `needs attention for within budget is false`() {
+    func `should not need attention within budget`() {
         #expect(BudgetStatus.withinBudget.needsAttention == false)
     }
 
     @Test
-    func `needs attention for approaching limit is true`() {
+    func `should need attention approaching the limit`() {
         #expect(BudgetStatus.approachingLimit.needsAttention == true)
     }
 
     @Test
-    func `needs attention for over budget is true`() {
+    func `should need attention over budget`() {
         #expect(BudgetStatus.overBudget.needsAttention == true)
     }
 
     // MARK: - Comparable
 
     @Test
-    func `budget status is comparable by severity`() {
+    func `should rank over budget above approaching the limit above within budget`() {
         #expect(BudgetStatus.withinBudget < BudgetStatus.approachingLimit)
         #expect(BudgetStatus.approachingLimit < BudgetStatus.overBudget)
     }
 
     @Test
-    func `max of budget statuses returns worst`() {
+    func `should take over budget as the worst of several`() {
         let statuses: [BudgetStatus] = [.withinBudget, .approachingLimit, .overBudget]
         #expect(statuses.max() == .overBudget)
     }

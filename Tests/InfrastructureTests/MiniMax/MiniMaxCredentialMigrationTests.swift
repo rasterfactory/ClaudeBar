@@ -7,7 +7,7 @@ import Testing
 @Suite
 struct MiniMaxCredentialMigrationTests {
     @Test
-    func `the legacy key migrates securely for the default login only`() {
+    func `should move the old MiniMax key into secure storage for the default login only`() {
         let name = "MiniMaxMigration.\(UUID())"
         let defaults = UserDefaults(suiteName: name)!
         let secure = UserDefaults(suiteName: name + ".secure")!

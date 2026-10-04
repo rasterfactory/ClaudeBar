@@ -6,16 +6,16 @@ struct ProviderAccountTests {
 
     // MARK: - Identity
 
-    @Test("Default account ID equals provider ID for backward compatibility")
-    func defaultAccountIdEqualsProviderId() {
+    @Test
+    func `should be known by the provider's own id when it is the default account`() {
         let account = ProviderAccount(providerId: "claude", label: "Default")
 
         #expect(account.id == "claude")
         #expect(account.isDefault == true)
     }
 
-    @Test("Named account ID is compound: providerId.accountId")
-    func namedAccountIdIsCompound() {
+    @Test
+    func `should be known as provider.account when it is a named account`() {
         let account = ProviderAccount(
             accountId: "personal",
             providerId: "claude",
@@ -26,8 +26,8 @@ struct ProviderAccountTests {
         #expect(account.isDefault == false)
     }
 
-    @Test("Two accounts with same accountId and providerId are equal")
-    func equalityByIdAndProvider() {
+    @Test
+    func `should share an id but differ when two accounts of one provider have different labels`() {
         let a = ProviderAccount(accountId: "work", providerId: "claude", label: "Work")
         let b = ProviderAccount(accountId: "work", providerId: "claude", label: "Work Account")
 
@@ -39,8 +39,8 @@ struct ProviderAccountTests {
 
     // MARK: - Display
 
-    @Test("Display name prefers label over email")
-    func displayNamePrefersLabel() {
+    @Test
+    func `should show the label rather than the email`() {
         let account = ProviderAccount(
             accountId: "work",
             providerId: "claude",
@@ -51,8 +51,8 @@ struct ProviderAccountTests {
         #expect(account.displayName == "Work Account")
     }
 
-    @Test("Display name falls back to email when label is empty")
-    func displayNameFallsBackToEmail() {
+    @Test
+    func `should show the email when the account has no label`() {
         let account = ProviderAccount(
             accountId: "work",
             providerId: "claude",
@@ -63,8 +63,8 @@ struct ProviderAccountTests {
         #expect(account.displayName == "work@example.com")
     }
 
-    @Test("Display name falls back to accountId when both label and email are nil")
-    func displayNameFallsBackToAccountId() {
+    @Test
+    func `should show the account id when the account has neither label nor email`() {
         let account = ProviderAccount(
             accountId: "work",
             providerId: "claude",
@@ -74,8 +74,8 @@ struct ProviderAccountTests {
         #expect(account.displayName == "work")
     }
 
-    @Test("Initial letter is uppercased first character of display name")
-    func initialLetterFromDisplayName() {
+    @Test
+    func `should show the shown name's first letter uppercased as its initial`() {
         let account = ProviderAccount(
             accountId: "personal",
             providerId: "claude",
@@ -87,8 +87,8 @@ struct ProviderAccountTests {
 
     // MARK: - Constants
 
-    @Test("Default account ID constant is 'default'")
-    func defaultAccountIdConstant() {
+    @Test
+    func `should name the default account default`() {
         #expect(ProviderAccount.defaultAccountId == "default")
     }
 }

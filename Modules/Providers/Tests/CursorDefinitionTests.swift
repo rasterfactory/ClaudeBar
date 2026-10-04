@@ -47,7 +47,7 @@ struct CursorDefinitionTests {
     // MARK: - Real API Response
 
     @Test
-    func `parse real ultra plan response`() async throws {
+    func `should show an Ultra plan's monthly requests, then its Auto and API pools on the billing cycle`() async throws {
         // Actual response from cursor.com/api/usage-summary
         let json = """
         {
@@ -112,7 +112,7 @@ struct CursorDefinitionTests {
     // MARK: - Plan Usage
 
     @Test
-    func `parse pro plan with plan usage`() async throws {
+    func `should show a Pro plan's monthly requests used out of its limit`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -144,7 +144,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse plan with on-demand usage enabled`() async throws {
+    func `should show on-demand spend beside the monthly requests when on-demand is enabled`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -181,7 +181,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse depleted plan usage`() async throws {
+    func `should show no requests left when the plan is used up`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -206,7 +206,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse pro plan with bonus credits reports remaining from total capacity`() async throws {
+    func `should measure a Pro plan with bonus credits against its whole capacity, not show it empty`() async throws {
         // Regression: a Pro user with bonus credits. The `used`/`limit` fields describe
         // only the *included* base (2000/2000 = maxed), but `breakdown.total` shows the
         // real capacity (9770 incl. 7770 bonus) and `totalPercentUsed` shows true usage
@@ -262,7 +262,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse over-limit usage clamps to zero`() async throws {
+    func `should show no requests left, not below zero, when usage is over the limit`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -288,7 +288,7 @@ struct CursorDefinitionTests {
     // MARK: - Unlimited & Special Cases
 
     @Test
-    func `parse unlimited plan`() async throws {
+    func `should show the plan and no made-up 100% when the plan is unlimited`() async throws {
         let json = """
         {
             "membershipType": "business",
@@ -308,7 +308,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse free plan`() async throws {
+    func `should show a free plan's monthly requests left`() async throws {
         let json = """
         {
             "membershipType": "free",
@@ -335,7 +335,7 @@ struct CursorDefinitionTests {
     // MARK: - Enterprise Plan
 
     @Test
-    func `parse enterprise plan with team limitType`() async throws {
+    func `should show an Enterprise plan's monthly, Auto and API pools and the team's on-demand credits`() async throws {
         let json = """
         {
             "billingCycleStart": "2026-03-01T00:00:00.000Z",
@@ -412,7 +412,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse enterprise plan individual usage falls back to breakdown total`() async throws {
+    func `should measure an Enterprise member's requests against the plan's whole capacity when no limit is given`() async throws {
         let json = """
         {
             "membershipType": "enterprise",
@@ -451,7 +451,7 @@ struct CursorDefinitionTests {
     // MARK: - Error Cases
 
     @Test
-    func `parse empty response throws error`() async {
+    func `should fail when Cursor answers with nothing`() async {
         let json = "{}".data(using: .utf8)!
 
         await #expect(throws: UsageError.self) {
@@ -460,7 +460,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse invalid json throws error`() async {
+    func `should fail when Cursor answers with something that isn't JSON`() async {
         let json = "not json".data(using: .utf8)!
 
         await #expect(throws: UsageError.self) {
@@ -469,7 +469,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse response with no individualUsage and not unlimited throws error`() async {
+    func `should fail when Cursor reports no personal usage for a plan that isn't unlimited`() async {
         let json = """
         {
             "membershipType": "pro",
@@ -485,7 +485,7 @@ struct CursorDefinitionTests {
     // MARK: - Billing Cycle
 
     @Test
-    func `parse billing cycle end with fractional seconds`() async throws {
+    func `should know the reset when the billing cycle end has fractional seconds`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -508,7 +508,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse billing cycle end without fractional seconds`() async throws {
+    func `should know the reset when the billing cycle end has whole seconds`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -533,7 +533,7 @@ struct CursorDefinitionTests {
     // MARK: - Auto / API pool percents
 
     @Test
-    func `parse total-only response keeps a single monthly card`() async throws {
+    func `should show one monthly window when Cursor reports only the total`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -563,7 +563,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse integer zero auto percent as fully remaining`() async throws {
+    func `should show the Auto and API pools full when nothing of them is used`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -597,7 +597,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse null auto and api percent omits those cards`() async throws {
+    func `should show no Auto or API pool when Cursor leaves their share empty`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -625,7 +625,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse non-numeric auto and api percent omits those cards`() async throws {
+    func `should show no Auto or API pool when their share isn't a number`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -652,9 +652,9 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse boolean auto and api percent omits those cards`() async throws {
+    func `should show no Auto or API pool when their share is true or false`() async throws {
         // JSON true/false are CFBoolean and must not become 1.0 / 0.0. Integer 0
-        // still has to produce a card (see parse integer zero auto percent).
+        // still has to produce a card (see `should show the Auto and API pools full when nothing of them is used`).
         let json = """
         {
             "membershipType": "pro",
@@ -682,7 +682,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse auto and api percent over 100 clamps remaining to zero`() async throws {
+    func `should show nothing left, not below zero, when the Auto and API pools are over their limit`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -715,7 +715,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse negative auto and api percent omits those cards`() async throws {
+    func `should show no Auto or API pool when their share is negative`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -743,8 +743,8 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse billing cycle without start omits auto api reset pace`() async throws {
-        // Existing fixtures sometimes only have billingCycleEnd (see parse pro plan with plan usage).
+    func `should show the Auto and API pools without reset or pace when the billing cycle has no start`() async throws {
+        // Existing fixtures sometimes only have billingCycleEnd (see `should show a Pro plan's monthly requests used out of its limit`).
         let json = """
         {
             "membershipType": "pro",
@@ -791,7 +791,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `parse unusable billing cycle start omits auto api window duration`() async throws {
+    func `should show the Auto and API pools without reset or window when the billing cycle start is unreadable`() async throws {
         let json = """
         {
             "membershipType": "pro",
@@ -824,7 +824,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `first quota stays monthly so the default menu bar selection is unchanged`() async throws {
+    func `should keep the monthly window first so the menu bar shows it by default`() async throws {
         let json = """
         {
             "membershipType": "ultra",
@@ -857,7 +857,7 @@ struct CursorDefinitionTests {
     // MARK: - JWT Parsing
 
     @Test
-    func `extract user ID from valid JWT`() async throws {
+    func `should sign in as the user the login token names`() async throws {
         // JWT with payload: {"sub": "user_abc123", "iat": 1234567890}
         let header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
         let payload = "eyJzdWIiOiJ1c2VyX2FiYzEyMyIsImlhdCI6MTIzNDU2Nzg5MH0"
@@ -869,7 +869,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `extract user ID with pipe character like real Cursor JWTs`() async throws {
+    func `should sign in as a user whose id holds a pipe, as Cursor's do`() async throws {
         // Cursor JWTs have sub like "github|user_01J6BBEPT2KSQKPPRGXDY8M1F4"
         // Payload: {"sub": "github|user_01ABC", "type": "session"}
         // base64url of {"sub":"github|user_01ABC","type":"session"} =
@@ -885,7 +885,7 @@ struct CursorDefinitionTests {
     }
 
     @Test
-    func `extract user ID from JWT with padding needed`() async throws {
+    func `should sign in as the user a short login token names`() async throws {
         // Payload: {"sub": "u1"}
         let header = "eyJhbGciOiJIUzI1NiJ9"
         let payload = "eyJzdWIiOiJ1MSJ9"
@@ -896,7 +896,7 @@ struct CursorDefinitionTests {
     }
 
     @Test(arguments: ["not-a-jwt", "eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjEyM30.sig"])
-    func `a token with no user id sends no session cookie`(_ token: String) async throws {
+    func `should sign in without a session cookie when the login token names no user`(_ token: String) async throws {
         // Not a JWT, or one with no `sub`: the cookie is left out, and Cursor answers for itself.
         let capture = CookieCapture()
         _ = try await refreshAdded(Data(#"{"isUnlimited":true}"#.utf8), token: token, capture: capture)
@@ -906,7 +906,7 @@ struct CursorDefinitionTests {
     // MARK: - Numeric Type Handling
 
     @Test
-    func `parse usage values as doubles`() async throws {
+    func `should show the requests left when Cursor counts them with decimals`() async throws {
         // Some API responses return numbers as doubles
         let json = """
         {
@@ -933,7 +933,7 @@ struct CursorDefinitionTests {
     // MARK: - Account Tier Detection
 
     @Test
-    func `detect ultra tier`() async throws {
+    func `should show the Ultra plan`() async throws {
         let json = """
         {
             "membershipType": "ultra",
@@ -964,7 +964,7 @@ struct CursorDefinitionTests {
         try process.run();process.waitUntilExit();#expect(process.terminationStatus == 0)
         return url
     }
-    @Test func `desktop and saved accounts stay separate through rename relaunch removal and missing credentials`() async throws {
+    @Test func `should keep the Cursor app's login and added logins apart through rename, relaunch, a lost token and removal`() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer {try? FileManager.default.removeItem(at:root)}
         let personal=try token("personal|desktop"), work=try token("work|account"), other=try token("work|similar")
@@ -1004,7 +1004,7 @@ struct CursorDefinitionTests {
         #expect(try Data(contentsOf:db) == bytes)
     }
     @Test(arguments:[(401,UsageError.sessionExpired(hint:"Re-authenticate in Cursor settings.")),(403,.authenticationRequired),(201,.executionFailed("HTTP error: 201")),(500,.executionFailed("HTTP error: 500"))])
-    func `HTTP failures preserve Cursor recovery behavior`(_ fixture:(Int,UsageError)) async throws {
+    func `should tell the person how to recover when Cursor refuses or errors`(_ fixture:(Int,UsageError)) async throws {
         let vault=MemoryVault(), network=MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
             (Data("{}".utf8),HTTPURLResponse(url:request.url!,statusCode:fixture.0,httpVersion:nil,headerFields:nil)!)
@@ -1016,7 +1016,7 @@ struct CursorDefinitionTests {
         await #expect(throws:fixture.1) {try await provider.refresh(account)}
     }
 
-    @Test func `a 429 is a rate limit, not an HTTP error`() async throws {
+    @Test func `should say it is rate limited, not an HTTP error, when Cursor answers 429`() async throws {
         let vault = MemoryVault(), network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
             (Data("{}".utf8), HTTPURLResponse(url: request.url!, statusCode: 429, httpVersion: nil, headerFields: nil)!)
@@ -1030,7 +1030,7 @@ struct CursorDefinitionTests {
         await #expect { try await provider.refresh(account) } throws: { ($0 as? UsageError)?.tag == "rateLimited" }
     }
 
-    @Test func `without the Cursor app's database the default login needs signing in, with Cursor's own hint`() async throws {
+    @Test func `should ask to sign in again in Cursor's settings when the Cursor app has no login on this Mac`() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let provider = Provider(definition: try ProviderFactory.builtIn("cursor"), settings: InMemoryProviderSettings(), makeDataSource: { source, login in
             DataSources.make(source, providerId: "cursor", cliExecutor: MockCLIExecutor(), network: MockNetworkClient(), makeTransport: { _, _, _, _ in MockRPCTransport() },

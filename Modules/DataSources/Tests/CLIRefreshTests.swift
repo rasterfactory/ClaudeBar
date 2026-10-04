@@ -53,7 +53,7 @@ struct CLIRefreshTests {
         return (home, { try? FileManager.default.removeItem(at: home) })
     }
 
-    @Test func `a refused token runs the CLI and the renewed file is used`() async throws {
+    @Test func `should renew a refused token by running the CLI and show usage with the file it wrote, never writing it ourselves`() async throws {
         let (home, cleanUp) = try home()
         defer { cleanUp() }
         let seen = Seen()
@@ -68,7 +68,7 @@ struct CLIRefreshTests {
         #expect(written == #"{"access_token":"fresh","note":"cli"}"#)
     }
 
-    @Test func `a working token never runs the CLI`() async throws {
+    @Test func `should never run the CLI when the saved token still works`() async throws {
         let (home, cleanUp) = try home(token: "fresh")
         defer { cleanUp() }
         let seen = Seen()
@@ -78,7 +78,7 @@ struct CLIRefreshTests {
         #expect(seen.runs.isEmpty)
     }
 
-    @Test func `with the CLI not installed the login is needed again`() async throws {
+    @Test func `should ask to sign in again when the token is refused and the CLI is not installed`() async throws {
         let (home, cleanUp) = try home()
         defer { cleanUp() }
 
@@ -87,7 +87,7 @@ struct CLIRefreshTests {
         }
     }
 
-    @Test func `a CLI that renews nothing leaves the token refused`() async throws {
+    @Test func `should ask to sign in again when the CLI renews nothing`() async throws {
         let (home, cleanUp) = try home()
         defer { cleanUp() }
         let seen = Seen()
@@ -98,7 +98,7 @@ struct CLIRefreshTests {
         #expect(seen.tokens == ["stale", "stale"])
     }
 
-    @Test func `the CLI refresh round-trips as written`() throws {
+    @Test func `should keep the CLI renewal when the definition is written out and read back`() throws {
         let definition = try JSONDecoder().decode(DataSourceDefinition.self, from: Data(definitionJSON.utf8))
         #expect(try JSONDecoder().decode(DataSourceDefinition.self, from: JSONEncoder().encode(definition)) == definition)
         guard case .refreshing(_, .cli(let call))? = definition.credential else {

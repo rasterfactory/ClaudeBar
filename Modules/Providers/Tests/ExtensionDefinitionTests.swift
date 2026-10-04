@@ -31,7 +31,7 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
-    func `the manifest's identity is the definition's, as an extension`() throws {
+    func `should show an extension under its manifest's name, symbol, colour and dashboard, marked as an extension`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let definition = try read(try example())
 
@@ -45,7 +45,7 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
-    func `config fields become the provider's settings`() throws {
+    func `should offer an extension's config fields as its settings, a toggle as on or off`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let settings = Dictionary(uniqueKeysWithValues: try read(try example()).settings.map { ($0.id, $0) })
 
@@ -60,7 +60,7 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
-    func `each section a definition can read is a script data source; the rest are left out`() throws {
+    func `should run the extension's own script, with its key and settings, for each section it can read`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let folder = try example()
         let definition = try read(folder)
@@ -77,7 +77,7 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
-    func `the example extension reads the same quotas as before`() async throws {
+    func `should show the example extension's session and weekly quotas`() async throws {
         defer { try? FileManager.default.removeItem(at: root) }
         let provider = ProviderFactory.make(try read(try example()), settings: InMemoryProviderSettings())
 
@@ -88,7 +88,7 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
-    func `a health check is a request whose failure shows as fetch health`() throws {
+    func `should check an extension's health by asking its URL within its timeout`() throws {
         let definition = try Extensions.definition(manifest: Data("""
         {"id":"up","name":"Up","version":"1","sections":[
           {"id":"health","type":"healthCheck","probe":{"builtIn":"healthCheck","url":"https://example.com/health","timeout":5}}]}
@@ -102,7 +102,7 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
-    func `a manifest with no section a definition can read is refused`() {
+    func `should refuse an extension with no section it can read`() {
         #expect(throws: (any Error).self) {
             try Extensions.definition(manifest: Data("""
             {"id":"m","name":"M","version":"1","sections":[{"id":"m","type":"metricsRow","probe":{"command":"./m.sh"}}]}
@@ -111,7 +111,7 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
-    func `the catalog reads every extension folder and skips one that doesn't parse`() throws {
+    func `should list every extension and skip one whose manifest is damaged`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         _ = try example()
         let broken = root.appendingPathComponent("broken", isDirectory: true)
@@ -122,7 +122,7 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
-    func `a folder without a manifest is not an extension`() throws {
+    func `should not list a folder that has no manifest`() throws {
         defer { try? FileManager.default.removeItem(at: root) }
         try FileManager.default.createDirectory(at: root.appendingPathComponent("notes", isDirectory: true), withIntermediateDirectories: true)
 
@@ -130,12 +130,12 @@ struct ExtensionDefinitionTests {
     }
 
     @Test
-    func `no extensions folder is no extensions`() {
+    func `should list no extensions when there is no extensions folder`() {
         #expect(Extensions.catalog(in: root.appendingPathComponent("missing")).isEmpty)
     }
 
     @Test
-    func `a config id becomes the environment variable name scripts read`() throws {
+    func `should hand each setting to the script under a CLAUDEBAR_ name built from its id`() throws {
         let definition = try Extensions.definition(manifest: Data("""
         {"id":"names","name":"Names","version":"1",
          "config":[{"id":"apiKey","label":"Key","type":"secret"},{"id":"port","label":"Port","type":"number"},

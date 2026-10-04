@@ -94,7 +94,7 @@ struct CLISessionTests {
     // MARK: - The definition side
 
     @Test
-    func `a session block decodes with its templates and tokens`() throws {
+    func `should read a session's create and resume arguments and its gone and refused phrases from the definition`() throws {
         let call = try JSONDecoder().decode(CLICall.self, from: Data("""
         {"cli":"claude","args":["/usage"],
          "session":{"create":["--session-id","{{id}}","--name","ClaudeBar Probe"],
@@ -111,7 +111,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `the match lists default to empty`() throws {
+    func `should treat no session as gone or refused when the definition names no phrases`() throws {
         let call = try JSONDecoder().decode(CLICall.self, from: Data("""
         {"cli":"claude","session":{"create":["--session-id","{{id}}"],"resume":["--resume","{{id}}"]}}
         """.utf8))
@@ -120,7 +120,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `a call without a session block encodes none`() throws {
+    func `should write no session when the CLI call has none`() throws {
         let call = CLICall(cli: "claude", args: ["/usage"])
         let json = String(data: try JSONEncoder().encode(call), encoding: .utf8)!
 
@@ -129,7 +129,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `a call with a session block survives the round trip`() throws {
+    func `should keep the session when the definition is written out and read back`() throws {
         let call = call(session: session())
         let again = try JSONDecoder().decode(CLICall.self, from: JSONEncoder().encode(call))
 
@@ -139,7 +139,7 @@ struct CLISessionTests {
     // MARK: - The plan loop
 
     @Test
-    func `the first run creates the session, names it, and remembers its id`() async throws {
+    func `should create and name a session on the first run and remember its id`() async throws {
         let launches = Launches()
         let executor = MockCLIExecutor()
         screen(usageScreen, executor: executor, launches: launches)
@@ -160,7 +160,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `the next run resumes the session it created`() async throws {
+    func `should resume the session it created on every later run`() async throws {
         let launches = Launches()
         let executor = MockCLIExecutor()
         screen(usageScreen, executor: executor, launches: launches)
@@ -180,7 +180,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `a vanished session is recreated under a fresh id`() async throws {
+    func `should create a fresh session when the CLI says the remembered one is gone`() async throws {
         let launches = Launches()
         let executor = MockCLIExecutor()
         let gone = "No conversation found with session ID aaaaaaaaaa"
@@ -209,7 +209,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `a CLI that rejects the flags falls back to the plain run for good`() async throws {
+    func `should run the CLI plainly for good when this CLI build rejects the session flags`() async throws {
         let launches = Launches()
         let executor = MockCLIExecutor()
         let refused = "error: unknown option '--session-id'"
@@ -237,7 +237,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `a refusal while resuming also falls back, and drops the stale id`() async throws {
+    func `should run plainly and forget the session when the CLI rejects resuming it`() async throws {
         let launches = Launches()
         let executor = MockCLIExecutor()
         let refused = "error: unknown option '--resume'"
@@ -260,7 +260,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `an unknown-option phrase on a successful screen is not a refusal`() async throws {
+    func `should keep the session when a successful screen merely mentions an unknown option`() async throws {
         // A SessionStart hook or transcript can carry the words; only a failed
         // run proves the CLI build rejects the flags.
         let launches = Launches()
@@ -288,7 +288,7 @@ struct CLISessionTests {
     // MARK: - The detection rules
 
     @Test
-    func `a refusal needs a non-zero exit and a token`() {
+    func `should count the flags as rejected only when the CLI fails and says a refusal phrase`() {
         let refused = CLIResult(output: "error: unknown option '--session-id'", exitCode: 1)
 
         #expect(CLISessionRunner.isRefused(refused, tokens: session().unsupportedOn))
@@ -298,14 +298,14 @@ struct CLISessionTests {
     }
 
     @Test
-    func `a refusal matches the token case-insensitively`() {
+    func `should recognise a refusal phrase in any letter case`() {
         let refused = CLIResult(output: "ERROR: UNKNOWN OPTION '--session-id'", exitCode: 1)
 
         #expect(CLISessionRunner.isRefused(refused, tokens: ["unknown option '--session-id'"]))
     }
 
     @Test
-    func `gone tokens match case-insensitively`() {
+    func `should recognise a gone-session phrase in any letter case, and nothing else`() {
         #expect(CLISessionRunner.isGone("No Conversation Found With Session ID x", tokens: ["no conversation found"]))
         #expect(CLISessionRunner.isGone("all good", tokens: ["no conversation found"]) == false)
         #expect(CLISessionRunner.isGone("all good", tokens: []) == false)
@@ -314,7 +314,7 @@ struct CLISessionTests {
     // MARK: - The memory
 
     @Test
-    func `refusing the flags under concurrency forgets the session once and for good`() async {
+    func `should forget the session for good when many runs see the flags rejected at once`() async {
         let memory = SessionMemory()
         await memory.remember("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
         #expect(await memory.isRefused == false)
@@ -332,7 +332,7 @@ struct CLISessionTests {
     // MARK: - The fetcher wiring
 
     @Test
-    func `a fetcher with a session block creates once then resumes`() async throws {
+    func `should create a session once and then resume it when the definition asks for one`() async throws {
         let launches = Launches()
         let executor = MockCLIExecutor()
         screen(usageScreen, executor: executor, launches: launches)
@@ -355,7 +355,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `two workers — two logins — keep two sessions`() async throws {
+    func `should keep a separate session for each of two logins`() async throws {
         let launches = Launches()
         let executor = MockCLIExecutor()
         screen(usageScreen, executor: executor, launches: launches)
@@ -372,7 +372,7 @@ struct CLISessionTests {
     }
 
     @Test
-    func `a fetcher without a session block runs its plain args`() async throws {
+    func `should run the CLI with its plain arguments when the definition asks for no session`() async throws {
         let launches = Launches()
         let executor = MockCLIExecutor()
         screen(usageScreen, executor: executor, launches: launches)

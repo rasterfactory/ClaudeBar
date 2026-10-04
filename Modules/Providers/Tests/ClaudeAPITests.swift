@@ -35,7 +35,7 @@ struct ClaudeAPITests {
     // MARK: - Availability
 
     @Test
-    func `the api is available when a credentials file exists`() async throws {
+    func `should be available when Claude's credentials file exists`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials()
@@ -47,7 +47,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `the api is not available when no credentials exist`() async throws {
+    func `should be unavailable when there are no credentials`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
 
@@ -60,7 +60,7 @@ struct ClaudeAPITests {
     // MARK: - Snapshot cache (TTL)
 
     @Test
-    func `a fetch within the cache ttl is served from the cache`() async throws {
+    func `should show the remembered usage without asking Claude again within the cache time`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(subscriptionType: "claude_max")
@@ -89,7 +89,7 @@ struct ClaudeAPITests {
     // MARK: - Rate limit (HTTP 429)
 
     @Test
-    func `a 429 with Retry-After seconds is rate limited until then`() async throws {
+    func `should wait until the time Claude names when it rate-limits the request`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials()
@@ -101,7 +101,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `a 429 without Retry-After waits five minutes`() async throws {
+    func `should wait five minutes when Claude rate-limits without saying how long`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials()
@@ -113,7 +113,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `a fetch during the rate limit window is refused without asking again`() async throws {
+    func `should not ask Claude again while a rate limit lasts`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials()
@@ -135,7 +135,7 @@ struct ClaudeAPITests {
     // MARK: - Authentication
 
     @Test
-    func `no credentials means authentication is required`() async throws {
+    func `should ask to sign in when there are no credentials`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
 
@@ -147,7 +147,7 @@ struct ClaudeAPITests {
     // MARK: - Response parsing
 
     @Test
-    func `session usage is read from five_hour`() async throws {
+    func `should show the five-hour window as the session with 74.5% left on a Max plan`() async throws {
         let snapshot = try await usage("""
         {
           "five_hour": {
@@ -165,7 +165,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `the reset countdown is written in hours, never days`() async throws {
+    func `should write the reset countdown in hours, never days, and none for a window already past`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.now = Date(timeIntervalSince1970: 1_750_000_000)
@@ -184,7 +184,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `weekly usage is read from seven_day`() async throws {
+    func `should show the seven-day window as weekly with 55% left`() async throws {
         let snapshot = try await usage("""
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
@@ -197,7 +197,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `model quotas are read from seven_day_sonnet and seven_day_opus`() async throws {
+    func `should show Sonnet and Opus quotas with what is left of each`() async throws {
         let snapshot = try await usage("""
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
@@ -211,7 +211,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `a fable quota is read from the scoped limits array`() async throws {
+    func `should show a Fable quota when Claude reports it as a model limit, without duplicating session or weekly`() async throws {
         // Newer API responses report model limits via a generic "limits" array
         // (kind "weekly_scoped" + scope.model.display_name) instead of
         // dedicated seven_day_<model> fields.
@@ -239,7 +239,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `malformed limits entries are skipped and over-quota stays negative`() async throws {
+    func `should skip malformed model limits, keep one per model, and show an over-quota model as negative`() async throws {
         // Malformed scoped entries (no scope, no model, empty name, no percent) are
         // skipped; duplicate scoped entries yield one quota; a multi-word display
         // name keys on its first word; 105% used stays negative (over-quota signal).
@@ -269,7 +269,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `a model in both the legacy field and the limits array is not duplicated`() async throws {
+    func `should show a model once when Claude reports it both ways`() async throws {
         let snapshot = try await usage("""
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
@@ -289,7 +289,7 @@ struct ClaudeAPITests {
     // MARK: - Money
 
     @Test
-    func `extra usage credits are cents converted to dollars`() async throws {
+    func `should show extra usage credits in dollars, not cents`() async throws {
         // API returns used_credits and monthly_limit in cents
         let snapshot = try await usage("""
         {
@@ -309,7 +309,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `large extra usage amounts are cents converted to dollars`() async throws {
+    func `should show $26.72 of $50 extra usage, not $2672 of $5000`() async throws {
         // Simulates the real scenario: $26.72 spent of $50 budget
         // API returns 2672 cents and 5000 cents
         let snapshot = try await usage("""
@@ -332,7 +332,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `spend is used when spend and legacy extra usage agree`() async throws {
+    func `should show the spend when it agrees with the older extra usage`() async throws {
         let snapshot = try await usage("""
         {
           "spend": {
@@ -355,7 +355,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `spend is preferred when legacy extra usage differs`() async throws {
+    func `should prefer the spend when the older extra usage differs`() async throws {
         let snapshot = try await usage("""
         {
           "spend": {
@@ -377,7 +377,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `negative spend is rejected and legacy extra usage takes over`() async throws {
+    func `should fall back to the older extra usage when the spend is negative`() async throws {
         let snapshot = try await usage("""
         {
           "spend": {
@@ -402,7 +402,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `negative legacy credits are dropped instead of flipping sign`() async throws {
+    func `should show no extra usage rather than flip the sign of negative credits`() async throws {
         let snapshot = try await usage("""
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
@@ -419,7 +419,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `spend with an invalid cap is dropped instead of reported uncapped`() async throws {
+    func `should show no spend rather than an uncapped one when its cap is invalid`() async throws {
         let snapshot = try await usage("""
         {
           "spend": {
@@ -436,7 +436,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `legacy extra usage takes over when the spend cap is invalid`() async throws {
+    func `should fall back to the older extra usage when the spend cap is invalid`() async throws {
         let snapshot = try await usage("""
         {
           "spend": {
@@ -458,7 +458,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `legacy extra usage with an invalid monthly limit is dropped`() async throws {
+    func `should show no extra usage when its monthly limit is invalid`() async throws {
         let snapshot = try await usage("""
         {
           "extra_usage": {
@@ -474,7 +474,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `uncapped spend is read exactly`() async throws {
+    func `should show uncapped spend exactly, with no budget`() async throws {
         let snapshot = try await usage("""
         {
           "spend": {
@@ -499,7 +499,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `spend money exponents are respected`() async throws {
+    func `should show spend in the precision Claude states for each amount`() async throws {
         let snapshot = try await usage("""
         {
           "spend": {
@@ -515,7 +515,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `legacy extra usage takes over when spend has no used amount`() async throws {
+    func `should fall back to the older extra usage when the spend has no amount used`() async throws {
         let snapshot = try await usage("""
         {
           "spend": {
@@ -537,7 +537,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `legacy extra usage decimal places are respected`() async throws {
+    func `should show the older extra usage in the precision Claude states`() async throws {
         let snapshot = try await usage("""
         {
           "extra_usage": {
@@ -555,7 +555,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `disabled spend and extra usage are omitted`() async throws {
+    func `should show no cost when spend and extra usage are turned off`() async throws {
         let snapshot = try await usage("""
         {
           "spend": {
@@ -574,7 +574,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `an empty response still shows the plan badge`() async throws {
+    func `should still show the plan badge when Claude reports no usage`() async throws {
         let snapshot = try await usage("{}", subscriptionType: "claude_max")
 
         #expect(snapshot.quotas.isEmpty)
@@ -585,7 +585,7 @@ struct ClaudeAPITests {
     // MARK: - Account tier
 
     @Test
-    func `claude_max is the Max plan`() async throws {
+    func `should show the Max plan for a Max subscription`() async throws {
         let snapshot = try await usage("""
         { "five_hour": { "utilization": 10.0 } }
         """, subscriptionType: "claude_max")
@@ -594,7 +594,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `claude_pro is the Pro plan`() async throws {
+    func `should show the Pro plan for a Pro subscription`() async throws {
         let snapshot = try await usage("""
         { "five_hour": { "utilization": 10.0 } }
         """, subscriptionType: "claude_pro")
@@ -605,7 +605,7 @@ struct ClaudeAPITests {
     // MARK: - Errors
 
     @Test
-    func `a 401 the refresh cannot fix means the session expired`() async throws {
+    func `should say the session expired when Claude refuses the login even after a refresh`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials()
@@ -618,7 +618,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `a 403 that persists after a refresh means authentication is required`() async throws {
+    func `should ask to sign in when Claude still forbids access after a refresh`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials()
@@ -635,7 +635,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `a body that is not json fails to parse`() async throws {
+    func `should fail to read the usage when Claude's answer is not JSON`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials()
@@ -650,7 +650,7 @@ struct ClaudeAPITests {
     }
 
     @Test
-    func `a network error is an execution failure`() async throws {
+    func `should report a failed run when the network is down`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials()
@@ -688,7 +688,7 @@ struct ClaudeAPITokenRefreshTests {
     }
 
     @Test
-    func `an expired token is refreshed, used and written back`() async throws {
+    func `should refresh an expired login, use it and save it back the way the CLI writes it`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         // Token expired 1 hour ago
@@ -730,7 +730,7 @@ struct ClaudeAPITokenRefreshTests {
     }
 
     @Test
-    func `a refresh refused with invalid_grant means the session expired`() async throws {
+    func `should say the session expired when Claude revokes the refresh token`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let pastExpiry = claude.now.addingTimeInterval(-3600).timeIntervalSince1970 * 1000
@@ -749,7 +749,7 @@ struct ClaudeAPITokenRefreshTests {
     }
 
     @Test
-    func `the next fetch recovers once the CLI has written new credentials`() async throws {
+    func `should recover on the next refresh once the CLI has signed in again`() async throws {
         // Scenario: the stored refresh token is invalid, but the CLI has
         // re-authenticated and written new credentials to the file.
         let claude = try ClaudeHarness()
@@ -798,7 +798,7 @@ struct ClaudeAPITokenRefreshTests {
     }
 
     @Test
-    func `a failed refresh uses the token the CLI wrote meanwhile`() async throws {
+    func `should use the token the CLI wrote meanwhile when a refresh fails`() async throws {
         // Scenario: during a single fetch, the refresh fails but the CLI has
         // updated the file in the meantime with a different access token.
         let claude = try ClaudeHarness()
@@ -843,7 +843,7 @@ struct ClaudeAPISetupTokenTests {
     }
 
     @Test
-    func `a setup token is used without a refresh`() async throws {
+    func `should use a setup token from the environment without refreshing it`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.environment = ["CLAUDE_CODE_OAUTH_TOKEN": "setup-token-abc123"]
@@ -869,7 +869,7 @@ struct ClaudeAPISetupTokenTests {
     }
 
     @Test
-    func `a setup token's trailing newline is trimmed before the Authorization header`() async throws {
+    func `should send a setup token without its trailing newline`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.environment = ["CLAUDE_CODE_OAUTH_TOKEN": "setup-token-abc123\n"]
@@ -890,7 +890,7 @@ struct ClaudeAPISetupTokenTests {
     }
 
     @Test
-    func `a setup token answered with 401 needs authentication, with no refresh`() async throws {
+    func `should ask to sign in, without refreshing, when Claude refuses a setup token`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.environment = ["CLAUDE_CODE_OAUTH_TOKEN": "expired-setup-token"]
@@ -913,7 +913,7 @@ struct ClaudeAPISetupTokenTests {
     }
 
     @Test
-    func `the api is available with a setup token in the environment`() async throws {
+    func `should be available with a setup token in the environment`() async throws {
         var claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         claude.environment = ["CLAUDE_CODE_OAUTH_TOKEN": "my-setup-token"]

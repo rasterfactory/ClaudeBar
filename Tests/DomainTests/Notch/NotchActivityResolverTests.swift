@@ -18,17 +18,17 @@ struct NotchActivityResolverTests {
     // MARK: - Nothing to say
 
     @Test
-    func `no sessions and no quotas resolves to nothing`() {
+    func `should show nothing in the notch when no session runs and no quota is known`() {
         #expect(resolver.resolve(sessions: [], quotas: [], headlineQuota: nil, now: now) == nil)
     }
 
     @Test
-    func `a healthy quota that is not the headline resolves to nothing`() {
+    func `should show nothing in the notch for a healthy quota that is not the headline`() {
         #expect(resolver.resolve(sessions: [], quotas: [quota(80)], headlineQuota: nil, now: now) == nil)
     }
 
     @Test
-    func `a warning quota does not take over the notch`() {
+    func `should show nothing in the notch for a quota only in warning`() {
         // 35% remaining is QuotaStatus.warning — visible in the popover, not in the notch.
         #expect(resolver.resolve(sessions: [], quotas: [quota(35)], headlineQuota: nil, now: now) == nil)
     }
@@ -36,14 +36,14 @@ struct NotchActivityResolverTests {
     // MARK: - Session phases
 
     @Test
-    func `an active session resolves to working`() {
+    func `should show a running session as working`() {
         let result = resolver.resolve(sessions: [running("claudebar")], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result == .working(running("claudebar")))
     }
 
     @Test
-    func `a session with subagents resolves to agents working`() {
+    func `should show a session with a running subagent as agents working`() {
         var session = running("claudebar")
         session.subagentStarted()
 
@@ -54,7 +54,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `a blocked session resolves to awaiting input`() {
+    func `should show a blocked session as awaiting input, with its pending prompt`() {
         var session = running("claudebar")
         session.awaitInput("Bash · rm -rf build/", at: now)
 
@@ -67,7 +67,7 @@ struct NotchActivityResolverTests {
     // MARK: - Priority
 
     @Test
-    func `a blocked session outranks any number of working sessions`() {
+    func `should show the blocked session over any number of working sessions`() {
         var blocked = running("claudebar", startedAt: now.addingTimeInterval(-10))
         blocked.awaitInput("Write · Package.swift", at: now)
 
@@ -81,14 +81,14 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `a critical quota outranks a working session`() {
+    func `should show a critical quota over a working session`() {
         let result = resolver.resolve(sessions: [running("claudebar")], quotas: [quota(5)], headlineQuota: nil, now: now)
 
         #expect(result == .quotaThreshold(quota(5)))
     }
 
     @Test
-    func `a blocked session outranks a critical quota`() {
+    func `should show a blocked session over a critical quota`() {
         var blocked = running("claudebar")
         blocked.awaitInput("Bash · git push", at: now)
 
@@ -98,7 +98,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `the most severe quota wins when several are past the threshold`() {
+    func `should show the lowest quota when several are past the threshold`() {
         let result = resolver.resolve(
             sessions: [],
             quotas: [quota(18, provider: "copilot"), quota(3, provider: "claude"), quota(60, provider: "codex")],
@@ -110,7 +110,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `among blocked sessions the one waiting longest wins`() {
+    func `should show the longest-running blocked session when several are blocked`() {
         var early = running("claudebar", startedAt: now.addingTimeInterval(-600))
         early.awaitInput("Bash · make", at: now)
         var late = running("asc", startedAt: now.addingTimeInterval(-30))
@@ -124,7 +124,7 @@ struct NotchActivityResolverTests {
     // MARK: - The idle glance
 
     @Test
-    func `the headline quota is shown at a glance when nothing is happening`() {
+    func `should show the headline quota at a glance when nothing is happening`() {
         // ClaudeBar is a quota monitor. With no session running, how much is
         // left is still the thing the user came for.
         let headline = quota(86)
@@ -135,7 +135,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `the glance shows the chosen quota even when another one is lower`() {
+    func `should glance at the chosen headline quota even when another quota is lower`() {
         let headline = quota(86, provider: "claude")
         let lower = quota(55, provider: "codex")
 
@@ -150,7 +150,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `a working session takes the notch back from the glance`() {
+    func `should show a working session over the headline glance`() {
         let headline = quota(86)
 
         let result = resolver.resolve(
@@ -164,7 +164,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `a quota past the threshold outranks the glance`() {
+    func `should show a quota past the threshold over the headline glance`() {
         let headline = quota(86, provider: "claude")
         let critical = quota(4, provider: "codex")
 
@@ -179,14 +179,14 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `there is nothing to glance at before the first probe returns`() {
+    func `should show no glance before the first quotas arrive`() {
         #expect(resolver.resolve(sessions: [], quotas: [], headlineQuota: nil, now: now) == nil)
     }
 
     // MARK: - The finished flash
 
     @Test
-    func `a session that just stopped resolves to finished`() {
+    func `should show a session that just stopped as finished`() {
         var session = running("claudebar")
         session.stop(at: now.addingTimeInterval(-1))
 
@@ -196,7 +196,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `an ended session resolves to finished inside the display window`() {
+    func `should show an ended session as finished for four seconds`() {
         var session = running("claudebar")
         session.end(at: now.addingTimeInterval(-3))
 
@@ -204,7 +204,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `finished expires once the display window has passed`() {
+    func `should stop showing finished once four seconds have passed`() {
         var session = running("claudebar")
         session.end(at: now.addingTimeInterval(-5))
 
@@ -212,7 +212,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `an expired finished session yields to the next activity`() {
+    func `should show the next working session once the finished flash has passed`() {
         var done = running("claudebar")
         done.end(at: now.addingTimeInterval(-30))
         let stillGoing = running("asc")
@@ -223,7 +223,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `finished briefly outranks a session that is still working`() {
+    func `should briefly show a just-finished session over one still working`() {
         var done = running("claudebar")
         done.end(at: now.addingTimeInterval(-1))
 
@@ -233,7 +233,7 @@ struct NotchActivityResolverTests {
     }
 
     @Test
-    func `a blocked session is never masked by a finished flash`() {
+    func `should show a blocked session over a finished flash`() {
         var done = running("asc")
         done.end(at: now)
         var blocked = running("claudebar")

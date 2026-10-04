@@ -47,7 +47,7 @@ struct CodexUsageHistoryTests {
         return #"{"timestamp":"\#(stamp(at))","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":\#(total),"last_token_usage":\#(last)}}}"#
     }
 
-    @Test func `today's tokens are each turn's, with cached input counted as cache reads`() async throws {
+    @Test func `should count each turn's tokens today, with cached input as cache reads`() async throws {
         try write([
             Self.turn(input: 1000, cached: 600, output: 50, totalInput: 1000, totalOutput: 50),
             Self.turn(input: 2000, cached: 1500, output: 80, totalInput: 3000, totalOutput: 130)
@@ -61,14 +61,14 @@ struct CodexUsageHistoryTests {
         #expect(today.totalTokens == 1030)
     }
 
-    @Test func `a turn written twice counts once`() async throws {
+    @Test func `should count a turn once when Codex writes it twice`() async throws {
         let turn = Self.turn(input: 1000, cached: 0, output: 50, totalInput: 1000, totalOutput: 50)
         try write([turn, turn].joined(separator: "\n"))
 
         #expect(try await report().today.totalTokens == 1050)
     }
 
-    @Test func `lines without usage and other events are skipped`() async throws {
+    @Test func `should count only the turns that carry usage`() async throws {
         try write([
             #"{"timestamp":"\#(Self.stamp())","type":"event_msg","payload":{"type":"token_count","info":null}}"#,
             #"{"timestamp":"\#(Self.stamp())","type":"turn_context","payload":{"model":"gpt-x"}}"#,
@@ -78,7 +78,7 @@ struct CodexUsageHistoryTests {
         #expect(try await report().today.totalTokens == 110)
     }
 
-    @Test func `yesterday's turns land on yesterday`() async throws {
+    @Test func `should count yesterday's turns as yesterday's`() async throws {
         try write([
             Self.turn(input: 100, cached: 0, output: 10, totalInput: 100, totalOutput: 10, at: Self.yesterdayNoon),
             Self.turn(input: 200, cached: 0, output: 20, totalInput: 300, totalOutput: 30)
@@ -90,14 +90,14 @@ struct CodexUsageHistoryTests {
         #expect(report.today.totalTokens == 220)
     }
 
-    @Test func `Codex's logs name no model, so its history has no cost to show`() throws {
+    @Test func `should show no cost for Codex's history, since its logs name no model`() throws {
         #expect(try !history().knowsCost)
         let claude = try #require(try ProviderFactory.builtIn("claude").usageHistory)
         #expect(UsageHistory(log: DataSources.makeUsageLog(claude, scripts: ProviderFactory.builtInScripts,
                                                            environment: { _ in nil }, homeDirectory: home)).knowsCost)
     }
 
-    @Test func `an added account reads its own Codex folder`() throws {
+    @Test func `should read an added login's history from its own Codex folder`() throws {
         let definition = try ProviderFactory.builtIn("codex")
         let account = try #require(definition.usageHistory(forAccount: ["codexHome": "/tmp/work-codex"]))
         #expect(account.records.files == "/tmp/work-codex/sessions/**/rollout-*.jsonl")

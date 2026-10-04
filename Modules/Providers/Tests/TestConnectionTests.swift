@@ -10,7 +10,7 @@ import Testing
 @Suite
 struct TestConnectionTests {
     @Test
-    func `a connection that answers shows its status`() async throws {
+    func `should show the status the provider answered with when the connection works`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         try stub.writeCodexAuth(accountId: "me")
@@ -23,7 +23,7 @@ struct TestConnectionTests {
     }
 
     @Test
-    func `a connection with no key names the lookup step`() async throws {
+    func `should say the key lookup failed when there is no key`() async throws {
         let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { stub.cleanUp() }
         let codex = try stub.makeProvider("codex")
@@ -38,7 +38,7 @@ struct TestConnectionTests {
     }
 
     @Test
-    func `a successful test checks a CLI session for later background refreshes`() async throws {
+    func `should allow background refreshes once the person has tested the connection`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"primary":{"usedPercent":20}}}}"#)
@@ -55,7 +55,7 @@ struct TestConnectionTests {
 @Suite
 struct FallbackSettingTests {
     @Test
-    func `a switchable fallback is on until turned off, and saved as the provider's setting`() throws {
+    func `should use the fallback until the person switches it off, and remember the choice`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let settings = InMemoryProviderSettings()
@@ -70,7 +70,7 @@ struct FallbackSettingTests {
     }
 
     @Test
-    func `a fixed fallback is always on and can't be switched`() throws {
+    func `should always use a fallback the person cannot switch off`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let provider = try claude.provider()

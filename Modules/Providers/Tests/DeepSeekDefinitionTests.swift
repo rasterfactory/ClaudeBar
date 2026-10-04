@@ -39,7 +39,7 @@ struct DeepSeekDefinitionTests {
     }
 
     @Test
-    func `the bundled definition keeps the existing identity links and disabled default`() throws {
+    func `should be DeepSeek, out of the lineup until turned on, with its usage dashboard, icon and an add-login form`() throws {
         let provider = try make()
         #expect(provider.id == "deepseek")
         #expect(provider.name == "DeepSeek")
@@ -50,7 +50,7 @@ struct DeepSeekDefinitionTests {
     }
 
     @Test
-    func `the first balance keeps its currency exact money and paid granted details`() async throws {
+    func `should show the first balance exactly in its own currency, with the paid and granted parts, and no percentage`() async throws {
         let body = #"{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"110.123456789","granted_balance":"10","topped_up_balance":"100"},{"currency":"USD","total_balance":"40"}]}"#
         let usage = try await make(body: body).refreshPlain()
         let quota = try #require(usage.quotas.first)
@@ -63,14 +63,14 @@ struct DeepSeekDefinitionTests {
     }
 
     @Test
-    func `optional breakdown fields can be missing or invalid`() async throws {
+    func `should leave out a paid or granted part that is missing or unreadable`() async throws {
         let body = #"{"balance_infos":[{"currency":"USD","total_balance":"40","granted_balance":"bad","topped_up_balance":"30"}]}"#
         let usage = try await make(body: body).refreshPlain()
         #expect(usage.quotas.first?.resetText == "Paid: $30.00")
     }
 
     @Test
-    func `the default environment key takes priority and each added account sends its own key`() async throws {
+    func `should read the default login with the environment key and each added login with its own key`() async throws {
         let vault = MemoryVault(["deepseek.apiKey": "personal"])
         let replies = ["Bearer environment": #"{"balance_infos":[{"currency":"USD","total_balance":"40"}]}"#,
                        "Bearer work": #"{"balance_infos":[{"currency":"CNY","total_balance":"7"}]}"#]
@@ -85,13 +85,13 @@ struct DeepSeekDefinitionTests {
     }
 
     @Test
-    func `an empty environment key falls back to the saved default key`() async throws {
+    func `should use the saved key when the environment key is empty`() async throws {
         let provider = try make(environment: ["DEEPSEEK_API_KEY": ""], balancesByKey: ["Bearer personal": balance])
         #expect(try await provider.refreshPlain().quotas.first?.dollarRemaining == 40)
     }
 
     @Test
-    func `an unsigned default account is unavailable`() async throws {
+    func `should be unavailable and ask for a key when the default login has none`() async throws {
         let product = try make(vault: MemoryVault())
         let account = product.defaultAccount
         #expect(await product.isAvailable(account) == false)
@@ -99,7 +99,7 @@ struct DeepSeekDefinitionTests {
     }
 
     @Test(arguments: ["0", "-1.25"])
-    func `zero and negative balances are depleted without inventing a cap`(_ amount: String) async throws {
+    func `should show a zero or negative balance as depleted, with no made-up percentage`(_ amount: String) async throws {
         let body = #"{"balance_infos":[{"currency":"USD","total_balance":"\#(amount)"}]}"#
         let usage = try await make(body: body).refreshPlain()
         #expect(usage.quotas.first?.status == .depleted)
@@ -107,7 +107,7 @@ struct DeepSeekDefinitionTests {
     }
 
     @Test(arguments: [429, 500])
-    func `HTTP failures remain fetch failures`(_ status: Int) async throws {
+    func `should fail at fetching when DeepSeek is rate limited or errors`(_ status: Int) async throws {
         let product = try make(status: status)
         let account = product.defaultAccount
         await #expect(throws: UsageError.self) { try await product.refresh(account) }
@@ -115,21 +115,21 @@ struct DeepSeekDefinitionTests {
     }
 
     @Test(arguments: [401, 403])
-    func `rejected keys fail authentication`(_ status: Int) async throws {
+    func `should ask for a key when DeepSeek refuses it`(_ status: Int) async throws {
         let product = try make(status: status)
         let account = product.defaultAccount
         await #expect(throws: UsageError.authenticationRequired) { try await product.refresh(account) }
     }
 
     @Test
-    func `an empty balance list has no data`() async throws {
+    func `should report no data when DeepSeek lists no balance`() async throws {
         let product = try make(body: #"{"balance_infos":[]}"#)
         let account = product.defaultAccount
         await #expect(throws: UsageError.noData) { try await product.refresh(account) }
     }
 
     @Test(arguments: ["not JSON", #"{"balance_infos":[{"currency":"USD","total_balance":"bad"}]}"#])
-    func `malformed balances fail at mapping`(_ body: String) async throws {
+    func `should fail reading the balance when it is unreadable`(_ body: String) async throws {
         let product = try make(body: body)
         let account = product.defaultAccount
         await #expect(throws: UsageError.self) { try await product.refresh(account) }
@@ -137,14 +137,14 @@ struct DeepSeekDefinitionTests {
     }
 
     @Test
-    func `unusable funds are an explicit failure rather than a healthy balance`() async throws {
+    func `should say the balance is unavailable for API calls rather than show it healthy`() async throws {
         let product = try make(body: #"{"is_available":false,"balance_infos":[{"currency":"USD","total_balance":"5"}]}"#)
         let account = product.defaultAccount
         await #expect(throws: UsageError.executionFailed("DeepSeek reports that this balance is unavailable for API calls.")) { try await product.refresh(account) }
     }
 
     @Test
-    func `form accounts keep their keys out of settings and never borrow the default key`() async throws {
+    func `should keep an added login's key out of settings and never fall back to the default key`() async throws {
         let vault = MemoryVault(["deepseek.apiKey": "personal"])
         let settings = InMemoryProviderSettings()
         let provider = try make(vault: vault, environment: ["DEEPSEEK_API_KEY": "environment-default"], settings: settings)

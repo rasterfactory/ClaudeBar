@@ -7,7 +7,7 @@ import Infrastructure
 @Suite @MainActor
 struct AppSettingsMenuBarTests {
     @Test
-    func `account label visibility survives settings reload`() {
+    func `should remember whether account labels show in the menu bar, on by default`() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
@@ -22,7 +22,7 @@ struct AppSettingsMenuBarTests {
     }
 
     @Test
-    func `each provider keeps its quota settings when removed promoted and reloaded`() {
+    func `should keep each menu bar provider's quota choices when it is removed, promoted or the app relaunches`() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")
@@ -48,7 +48,7 @@ struct AppSettingsMenuBarTests {
     }
 
     @Test
-    func `observable menu bar selection normalizes without recursive setters`() {
+    func `should keep the primary provider out of the other menu bar providers and at most two of them`() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: dir.appendingPathComponent("settings.json")))

@@ -64,7 +64,7 @@ struct KimiExecutionTests {
 
     // MARK: - CLI, the default
 
-    @Test func `the CLI is the default and types /usage once the screen settles`() async throws {
+    @Test func `should ask kimi for /usage once its screen settles when no data source is chosen`() async throws {
         let seen = Seen()
         let quotas = try await make(seen: seen).refreshPlain().quotas
         #expect(quotas.map(\.quotaType) == [.weekly, .session])
@@ -76,7 +76,7 @@ struct KimiExecutionTests {
         #expect(call.autoResponses["context:"] == "/usage\r")
     }
 
-    @Test func `the old card's API choice is read`() async throws {
+    @Test func `should read usage from the web when the old card chose the API`() async throws {
         let seen = Seen()
         _ = try await make(mode: "api", cookies: ["kimi.com": "browser"], seen: seen).refreshPlain()
         #expect(seen.host == "www.kimi.com")
@@ -85,7 +85,7 @@ struct KimiExecutionTests {
 
     // MARK: - API
 
-    @Test func `the API reads the plan and its 5-hour limit`() async throws {
+    @Test func `should show the Moderato plan's weekly quota and its 5-hour limit when read from the web`() async throws {
         let snapshot = try await make(mode: "api", cookies: ["kimi.com": "browser"]).refreshPlain()
         let weekly = try #require(snapshot.quota(for: .weekly))
         #expect(weekly.window?.length == 604800)
@@ -96,7 +96,7 @@ struct KimiExecutionTests {
         #expect(snapshot.accountTier == .custom("Moderato"))
     }
 
-    @Test func `the international region goes to kimi.ai with its own cookie`() async throws {
+    @Test func `should use kimi.ai and its own browser session when the region is international`() async throws {
         let seen = Seen()
         let provider = make(region: "international", mode: "api", cookies: ["kimi.com": "china", "kimi.ai": "international"], seen: seen)
         _ = try await provider.refreshPlain()
@@ -106,39 +106,39 @@ struct KimiExecutionTests {
         #expect(provider.plainDashboardURL?.absoluteString == "https://www.kimi.ai/code/console")
     }
 
-    @Test func `KIMI_AUTH_TOKEN comes before the browser`() async throws {
+    @Test func `should use KIMI_AUTH_TOKEN over the browser session when both are set`() async throws {
         let seen = Seen()
         _ = try await make(mode: "api", cookies: ["kimi.com": "browser"], environment: ["KIMI_AUTH_TOKEN": "env"], seen: seen).refreshPlain()
         #expect(seen.cookie == "kimi-auth=env")
     }
 
-    @Test func `no session anywhere is not ready`() async throws {
+    @Test func `should be unavailable when there is no web session anywhere`() async throws {
         let product = make(mode: "api")
         let account = product.defaultAccount
         #expect(await product.isAvailable(account) == false)
     }
 
-    @Test(arguments: [401, 403]) func `a refused session needs signing in again`(_ code: Int) async throws {
+    @Test(arguments: [401, 403]) func `should ask to sign in again when Kimi refuses the session`(_ code: Int) async throws {
         await #expect(throws: UsageError.authenticationRequired) {
             try await make(mode: "api", status: code, cookies: ["kimi.com": "browser"]).refreshPlain()
         }
     }
 
-    @Test func `China is the dashboard with no region saved`() {
+    @Test func `should open the China dashboard when no region is saved`() {
         #expect(make().plainDashboardURL?.absoluteString == "https://www.kimi.com/code/console")
     }
 
     // MARK: - Added accounts
 
-    @Test func `on the API an added account asks for a session token and a region`() throws {
+    @Test func `should ask for a session token and a region when adding a login on the API`() throws {
         #expect(make(mode: "api").accounts.form.map(\.id) == ["token", "region"])
     }
 
-    @Test func `on the CLI an added account asks for a signed-in folder and a region`() throws {
+    @Test func `should ask for a signed-in folder and a region when adding a login on the CLI`() throws {
         #expect(make().accounts.form.map(\.id) == ["home", "region"])
     }
 
-    @Test func `an added API account uses its own token and region, never the browser`() async throws {
+    @Test func `should use an added login's own token and region, never the browser, on the API`() async throws {
         let seen = Seen()
         let vault = MemoryVault()
         let provider = make(mode: "api", vault: vault, cookies: ["kimi.com": "browser"], environment: ["KIMI_AUTH_TOKEN": "env"], seen: seen)
@@ -148,7 +148,7 @@ struct KimiExecutionTests {
         #expect(seen.host == "www.kimi.ai")
     }
 
-    @Test func `an added CLI account runs kimi with its own folder`() async throws {
+    @Test func `should run kimi in an added login's own folder on the CLI`() async throws {
         let seen = Seen()
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -170,12 +170,12 @@ struct SourceScopedAccountTests {
         try ProviderFactory.builtIn("kimi")
     }
 
-    @Test func `a login without a folder runs no CLI, only the API`() throws {
+    @Test func `should read only the web when a login has no folder`() throws {
         let sources = try definition().dataSources(forAccount: ["region": "china"])
         #expect(sources.map(\.kind) == ["api"])
     }
 
-    @Test func `a login with a folder runs both`() throws {
+    @Test func `should read both the CLI and the web when a login has a folder`() throws {
         let sources = try definition().dataSources(forAccount: ["region": "china", "home": "/tmp/kimi-work"])
         #expect(sources.map(\.kind) == ["cli", "api"])
     }

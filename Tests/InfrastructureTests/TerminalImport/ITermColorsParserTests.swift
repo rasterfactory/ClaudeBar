@@ -94,7 +94,7 @@ struct ITermColorsParserTests {
     </plist>
     """
 
-    @Test func `parses background and foreground colors`() throws {
+    @Test func `should import an iTerm scheme's name, background and foreground colours`() throws {
         let data = Data(Self.minimalItermcolors.utf8)
         let scheme = try ITermColorsParser.parse(from: data, name: "Dracula")
         #expect(scheme.name == "Dracula")
@@ -104,7 +104,7 @@ struct ITermColorsParserTests {
         #expect(abs(scheme.foreground.red - 0.97255) < 0.001)
     }
 
-    @Test func `parses all 16 ANSI colors`() throws {
+    @Test func `should import all 16 ANSI colours of an iTerm scheme`() throws {
         let data = Data(Self.minimalItermcolors.utf8)
         let scheme = try ITermColorsParser.parse(from: data, name: "Dracula")
         #expect(scheme.ansiColors.count == 16)
@@ -116,7 +116,7 @@ struct ITermColorsParserTests {
         #expect(abs(scheme.brightWhite.red - 1.0) < 0.001)
     }
 
-    @Test func `parses optional colors when present`() throws {
+    @Test func `should import the bold, cursor and selection colours when the scheme has them`() throws {
         let data = Data(Self.minimalItermcolors.utf8)
         let scheme = try ITermColorsParser.parse(from: data, name: "Dracula")
         #expect(scheme.boldText != nil)
@@ -125,13 +125,13 @@ struct ITermColorsParserTests {
         #expect(scheme.selectionText != nil)
     }
 
-    @Test func `detects dark scheme by background luminance`() throws {
+    @Test func `should see a scheme with a dark background as dark`() throws {
         let data = Data(Self.minimalItermcolors.utf8)
         let scheme = try ITermColorsParser.parse(from: data, name: "Dracula")
         #expect(scheme.isDark)
     }
 
-    @Test func `throws on missing background color`() {
+    @Test func `should refuse an iTerm scheme with no background colour`() {
         let xml = """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -148,7 +148,7 @@ struct ITermColorsParserTests {
         }
     }
 
-    @Test func `throws on missing ANSI color`() {
+    @Test func `should refuse an iTerm scheme missing an ANSI colour`() {
         var xml = """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -172,7 +172,7 @@ struct ITermColorsParserTests {
         }
     }
 
-    @Test func `handles legacy format without Alpha and Color Space`() throws {
+    @Test func `should import an older iTerm scheme without alpha or colour space as opaque`() throws {
         var xml = """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

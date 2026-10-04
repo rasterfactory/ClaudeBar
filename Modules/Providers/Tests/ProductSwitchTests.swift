@@ -23,7 +23,7 @@ struct ProductSwitchTests {
     }
 
     @Test
-    func `a product is on, and every login of it is in the lineup`() throws {
+    func `should show every login of a provider in the lineup when the provider is on`() throws {
         let codex = try codex(twoLogins())
 
         let shown = codex.accounts.filter(codex.isInLineup).count
@@ -32,7 +32,7 @@ struct ProductSwitchTests {
     }
 
     @Test
-    func `turning the product off hides every login and keeps each login's own switch`() throws {
+    func `should hide every login but keep each login's own switch when the provider is turned off`() throws {
         let codex = try codex(twoLogins())
 
         codex.isEnabled = false
@@ -44,7 +44,7 @@ struct ProductSwitchTests {
     }
 
     @Test
-    func `pausing a login leaves the product on`() throws {
+    func `should keep the provider on and its other logins shown when one login is paused`() throws {
         let codex = try codex(twoLogins())
 
         codex.defaultAccount.isEnabled = false
@@ -55,7 +55,7 @@ struct ProductSwitchTests {
     }
 
     @Test
-    func `the product's switch and a login's pause are kept apart across a relaunch`() throws {
+    func `should remember the provider's switch and a login's pause apart across a relaunch`() throws {
         let settings = twoLogins()
         let first = try codex(settings)
         first.defaultAccount.isEnabled = false
@@ -71,7 +71,7 @@ struct ProductSwitchTests {
     // MARK: - Upgrade: the old switch was the plain login's
 
     @Test
-    func `an old off with another login on meant the plain login was paused`() throws {
+    func `should pause only the plain login when the old switch was off and another login is on, after an upgrade`() throws {
         let settings = twoLogins()
         settings.setEnabled(false, forProvider: "codex")
 
@@ -83,7 +83,7 @@ struct ProductSwitchTests {
     }
 
     @Test
-    func `an old off with no other login on meant the product was off`() throws {
+    func `should turn the provider off when the old switch was off and no other login is on, after an upgrade`() throws {
         let settings = InMemoryProviderSettings()
         settings.setEnabled(false, forProvider: "codex")
 
@@ -94,7 +94,7 @@ struct ProductSwitchTests {
     }
 
     @Test
-    func `the upgrade reads the old switch once`() throws {
+    func `should honour the old switch only once after an upgrade`() throws {
         let settings = twoLogins()
         settings.setEnabled(false, forProvider: "codex")
         let first = try codex(settings)

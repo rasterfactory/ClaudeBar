@@ -118,7 +118,7 @@ struct OmpDefinitionTests {
     // MARK: - Quota Mapping
 
     @Test
-    func `parses every limit into a quota`() throws {
+    func `should show a quota for every limit omp reports, all as Oh My Pi's`() throws {
         let snapshot = try OmpFixtures.parse(Self.sampleResponse)
 
         #expect(snapshot.providerId == "omp")
@@ -127,7 +127,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `maps remaining fraction to percent remaining`() throws {
+    func `should show the percent left that omp reports as a fraction`() throws {
         let snapshot = try OmpFixtures.parse(Self.sampleResponse)
 
         #expect(snapshot.quota(for: .timeLimit("Claude 5h"))?.percentRemaining == 92.0)
@@ -137,7 +137,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `labels quotas with provider tier and window`() throws {
+    func `should name each quota by its provider, tier and window`() throws {
         let snapshot = try OmpFixtures.parse(Self.sampleResponse)
         let labels = snapshot.quotas.map(\.quotaType.displayName)
 
@@ -148,7 +148,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `parses reset time from epoch milliseconds`() throws {
+    func `should show the reset time omp gives in epoch milliseconds`() throws {
         let snapshot = try OmpFixtures.parse(Self.sampleResponse)
         let claude = try #require(snapshot.quota(for: .timeLimit("Claude 5h")))
 
@@ -156,7 +156,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `passes window duration through for pace math`() throws {
+    func `should keep each limit's window length so pace can be shown`() throws {
         let snapshot = try OmpFixtures.parse(Self.sampleResponse)
 
         #expect(snapshot.quota(for: .timeLimit("Claude 5h"))?.windowDuration == 18_000)
@@ -164,7 +164,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `limit without reset timestamp keeps nil resetsAt`() throws {
+    func `should show no reset when a limit has no reset time`() throws {
         let snapshot = try OmpFixtures.parse(Self.sampleResponse)
         let zai = try #require(snapshot.quota(for: .timeLimit("Z.ai 5h")))
 
@@ -174,7 +174,7 @@ struct OmpDefinitionTests {
     // MARK: - Monetary Limits
 
     @Test
-    func `maps capped zero spend to a monetary quota`() throws {
+    func `should show a capped spend limit with nothing spent as a full dollar quota in its provider's group`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -204,7 +204,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `capped spend is money left of its cap, in rounded dollars`() throws {
+    func `should show a capped spend limit as dollars left of its cap, in rounded dollars`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -232,7 +232,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `monetary decode keeps cent-boundary values exact`() throws {
+    func `should round spend to the cent exactly when it sits on a cent boundary`() throws {
         // Decimal decodes straight from the JSON number token: 1.005 rounds
         // to $1.01. A Double round-trip would decode 1.00499… and show $1.00.
         let json = """
@@ -256,7 +256,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `monetary label falls back to window id`() throws {
+    func `should name a spend limit after its window when omp gives it no label`() throws {
         let json = """
         { "reports": [ {
             "provider": "opencode-go",
@@ -269,11 +269,12 @@ struct OmpDefinitionTests {
 
         let snapshot = try OmpFixtures.parse(json)
         let quota = try #require(snapshot.quota(for: .timeLimit("OpenCode Go Monthly")))
-
+        #expect(quota.dollarUsed == 50)
+        #expect(quota.dollarCap == 500)
     }
 
     @Test
-    func `uncapped spend becomes a grouped note instead of a quota`() throws {
+    func `should show uncapped spend as a note in its provider's group, not a quota`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -299,7 +300,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `windowless cursor spend labels suppress the usd meter`() throws {
+    func `should name Cursor's windowless spend limits Spend, never USD`() throws {
         let json = """
         { "reports": [ {
             "provider": "cursor",
@@ -328,7 +329,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `monetary and window quotas share the account group`() throws {
+    func `should show a spend limit and a window limit of one account in one group`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -355,7 +356,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `uncapped spend notes discriminate same-provider accounts`() throws {
+    func `should tell apart the uncapped spend notes of two accounts on one provider`() throws {
         let json = """
         { "reports": [
           {
@@ -392,14 +393,14 @@ struct OmpDefinitionTests {
     // MARK: - Account Email
 
     @Test
-    func `email is nil when accounts span multiple emails`() throws {
+    func `should show no email when the accounts have different emails`() throws {
         let snapshot = try OmpFixtures.parse(Self.sampleResponse)
 
         #expect(snapshot.accountEmail == nil)
     }
 
     @Test
-    func `extracts email for a single account`() throws {
+    func `should show the email when there is a single account`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -419,7 +420,7 @@ struct OmpDefinitionTests {
     // MARK: - Multiple Accounts on One Provider
 
     @Test
-    func `discriminates duplicate accounts on the same provider`() throws {
+    func `should tell apart two accounts on the same provider, each quota unique`() throws {
         let json = """
         { "reports": [
           {
@@ -454,7 +455,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `qualifies multiple meters sharing one window`() throws {
+    func `should tell apart two meters sharing one window by what they meter`() throws {
         // Z.ai can meter tokens and requests over the same window; both
         // must stay distinguishable without degrading to bare ordinals.
         let json = """
@@ -515,14 +516,14 @@ struct OmpDefinitionTests {
     // MARK: - Accounts Without Usage
 
     @Test
-    func `empty accountsWithoutUsage adds no metric rows`() throws {
+    func `should show no account rows when every account reported usage`() throws {
         let snapshot = try OmpFixtures.parse(Self.sampleResponse)
 
         #expect(snapshot.extensionMetrics == nil)
     }
 
     @Test
-    func `mixed pool keeps quotas and lists unreported accounts`() throws {
+    func `should show the quotas and a no-usage row for an account that reported none`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -546,7 +547,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `all-unreported pool yields account rows instead of noData`() throws {
+    func `should show a no-usage row for each account, not no data, when none reported usage`() throws {
         let json = """
         { "reports": [],
           "accountsWithoutUsage": [
@@ -563,7 +564,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `anonymous accounts on one provider get unique row labels`() throws {
+    func `should give each anonymous account on one provider its own row name`() throws {
         // MenuContentView keys these cards by label — collisions would
         // hide or reuse rows.
         let json = """
@@ -581,7 +582,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `single unreported account contributes the snapshot email`() throws {
+    func `should show the email of the single account even when it reported no usage`() throws {
         let json = """
         { "reports": [],
           "accountsWithoutUsage": [
@@ -594,7 +595,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `suppresses unreported account with matching account id`() throws {
+    func `should show no no-usage row for an account that also reported usage under the same account id`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -616,7 +617,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `suppresses unreported account matching scoped account id`() throws {
+    func `should show no no-usage row for an account whose id a limit already reported`() throws {
         let json = """
         { "reports": [ {
             "provider": "google-gemini-cli",
@@ -644,7 +645,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `matching account id on different provider does not suppress unreported account`() throws {
+    func `should show the no-usage row when the same account id reported usage on another provider`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -669,7 +670,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `suppresses unreported account with normalized matching email`() throws {
+    func `should show no no-usage row when the same email, in any case or spacing, reported usage`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -690,7 +691,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `matching email overrides different credential account ids`() throws {
+    func `should show no no-usage row when the same email reported usage under another credential`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -717,7 +718,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `same email with differing organization keeps unreported account visible`() throws {
+    func `should show the no-usage row when the same email reported usage for another organization`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -744,7 +745,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `same email and organization keeps upstream unreported account visible`() throws {
+    func `should show the no-usage row when omp reports it even for the same email and organization`() throws {
         // omp's org gate normally absorbs this identity into the same-org
         // report. If it still reaches ClaudeBar, preserve omp's decision to
         // surface the failed fetch instead of second-guessing it by email.
@@ -774,7 +775,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `organization-scoped account id match keeps unreported account visible`() throws {
+    func `should show the no-usage row when the matching account id belongs to an organization`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -798,7 +799,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `same email on different provider does not suppress unreported account`() throws {
+    func `should show the no-usage row when the same email reported usage on another provider`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -819,7 +820,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `different identities on one provider both render`() throws {
+    func `should show both a reported account and an unreported one on the same provider`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -848,7 +849,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `different emails do not fall back to matching account id`() throws {
+    func `should show the no-usage row when the emails differ even though the account id matches`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -875,7 +876,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `shared project id does not suppress unreported account`() throws {
+    func `should show the no-usage row when only a project id is shared`() throws {
         let json = """
         { "reports": [ {
             "provider": "google-gemini-cli",
@@ -898,7 +899,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `identical whitespace emails with different account ids stay distinct`() throws {
+    func `should show two rows for blank-email accounts with different account ids`() throws {
         let json = """
         { "reports": [],
           "accountsWithoutUsage": [
@@ -922,7 +923,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `identical whitespace emails fall back to identical account ids`() throws {
+    func `should show one row for blank-email accounts with the same account id`() throws {
         let json = """
         { "reports": [],
           "accountsWithoutUsage": [
@@ -946,7 +947,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `duplicate identified unreported accounts collapse to one row`() throws {
+    func `should show one row for unreported accounts with the same email`() throws {
         let json = """
         { "reports": [],
           "accountsWithoutUsage": [
@@ -972,7 +973,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `organization-scoped unreported accounts with same email both render`() throws {
+    func `should show a row for each organization when one email has two`() throws {
         let json = """
         { "reports": [],
           "accountsWithoutUsage": [
@@ -998,7 +999,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `mixed organization and legacy unreported accounts stay distinct regardless of order`() throws {
+    func `should show an organization account and a legacy one with the same email as two rows, in either order`() throws {
         let organizationFirst = """
         { "reports": [],
           "accountsWithoutUsage": [
@@ -1044,7 +1045,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `zero-limit report identity suppresses matching unreported account`() throws {
+    func `should show one row when an account with no limits is also listed as unreported`() throws {
         let json = """
         { "reports": [ {
             "provider": "ollama",
@@ -1062,7 +1063,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `anonymous unreported account never matches anonymous report`() throws {
+    func `should show an anonymous unreported account apart from an anonymous report`() throws {
         let json = """
         { "reports": [ {
             "provider": "ollama",
@@ -1081,7 +1082,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `live duplicate shape keeps two quota groups and drops stale rows`() throws {
+    func `should show one group per account and no stale rows when each account reported under a new credential`() throws {
         let json = """
         { "reports": [
           {
@@ -1134,7 +1135,7 @@ struct OmpDefinitionTests {
     // MARK: - Reports Without Usable Limits
 
     @Test
-    func `report with zero limits still lists its account`() throws {
+    func `should still list an account whose report has no limits`() throws {
         // Ollama's usage provider deliberately reports `limits: []` (no
         // standalone quota API); a report exists, so the account never
         // appears in accountsWithoutUsage — it must not vanish here.
@@ -1165,7 +1166,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `pool with only zero-limit reports yields rows instead of noData`() throws {
+    func `should show account rows, not no data, when every report has no limits`() throws {
         let json = """
         { "reports": [ { "provider": "ollama", "limits": [] } ] }
         """
@@ -1176,7 +1177,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `report identity falls back to limit scope`() throws {
+    func `should name an account after its limits when its report carries no identity`() throws {
         // Gemini/Kimi-style reports carry identity in limit scopes rather
         // than metadata; a report whose limits are all unusable must still
         // be attributed via that scope.
@@ -1195,7 +1196,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `anonymous zero-limit reports on one provider stay distinct`() throws {
+    func `should show anonymous accounts with no limits on one provider as numbered sections`() throws {
         let json = """
         { "reports": [
             { "provider": "ollama", "limits": [] },
@@ -1218,7 +1219,7 @@ struct OmpDefinitionTests {
     // MARK: - Grouping Metadata
 
     @Test
-    func `quotas carry group and compact title for sectioned rendering`() throws {
+    func `should group quotas into one section per provider, in the order omp reports them`() throws {
         let snapshot = try OmpFixtures.parse(Self.sampleResponse)
 
         let claude5h = try #require(snapshot.quota(for: .timeLimit("Claude 5h")))
@@ -1234,7 +1235,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `duplicate accounts get per-account groups`() throws {
+    func `should show a section per account when one provider has two`() throws {
         let json = """
         { "reports": [
           {
@@ -1264,7 +1265,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `account rows join grouped sections with short identities`() throws {
+    func `should show no-usage accounts as their own sections, named by short identities`() throws {
         let json = """
         { "reports": [ {
             "provider": "ollama",
@@ -1302,14 +1303,14 @@ struct OmpDefinitionTests {
         ("ollama", "Ollama"),
         ("ollama-cloud", "Ollama Cloud"),
     ])
-    func `maps emitted provider ids to display names`(id: String, expected: String) throws {
+    func `should show every provider omp reports by its display name`(id: String, expected: String) throws {
         #expect(try OmpFixtures.displayName(id) == expected)
     }
 
     // MARK: - Robustness
 
     @Test
-    func `tolerates noise around the JSON object`() throws {
+    func `should read the usage when omp prints other lines around it`() throws {
         let noisy = "Synced 3 accounts\n\(Self.sampleResponse)\nDone."
         let snapshot = try OmpFixtures.parse(noisy)
 
@@ -1317,7 +1318,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `skips limits without usable amounts`() throws {
+    func `should skip a limit with no usable amount`() throws {
         let json = """
         { "reports": [ {
             "provider": "anthropic",
@@ -1340,7 +1341,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `throws parseFailed on malformed output`() throws {
+    func `should fail to read usage when omp prints something that is not usage`() throws {
         // Pin the exact error so a regression to `noData` (or any other
         // case) fails instead of passing as "some UsageError".
         #expect(throws: UsageError.parseFailed("No JSON object in omp usage output")) {
@@ -1362,7 +1363,7 @@ struct OmpDefinitionTests {
     }
 
     @Test
-    func `throws noData when no accounts are authenticated`() {
+    func `should show no data when no account is signed in`() {
         #expect(throws: UsageError.noData) {
             try OmpFixtures.parse("{ \"reports\": [] }")
         }

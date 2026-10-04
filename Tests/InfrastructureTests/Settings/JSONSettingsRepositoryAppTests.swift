@@ -8,7 +8,7 @@ import Foundation
 struct JSONSettingsRepositoryAppTests {
 
     @Test
-    func `account labels default to visible in existing settings`() {
+    func `should show account labels in the menu bar when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
         repo.setMenuBarPercentageEnabled(true)
@@ -16,7 +16,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `account labels can be disabled and reenabled across reloads`() {
+    func `should remember account labels turned off and back on across restarts`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
         let fileURL = dir.appendingPathComponent("settings.json")
@@ -42,7 +42,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `additional menu bar providers preserve legacy selection and survive reload`() {
+    func `should keep the chosen menu bar provider and remember the extra ones across restarts`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
         repo.setMenuBarPercentageProviderId("codex")
@@ -56,7 +56,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `menu bar providers remove duplicates and cap the total at three`() {
+    func `should show at most three distinct providers in the menu bar, never repeating the main one`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
         repo.setMenuBarAdditionalProviderIds(["claude", "codex", "codex", "", "gemini", "copilot"])
@@ -68,7 +68,7 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Theme
 
     @Test
-    func `themeMode defaults to system`() {
+    func `should follow the system theme when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -76,7 +76,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setThemeMode persists value`() {
+    func `should remember the chosen theme`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -85,7 +85,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `userHasChosenTheme defaults to false`() {
+    func `should know the person has not chosen a theme yet`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -93,7 +93,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setUserHasChosenTheme persists value`() {
+    func `should remember that the person chose a theme`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -104,7 +104,7 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Display
 
     @Test
-    func `usageDisplayMode defaults to remaining`() {
+    func `should show what is left when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -112,7 +112,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setUsageDisplayMode persists value`() {
+    func `should remember showing what is used`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -121,7 +121,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `menuBarPercentageEnabled defaults to false`() {
+    func `should not show a percentage in the menu bar until asked`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -129,7 +129,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `menuBarPercentageSelection defaults to claude session`() {
+    func `should pick Claude's session for the menu bar percentage when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -138,7 +138,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setMenuBarPercentageSettings persists values`() {
+    func `should remember the menu bar percentage, its provider and its quota`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -152,7 +152,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `menuBarSecondaryQuotaKey defaults to empty`() {
+    func `should show no second quota in the menu bar until one is chosen`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -160,7 +160,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setMenuBarSecondaryQuotaKey persists value`() {
+    func `should remember the second menu bar quota across restarts`() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         let fileURL = tempDir.appendingPathComponent("settings.json")
@@ -175,7 +175,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `menuBarDurationEnabled defaults to false`() {
+    func `should not show the time to reset in the menu bar until asked`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -183,7 +183,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setMenuBarDurationEnabled persists value`() {
+    func `should remember showing the time to reset in the menu bar across restarts`() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         let fileURL = tempDir.appendingPathComponent("settings.json")
@@ -198,7 +198,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `menuBarStackedEnabled defaults to false`() {
+    func `should not stack the menu bar readouts until asked`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -206,7 +206,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setMenuBarStackedEnabled persists value`() {
+    func `should remember stacked menu bar readouts across restarts`() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         let fileURL = tempDir.appendingPathComponent("settings.json")
@@ -221,7 +221,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `menuBarStackedSize defaults to small`() {
+    func `should stack the menu bar readouts small when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -229,7 +229,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setMenuBarStackedSize persists value`() {
+    func `should remember the stacked readout size across restarts`() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         let fileURL = tempDir.appendingPathComponent("settings.json")
@@ -244,7 +244,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `showDailyUsageCards defaults to true`() {
+    func `should show the daily usage cards when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -252,7 +252,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `a single readout's logo is off until asked for, and stays on`() {
+    func `should show a single readout's logo only once asked, and keep showing it`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -262,7 +262,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `account emails show until hidden, and stay hidden`() {
+    func `should show account emails until hidden, and keep them hidden`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -272,7 +272,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `your globe country shows until hidden, and stays hidden`() {
+    func `should show the person's globe country until hidden, and keep it hidden`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -282,7 +282,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `your leaderboard name shows until hidden, and stays hidden`() {
+    func `should show the person's leaderboard name until hidden, and keep it hidden`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -292,7 +292,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setShowDailyUsageCards persists value`() {
+    func `should remember hiding the daily usage cards`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -303,7 +303,7 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Touch Bar
 
     @Test
-    func `touchBarEnabled defaults to true`() {
+    func `should show quotas on the Touch Bar when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -311,7 +311,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setTouchBarEnabled persists value`() {
+    func `should remember turning the Touch Bar off`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -322,7 +322,7 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Overview
 
     @Test
-    func `overviewModeEnabled defaults to false`() {
+    func `should not start in the overview until asked`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -330,7 +330,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setOverviewModeEnabled persists value`() {
+    func `should remember turning the overview on`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -341,7 +341,7 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Background Sync
 
     @Test
-    func `backgroundSyncEnabled defaults to false`() {
+    func `should not refresh in the background until asked`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -349,7 +349,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `backgroundSyncInterval defaults to 600`() {
+    func `should refresh in the background every ten minutes when the person never chose (#204)`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -358,7 +358,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setBackgroundSyncInterval persists value`() {
+    func `should remember the chosen background refresh interval`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -369,7 +369,7 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Claude API Budget
 
     @Test
-    func `claudeApiBudgetEnabled defaults to false`() {
+    func `should not track a Claude API budget until asked`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -377,7 +377,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `claudeApiBudget defaults to 0`() {
+    func `should start with no Claude API budget`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -385,7 +385,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setClaudeApiBudget persists value`() {
+    func `should remember the Claude API budget`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -396,7 +396,7 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Updates
 
     @Test
-    func `receiveBetaUpdates defaults to false`() {
+    func `should not offer beta updates until asked`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -404,7 +404,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `setReceiveBetaUpdates persists value`() {
+    func `should remember choosing beta updates`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -415,7 +415,7 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Persistence across instances
 
     @Test
-    func `values persist across separate repository instances`() {
+    func `should keep every app choice across restarts`() {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         let fileURL = tempDir.appendingPathComponent("settings.json")
@@ -445,7 +445,7 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Status Colors
 
     @Test
-    func `status colors default to no overrides and high contrast off`() {
+    func `should use the theme's status colours without high contrast when the person never chose`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
         #expect(repo.statusColorOverrides().isEmpty)
@@ -453,7 +453,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `status color overrides and high contrast survive reload`() {
+    func `should remember custom status colours and high contrast across restarts`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
         var overrides = StatusColorOverrides.none
@@ -471,7 +471,7 @@ struct JSONSettingsRepositoryAppTests {
     }
 
     @Test
-    func `clearing all status color overrides removes the key`() {
+    func `should leave no trace of custom status colours once they are all cleared`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
         var overrides = StatusColorOverrides.none

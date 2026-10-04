@@ -104,7 +104,7 @@ struct AlibabaDefinitionParsingTests {
     // MARK: - Full Response Parsing
 
     @Test
-    func `parses three quota windows from full response`() throws {
+    func `should show three quotas when Alibaba reports all three windows`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -113,7 +113,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `maps session quota from 5-hour window`() throws {
+    func `should show the 5-hour window as the session with 92% left`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -125,7 +125,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `maps weekly quota from week window`() throws {
+    func `should show the week window as weekly with 95% left`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -137,7 +137,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `maps monthly quota as timeLimit`() throws {
+    func `should show the billing month as a Monthly quota with 97.5% left`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -149,7 +149,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `parses reset times from ISO-8601 dates`() throws {
+    func `should show when each window resets`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -165,7 +165,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `extracts plan name as loginMethod`() throws {
+    func `should show the plan's name as how the person signed in`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -174,7 +174,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `sets providerId correctly`() throws {
+    func `should tag the usage and every quota as Alibaba's`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -186,7 +186,7 @@ struct AlibabaDefinitionParsingTests {
     // MARK: - Console RPC (DataV2 envelope) Parsing
 
     @Test
-    func `parses nested DataV2 console RPC response`() throws {
+    func `should show the quotas when the console answers inside its envelope`() throws {
         let data = Data(Self.sampleConsoleRPCResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -201,7 +201,7 @@ struct AlibabaDefinitionParsingTests {
     // MARK: - Partial Response
 
     @Test
-    func `handles response with only 5-hour window`() throws {
+    func `should show only the session when Alibaba reports only the 5-hour window`() throws {
         let data = Data(Self.samplePartialResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -215,7 +215,7 @@ struct AlibabaDefinitionParsingTests {
     // MARK: - Edge Cases
 
     @Test
-    func `caps percent remaining at 100 when used is 0`() throws {
+    func `should show 100% left when nothing is used`() throws {
         let response = """
         {
           "code": "200",
@@ -241,7 +241,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `handles fully used quota with 0 percent remaining`() throws {
+    func `should show 0% left when the quota is fully used`() throws {
         let response = """
         {
           "code": "200",
@@ -267,7 +267,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `generates reset text from used and total`() throws {
+    func `should say how much of the total is used, as 8 of 100`() throws {
         let data = Data(Self.sampleFullResponse.utf8)
 
         let snapshot = try AlibabaDefinitionFixtures.parse(data, providerId: "alibaba")
@@ -279,7 +279,7 @@ struct AlibabaDefinitionParsingTests {
     // MARK: - Error Handling
 
     @Test
-    func `throws parseFailed for invalid JSON`() throws {
+    func `should fail when Alibaba's answer is not JSON`() throws {
         let data = Data("not json".utf8)
 
         #expect(throws: UsageError.self) {
@@ -288,7 +288,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `throws parseFailed for empty response`() throws {
+    func `should fail when Alibaba's answer is empty`() throws {
         let data = Data("{}".utf8)
 
         #expect(throws: UsageError.self) {
@@ -297,7 +297,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `throws sessionExpired for login required response`() throws {
+    func `should say the session expired when the console asks to log in`() throws {
         let response = """
         {
           "code": "ConsoleNeedLogin",
@@ -312,7 +312,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `throws authenticationRequired for 401 status code`() throws {
+    func `should ask to sign in when Alibaba answers 401`() throws {
         let response = """
         {
           "statusCode": 401,
@@ -327,7 +327,7 @@ struct AlibabaDefinitionParsingTests {
     }
 
     @Test
-    func `skips expired plan instances`() throws {
+    func `should show the active plan, not one that has expired`() throws {
         let response = """
         {
           "code": "200",

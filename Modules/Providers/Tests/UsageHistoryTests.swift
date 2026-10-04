@@ -36,7 +36,7 @@ struct UsageHistoryTests {
     // MARK: - Reading
 
     @Test
-    func `reading keeps today's usage against yesterday's`() async throws {
+    func `should show today's usage against yesterday's`() async throws {
         try log([("14", 0), ("41", 1)])
         let history = history()
 
@@ -47,7 +47,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `two days with nothing are kept as none`() async {
+    func `should show no usage history when nothing was used today or yesterday`() async {
         let history = history()
 
         await history.read()
@@ -56,7 +56,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `only yesterday's usage is still kept`() async throws {
+    func `should show yesterday's usage and an empty today when only yesterday was used`() async throws {
         try log([("41", 1)])
         let history = history()
 
@@ -67,7 +67,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `reading also keeps the last thirty days, for the chart`() async throws {
+    func `should chart the last thirty days, oldest first, leaving out older days`() async throws {
         try log([("14", 0), ("41", 1), ("7", 29), ("99", 30)])
         let history = history()
 
@@ -79,7 +79,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `thirty days with nothing are no chart`() async {
+    func `should show no chart when nothing was used in thirty days`() async {
         let history = history()
 
         await history.read()
@@ -88,7 +88,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `days are any range, every date present`() async throws {
+    func `should show every day of a range, used or not`() async throws {
         try log([("14", 0), ("41", 1)])
 
         let days = await history().days(in: .last(30))
@@ -100,7 +100,7 @@ struct UsageHistoryTests {
     // MARK: - The login owns it
 
     @Test
-    func `the default login has the provider's usage history`() throws {
+    func `should give the default login the provider's usage history`() throws {
         let history = history()
         let provider = try ProviderFactory.make("grok", settings: InMemoryProviderSettings(), usageHistory: history)
 
@@ -108,7 +108,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `an added login whose logs aren't read has none`() throws {
+    func `should show no usage history for an added login whose logs are not read`() throws {
         let provider = try ProviderFactory.make("grok", settings: InMemoryProviderSettings(), accounts: [login("work")],
                                           usageHistory: history())
 
@@ -116,7 +116,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `a provider that offers no usage history has none`() throws {
+    func `should show no usage history when the provider offers none`() throws {
         let provider = try ProviderFactory.make("grok", settings: InMemoryProviderSettings())
 
         #expect(provider.defaultAccount.usageHistory == nil)
@@ -144,7 +144,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `reading reads each other app under its own name, apart from the login's days`() async throws {
+    func `should show each other app's usage under its own name, apart from the login's`() async throws {
         try log([("14", 0)])
         try desk(74_422)
         let history = historyWithDesk()
@@ -162,7 +162,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `another app's usage alone is usage the login can show`() async throws {
+    func `should have usage to show when only another app was used`() async throws {
         try desk(74_422)
         let history = historyWithDesk()
 
@@ -173,7 +173,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `an other app used neither today nor yesterday has no report`() async throws {
+    func `should show nothing for another app used neither today nor yesterday`() async throws {
         try desk(500, daysAgo: 3)
         let history = historyWithDesk()
 
@@ -185,7 +185,7 @@ struct UsageHistoryTests {
     }
 
     @Test
-    func `each other app keeps its days apart from the login's`() async throws {
+    func `should keep each other app's days apart from the login's`() async throws {
         let store = InMemoryLedgerStore()
         try desk(500, daysAgo: 2)
         let history = historyWithDesk(ledger: { DayLedger(store: store, key: $0) })

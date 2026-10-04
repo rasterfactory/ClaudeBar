@@ -9,7 +9,7 @@ import AppKit
 struct URLSchemeDeliveryTests {
 
     @Test
-    func `actions are delivered to the handler in order`() {
+    func `should act on links in the order they arrive`() {
         let delegate = AppDelegate()
         var received: [URLSchemeAction] = []
         delegate.onAction = { received.append($0) }
@@ -23,7 +23,7 @@ struct URLSchemeDeliveryTests {
     }
 
     @Test
-    func `actions that arrive before the handler is installed wait for it`() {
+    func `should act on a link that launched the app once the app is ready`() {
         let delegate = AppDelegate()
         delegate.application(NSApp, open: [URL(string: "claudebar://open")!])
 
@@ -34,7 +34,7 @@ struct URLSchemeDeliveryTests {
     }
 
     @Test
-    func `held actions are delivered once`() {
+    func `should act on a held link only once`() {
         let delegate = AppDelegate()
         delegate.application(NSApp, open: [URL(string: "claudebar://open")!])
         var received: [URLSchemeAction] = []
@@ -46,7 +46,7 @@ struct URLSchemeDeliveryTests {
     }
 
     @Test
-    func `unknown URLs deliver nothing`() {
+    func `should do nothing for an unknown link`() {
         let delegate = AppDelegate()
         var received: [URLSchemeAction] = []
         delegate.onAction = { received.append($0) }

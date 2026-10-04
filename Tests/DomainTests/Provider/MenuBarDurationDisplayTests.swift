@@ -21,35 +21,35 @@ struct MenuBarDurationDisplayTests {
     // MARK: - Text formatting
 
     @Test
-    func `text shows hours with minutes when reset is hours away`() {
+    func `should show hours and minutes when the reset is hours away`() {
         let q = quota(resetsAt: Date().addingTimeInterval(3.0 * 3600 + 58.0 * 60 + 30))
         let display = MenuBarDurationDisplay(quota: q)
         #expect(display.text == "3:58")
     }
 
     @Test
-    func `text shows compact days when reset is days away`() {
+    func `should show days when the reset is days away`() {
         let q = quota(resetsAt: Date().addingTimeInterval(2.0 * 86400 + 5.0 * 3600 + 30))
         let display = MenuBarDurationDisplay(quota: q)
         #expect(display.text == "2d")
     }
 
     @Test
-    func `text shows compact minutes when reset is minutes away`() {
+    func `should show minutes when the reset is minutes away`() {
         let q = quota(resetsAt: Date().addingTimeInterval(45.0 * 60 + 30))
         let display = MenuBarDurationDisplay(quota: q)
         #expect(display.text == "45m")
     }
 
     @Test
-    func `text shows soon when reset is under a minute`() {
+    func `should show soon when the reset is under a minute away`() {
         let q = quota(resetsAt: Date().addingTimeInterval(30))
         let display = MenuBarDurationDisplay(quota: q)
         #expect(display.text == "soon")
     }
 
     @Test
-    func `text falls back to em dash when reset is unknown`() {
+    func `should show a dash when the reset time is unknown`() {
         let q = quota(resetsAt: nil)
         let display = MenuBarDurationDisplay(quota: q)
         #expect(display.text == "—")
@@ -58,14 +58,14 @@ struct MenuBarDurationDisplayTests {
     // MARK: - Status threading
 
     @Test
-    func `status reflects underlying quota status when burn rate warning disabled`() {
+    func `should take the quota's own status when the burn-rate warning is off`() {
         let q = quota(percentRemaining: 15, resetsAt: Date().addingTimeInterval(3600))
         let display = MenuBarDurationDisplay(quota: q, burnRateWarningEnabled: false)
         #expect(display.status == .critical)
     }
 
     @Test
-    func `status uses pace aware logic when burn rate warning enabled`() {
+    func `should show an on-pace quota as healthy when the burn-rate warning is on`() {
         // 35% remaining would be .warning under absolute thresholds, but 4h
         // of a 5h session have elapsed (percentTimeElapsed = 80), so the burn
         // rate is 65/80 = 0.81 — well under the 1.5 threshold. Pace-aware

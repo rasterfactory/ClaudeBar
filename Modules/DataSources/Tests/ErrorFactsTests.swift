@@ -35,31 +35,31 @@ struct ErrorFactsTests {
     }
 
     @Test
-    func `a status the definition names becomes the reason it says`() async throws {
+    func `should give the reason the definition names for an HTTP status`() async throws {
         let source = make(try decode(#"{"http.404":"subscriptionRequired"}"#), status: 404)
         #expect(await reason(source) == .subscriptionRequired)
     }
 
     @Test
-    func `http default covers every other status that is not an answer`() async throws {
+    func `should give the definition's default reason for any other failing HTTP status`() async throws {
         let source = make(try decode(#"{"http.default":{"executionFailed":"Acme is down"}}"#), status: 502)
         #expect(await reason(source) == .executionFailed("Acme is down"))
     }
 
     @Test
-    func `a status no rule names keeps the worker's own wording`() async throws {
+    func `should name the HTTP status when no rule in the definition covers it`() async throws {
         let source = make(try decode(#"{"http.404":"noData"}"#), status: 500)
         #expect(await reason(source) == .executionFailed("HTTP error: 500"))
     }
 
     @Test
-    func `a 429 stays a rate limit whatever the definition says`() async throws {
+    func `should stay rate limited on a 429 whatever the definition's default says`() async throws {
         let source = make(try decode(#"{"http.default":{"executionFailed":"busy"}}"#), status: 429, headers: ["Retry-After": "60"])
         #expect(await reason(source) == .rateLimited(retryAt: Self.now.addingTimeInterval(60)))
     }
 
     @Test
-    func `a status the request accepts is an answer, not a failure`() async throws {
+    func `should take a status the request accepts as an answer, not a failure`() async throws {
         let definition = try decode("{}", fetch: #"{"http":{"url":"https://acme.test/usage","acceptedStatuses":[200,404]}}"#)
         let source = make(definition, status: 404)
         let response = try await source.fetchResponse()
@@ -67,19 +67,19 @@ struct ErrorFactsTests {
     }
 
     @Test
-    func `a 429 stays a rate limit even when a request lists it as accepted`() async throws {
+    func `should stay rate limited on a 429 even when the request lists it as accepted`() async throws {
         let definition = try decode("{}", fetch: #"{"http":{"url":"https://acme.test/usage","acceptedStatuses":[200,429]}}"#)
         let source = make(definition, status: 429, headers: ["Retry-After": "30"])
         #expect(await reason(source) == .rateLimited(retryAt: Self.now.addingTimeInterval(30)))
     }
 
     @Test(arguments: [#"{"http.429":"noData"}"#, #"{"http.abc":"noData"}"#, #"{"cli.exit":"noData"}"#])
-    func `an unknown fact or a 429 rule is refused`(_ errors: String) {
+    func `should reject a definition naming an unknown error or its own rule for a 429`(_ errors: String) {
         #expect(throws: DecodingError.self) { try decode(errors) }
     }
 
     @Test
-    func `a CLI's facts are worded by their names`() async throws {
+    func `should give the definition's reason when the CLI exits with an error`() async throws {
         let executor = MockCLIExecutor()
         given(executor).locate(.any).willReturn("/usr/local/bin/acme")
         given(executor).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
@@ -93,7 +93,7 @@ struct ErrorFactsTests {
     }
 
     @Test
-    func `errors round-trip by their names`() throws {
+    func `should keep the error rules when the definition is written out and read back`() throws {
         let definition = try decode(#"{"http.404":"noData","cli.missing":{"cliNotFound":"acme"}}"#)
         #expect(definition.errors == [.httpStatus(404): .noData, .cliMissing: .cliNotFound("acme")])
         let again = try JSONDecoder().decode(DataSourceDefinition.self, from: JSONEncoder().encode(definition))

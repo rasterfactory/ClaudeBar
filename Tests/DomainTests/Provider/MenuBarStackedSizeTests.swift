@@ -7,22 +7,22 @@ struct MenuBarStackedSizeTests {
     // MARK: - Raw Value Persistence
 
     @Test
-    func `small size has small raw value`() {
+    func `should save the small stacked size as small`() {
         #expect(MenuBarStackedSize.small.rawValue == "small")
     }
 
     @Test
-    func `medium size has medium raw value`() {
+    func `should save the medium stacked size as medium`() {
         #expect(MenuBarStackedSize.medium.rawValue == "medium")
     }
 
     @Test
-    func `large size has large raw value`() {
+    func `should save the large stacked size as large`() {
         #expect(MenuBarStackedSize.large.rawValue == "large")
     }
 
     @Test
-    func `can be created from raw value`() {
+    func `should read back each saved stacked size and refuse an unknown one`() {
         #expect(MenuBarStackedSize(rawValue: "small") == .small)
         #expect(MenuBarStackedSize(rawValue: "medium") == .medium)
         #expect(MenuBarStackedSize(rawValue: "large") == .large)
@@ -32,19 +32,19 @@ struct MenuBarStackedSizeTests {
     // MARK: - Fallback Decoding
 
     @Test
-    func `default is small`() {
+    func `should stack the menu bar small by default`() {
         #expect(MenuBarStackedSize.default == .small)
     }
 
     @Test
-    func `known stored values decode to their case`() {
+    func `should read each known saved stacked size as itself`() {
         #expect(MenuBarStackedSize(storedRawValue: "small") == .small)
         #expect(MenuBarStackedSize(storedRawValue: "medium") == .medium)
         #expect(MenuBarStackedSize(storedRawValue: "large") == .large)
     }
 
     @Test
-    func `unknown stored value falls back to small`() {
+    func `should stack small when the saved size is unknown or empty`() {
         // A settings file written by a newer build (or edited by hand) must
         // never break this build: unrecognized sizes quietly render small.
         #expect(MenuBarStackedSize(storedRawValue: "extra-large") == .small)
@@ -54,7 +54,7 @@ struct MenuBarStackedSizeTests {
     // MARK: - Display Label
 
     @Test
-    func `display labels read Small Medium Large`() {
+    func `should label the sizes Small, Medium and Large`() {
         #expect(MenuBarStackedSize.small.displayLabel == "Small")
         #expect(MenuBarStackedSize.medium.displayLabel == "Medium")
         #expect(MenuBarStackedSize.large.displayLabel == "Large")

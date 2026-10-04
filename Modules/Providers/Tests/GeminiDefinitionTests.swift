@@ -55,14 +55,14 @@ struct GeminiDefinitionTests {
         return (provider, home)
     }
 
-    @Test func `definition keeps Gemini's identity`() throws {
+    @Test func `should be Gemini, on by default, with AI Studio as its dashboard`() throws {
         let (provider, _) = try make()
         #expect(provider.name == "Gemini")
         #expect(provider.defaultAccount.isEnabled)
         #expect(provider.plainDashboardURL?.absoluteString == "https://aistudio.google.com")
     }
 
-    @Test func `the project Code Assist names is sent with the quota request`() async throws {
+    @Test func `should ask for the quota of the project Code Assist names, with the Gemini CLI's login`() async throws {
         let seen = Seen()
         let (provider, _) = try make(seen: seen)
         _ = try await provider.refreshPlain()
@@ -71,14 +71,14 @@ struct GeminiDefinitionTests {
         #expect(seen.requests.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer fresh" })
     }
 
-    @Test func `no project still asks for the quota, with an empty body`() async throws {
+    @Test func `should still show the quotas when Code Assist names no project`() async throws {
         let seen = Seen()
         let (provider, _) = try make(project: (200, "{}"), seen: seen)
         #expect(try await provider.refreshPlain().quotas.count == 3)
         #expect(seen.body(to: ":retrieveUserQuota") == "{}")
     }
 
-    @Test func `a failing project lookup is tried three times, then the quota is asked without it`() async throws {
+    @Test func `should show the quotas without a project after Code Assist fails three times to name one`() async throws {
         let seen = Seen()
         let (provider, _) = try make(project: (500, ""), seen: seen)
         #expect(try await provider.refreshPlain().quotas.count == 3)
@@ -86,7 +86,7 @@ struct GeminiDefinitionTests {
         #expect(seen.body(to: ":retrieveUserQuota") == "{}")
     }
 
-    @Test func `a tier's aliases fold into one card each, lowest first, with no window`() async throws {
+    @Test func `should show one Pro, Flash and Flash Lite quota each at its lowest model, with no guessed window`() async throws {
         let (provider, _) = try make()
         let quotas = try await provider.refreshPlain().quotas
         #expect(quotas.map(\.quotaType) == [.modelSpecific("Pro"), .modelSpecific("Flash"), .modelSpecific("Flash Lite")])
@@ -95,29 +95,29 @@ struct GeminiDefinitionTests {
         #expect(quotas.allSatisfy { $0.window?.length == nil })
     }
 
-    @Test func `a model with no tier keeps its own name`() async throws {
+    @Test func `should show a model outside the known tiers under its own name`() async throws {
         let (provider, _) = try make(quota: #"{"buckets":[{"modelId":"gemini-other","remainingFraction":0.5}]}"#)
         #expect(try await provider.refreshPlain().quotas.first?.quotaType == .modelSpecific("gemini-other"))
     }
 
-    @Test func `the reset time is a date and a countdown`() async throws {
+    @Test func `should show when a quota resets as a moment and a countdown`() async throws {
         let (provider, _) = try make()
         let pro = try #require(try await provider.refreshPlain().quotas.first)
         #expect(pro.resetsAt == ISO8601DateFormatter().date(from: "2026-05-10T17:28:41Z"))
         #expect(pro.resetText == "Resets in 3h 55m")
     }
 
-    @Test func `no buckets is a mapping failure`() async throws {
+    @Test func `should fail when Gemini reports no quotas`() async throws {
         let (provider, _) = try make(quota: #"{"buckets":[]}"#)
         await #expect(throws: UsageError.parseFailed("No quota buckets in response")) { try await provider.refreshPlain() }
     }
 
-    @Test func `no login file is not ready`() async throws {
+    @Test func `should be unavailable when the Gemini CLI has no login on this Mac`() async throws {
         let (provider, _) = try make(token: nil)
         #expect(await provider.isPlainAvailable() == false)
     }
 
-    @Test func `a refused token runs gemini to renew its login, then retries`() async throws {
+    @Test func `should renew a refused login by running the Gemini CLI, then show the quotas`() async throws {
         let seen = Seen()
         let (provider, home) = try make(token: "stale", refuseStale: true, seen: seen)
         #expect(try await provider.refreshPlain().quotas.count == 3)
@@ -128,12 +128,12 @@ struct GeminiDefinitionTests {
         #expect(file == #"{"access_token":"fresh","refresh_token":"r"}"#)
     }
 
-    @Test func `with gemini not installed a refused token needs a new login`() async throws {
+    @Test func `should ask to sign in again when the login is refused and the Gemini CLI isn't installed`() async throws {
         let (provider, _) = try make(token: "stale", refuseStale: true, located: false)
         await #expect(throws: UsageError.authenticationRequired) { try await provider.refreshPlain() }
     }
 
-    @Test func `an added account is a signed-in Gemini home of its own`() async throws {
+    @Test func `should read an added login from its own Gemini home, renewed by the Gemini CLI there`() async throws {
         let (provider, _) = try make()
         #expect(provider.accounts.form.map(\.id) == ["home"])
         let definition = try ProviderFactory.builtIn("gemini")

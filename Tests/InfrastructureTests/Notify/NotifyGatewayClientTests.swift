@@ -163,7 +163,7 @@ struct NotifyGatewayClientTests {
     // MARK: - Tile Start
 
     @Test
-    func `tile start addresses the device and carries the token as a query item`() async throws {
+    func `should start a Lock Screen tile on the linked phone with its token in the address`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -190,7 +190,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `tile start asks for a tile of its own and sends the tile fields`() async throws {
+    func `should start a Lock Screen tile of its own showing the tile's title, line, symbol, tint, bar and countdown`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -219,7 +219,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `tile start spells metrics as objects with label value unit and color`() async throws {
+    func `should send each tile metric with its label, value, unit and colour, leaving out what it lacks`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -250,7 +250,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `tile start returns the activity id the gateway assigned`() async throws {
+    func `should remember the Lock Screen tile Notify! started`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -266,7 +266,7 @@ struct NotifyGatewayClientTests {
     // MARK: - Tile Update
 
     @Test
-    func `tile update addresses that exact tile and never sends new`() async throws {
+    func `should update the same Lock Screen tile, never start a second one`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -294,7 +294,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `tile update succeeds when the gateway has not pushed the content yet`() async throws {
+    func `should count a tile update as done when Notify! will deliver it later`() async throws {
         // Given: stored, but no reachable tile token right now
         let link = try makeLink()
         let tile = try makeTile()
@@ -316,7 +316,7 @@ struct NotifyGatewayClientTests {
     // MARK: - Gauge Create
 
     @Test
-    func `gauge create addresses the device with new and returns the widget id`() async throws {
+    func `should create a widget of its own on the linked phone and remember it`() async throws {
         // Given
         let link = try makeLink()
         let gauge = try makeGauge()
@@ -352,7 +352,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `gauge create accepts a 200 answer as well as a 201`() async throws {
+    func `should remember the widget when Notify! answers that it updated rather than created it`() async throws {
         // Given: the gateway answers 200 when the create it received turned out to be an update
         let link = try makeLink()
         let gauge = try makeGauge()
@@ -368,7 +368,7 @@ struct NotifyGatewayClientTests {
     // MARK: - Gauge Update
 
     @Test
-    func `gauge update addresses that exact widget and never sends new`() async throws {
+    func `should update the same widget, never create a second one`() async throws {
         // Given
         let link = try makeLink()
         let gauge = try makeGauge()
@@ -396,7 +396,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `gauge body states a null for every field ClaudeBar drives but has no value for`() async throws {
+    func `should clear every widget field ClaudeBar has no value for, keeping the title`() async throws {
         // Given: a gauge carrying nothing but its identity
         let link = try makeLink()
         let gauge = try makeTitleOnlyGauge()
@@ -430,7 +430,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `tile body states a null for a countdown that is no longer known`() async throws {
+    func `should clear the old countdown and bar from the Lock Screen when the quota no longer has them`() async throws {
         // Given: a tile whose headline quota reports no reset time and no percentage
         let link = try makeLink()
         let tile = try #require(
@@ -475,7 +475,7 @@ struct NotifyGatewayClientTests {
     // MARK: - The Home Screen Tile
 
     @Test
-    func `a Home Screen tile create addresses the device with new and returns the screen widget id`() async throws {
+    func `should create a Home Screen tile of its own on the linked phone and remember it`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -508,7 +508,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a Home Screen tile create accepts a 200 answer as well as a 201`() async throws {
+    func `should remember the Home Screen tile when Notify! answers that it updated rather than created it`() async throws {
         // Given: the gateway answers 200 when the create it received turned out to be an update
         let link = try makeLink()
         let tile = try makeTile()
@@ -522,7 +522,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a Home Screen tile update addresses that exact widget and never sends new`() async throws {
+    func `should update the same Home Screen tile, never create a second one`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -556,7 +556,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `the Home Screen tile and the Live Activity are sent one identical body`() async throws {
+    func `should show the same picture of a quota on the Home Screen tile and the Lock Screen tile`() async throws {
         // Given one tile value, and a stub that answers whichever of the two routes it is handed
         let link = try makeLink()
         let tile = try makeTile()
@@ -602,7 +602,7 @@ struct NotifyGatewayClientTests {
     // MARK: - Device Kind Guards
 
     @Test
-    func `a tile aimed at a Mac is refused without spending a request`() async throws {
+    func `should refuse a Lock Screen tile for a Mac with the reason, sending nothing`() async throws {
         // Given a Mac link, and a network stub that would answer a start with a
         // perfectly good 200 if it were ever asked. That is the point of the
         // stub: nothing but the guard can keep this test green.
@@ -632,7 +632,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a tile aimed at a group is refused without spending a request`() async throws {
+    func `should refuse a Lock Screen tile for a group with the reason, sending nothing`() async throws {
         // Given a group link, which is not a device at all: it fans a
         // notification out to its members and owns no Lock Screen to start on
         let link = try makeLink(deviceId: Self.groupDeviceId)
@@ -656,7 +656,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a gauge aimed at a browser is sent, because widgets carry no device gate`() async throws {
+    func `should send a widget to a browser, since widgets are open to every device`() async throws {
         // Given a browser link. A Live Activity would be refused for one, but the gateway is
         // explicit that widgets are different: there is no device-type gate on them and legacy,
         // WB and MC ids can all own one. Refusing this locally would be ClaudeBar inventing a
@@ -682,7 +682,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a gauge aimed at a Mac is sent too`() async throws {
+    func `should send a widget to a Mac too`() async throws {
         let link = try makeLink(deviceId: Self.macDeviceId)
         let gauge = try makeGauge()
         var capturedRequest: URLRequest?
@@ -702,7 +702,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a gauge aimed at a group is refused without spending a request`() async throws {
+    func `should refuse a widget for a group with the reason, sending nothing`() async throws {
         // Given a group link, which owns no widget surface either
         let link = try makeLink(deviceId: Self.groupDeviceId)
         let gauge = try makeGauge()
@@ -725,7 +725,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a Home Screen tile aimed at a group is refused without spending a request`() async throws {
+    func `should refuse a Home Screen tile for a group with the reason, sending nothing`() async throws {
         // Given a group link, which owns no widget list for a Home Screen tile to sit in
         let link = try makeLink(deviceId: Self.groupDeviceId)
         let tile = try makeTile()
@@ -749,7 +749,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a Home Screen tile aimed at a Mac is sent, because screen widgets carry no device gate`() async throws {
+    func `should send a Home Screen tile to a Mac, since screen widgets are open to every device`() async throws {
         // Given a Mac link. A Live Activity would be refused for one, and a screen widget is not:
         // the gateway is explicit that this route has no device-type gate and that legacy, IO, WB
         // and MC ids can each own one. Refusing it here would be ClaudeBar inventing a rule the
@@ -777,7 +777,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a Home Screen tile aimed at a browser is sent too`() async throws {
+    func `should send a Home Screen tile to a browser too`() async throws {
         let link = try makeLink(deviceId: Self.webDeviceId)
         let tile = try makeTile()
         var capturedRequest: URLRequest?
@@ -799,7 +799,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a tile for an eight character app device still goes out`() async throws {
+    func `should still start a Lock Screen tile on an eight character app device`() async throws {
         // Given the ordinary case: the legacy eight character format, which an
         // iPhone and an older poll only Mac listener share. Nothing local can
         // tell those two apart, so this one is sent and the gateway decides.
@@ -828,7 +828,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a gauge for an eight character app device still goes out`() async throws {
+    func `should still create a widget on an eight character app device`() async throws {
         // Given
         let link = try makeLink()
         let gauge = try makeGauge()
@@ -857,7 +857,7 @@ struct NotifyGatewayClientTests {
 
 
     @Test
-    func `endTile deletes the tile and clamps keepFor to the gateway ceiling`() async throws {
+    func `should end the Lock Screen tile, keeping it at most four hours`() async throws {
         // Given
         let link = try makeLink()
         var capturedRequest: URLRequest?
@@ -882,7 +882,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `endTile clamps a negative keepFor to zero`() async throws {
+    func `should end the Lock Screen tile at once when asked to keep it a negative time`() async throws {
         // Given
         let link = try makeLink()
         var capturedRequest: URLRequest?
@@ -906,7 +906,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `endTile treats a 410 as the tile already being gone`() async throws {
+    func `should count ending a tile as done when it is already gone`() async throws {
         // Given: dismissed, ended or reaped before ClaudeBar asked
         let link = try makeLink()
         let client = makeClient(status: 410, body: """
@@ -920,7 +920,7 @@ struct NotifyGatewayClientTests {
     // MARK: - Device Info
 
     @Test
-    func `deviceInfo reads the link route and maps the flat response`() async throws {
+    func `should name the linked phone and its platform`() async throws {
         // Given
         let link = try makeLink()
         var capturedRequest: URLRequest?
@@ -947,7 +947,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `deviceInfo reports a pair the gateway does not recognise as rejected credentials`() async throws {
+    func `should say the credentials were rejected when Notify! does not know the id and token`() async throws {
         // Given: the answer the live gateway actually gives for a wrong id or token. This route
         // carries its own error envelope and answers 404 rather than the 403 every other route
         // uses, and gives the same 404 for a wrong token and for an id that does not exist, so it
@@ -971,7 +971,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `deviceInfo rejects a link that points at a group`() async throws {
+    func `should refuse a link that points at a group`() async throws {
         // Given: the same route describes groups, and a group carries neither tile nor widget
         let link = try makeLink()
         let client = makeClient(status: 200, body: """
@@ -1000,7 +1000,7 @@ struct NotifyGatewayClientTests {
     // MARK: - Error Mapping
 
     @Test
-    func `400 becomes invalidPayload carrying the gateway message`() async throws {
+    func `should show Notify!'s own words when it refuses what was sent`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -1015,7 +1015,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `403 becomes rejectedCredentials`() async throws {
+    func `should say the credentials were rejected when Notify! forbids the token`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -1030,7 +1030,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `409 becomes liveActivityUnavailable`() async throws {
+    func `should say Live Activities are unavailable, in Notify!'s words, when the phone cannot take one`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -1047,7 +1047,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `409 on the Home Screen route becomes invalidPayload, not liveActivityUnavailable`() async throws {
+    func `should show Notify!'s words, not a Live Activity problem, when a Home Screen tile is ambiguous`() async throws {
         // Given the one thing a 409 can mean here: the device dialect found several screen widgets
         // and cannot tell which was meant. ClaudeBar creates its own and addresses it by SW id
         // afterwards, so it should never see this.
@@ -1069,7 +1069,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `503 is the Home Screen surface being switched off, and worth trying again later`() async throws {
+    func `should say Home Screen tiles are switched off and to try again later`() async throws {
         // Given the server side kill switch this surface shipped behind, so a ClaudeBar that
         // supports it can meet a gateway that is not serving it yet
         let link = try makeLink()
@@ -1097,7 +1097,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `410 on an update becomes tileGone`() async throws {
+    func `should say the tile is gone when the person dismissed it`() async throws {
         // Given: the user swiped the tile away, so it can never be updated again
         let link = try makeLink()
         let tile = try makeTile()
@@ -1112,7 +1112,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `429 takes its wait from retryAfterSeconds in the body`() async throws {
+    func `should wait as long as Notify! says when it asks to back off`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -1135,7 +1135,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `429 without a body wait falls back to the Retry-After header`() async throws {
+    func `should wait as long as the Retry-After header says when Notify! backs off without a wait of its own`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -1156,7 +1156,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `502 with an unknown delivery state becomes deliveryUnconfirmed`() async throws {
+    func `should say delivery is unconfirmed when Notify! cannot tell whether the tile arrived`() async throws {
         // Given: Apple never answered, so a tile may well exist
         let link = try makeLink()
         let tile = try makeTile()
@@ -1176,7 +1176,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `502 that delivered nothing becomes a wait, not an immediate retry`() async throws {
+    func `should wait rather than retry at once when Apple refused the start`() async throws {
         // Given: Apple refused the start outright and the gateway named how long to sit out
         let link = try makeLink()
         let tile = try makeTile()
@@ -1199,7 +1199,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `the credential check refuses to be answered from the URL cache`() async throws {
+    func `should check the credentials with Notify! itself, never a cached answer`() async throws {
         // Given
         let link = try makeLink()
         var capturedRequest: URLRequest?
@@ -1221,7 +1221,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a request that never completes becomes transportFailed`() async throws {
+    func `should say the request failed in transit when there is no connection`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -1246,7 +1246,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `an unexpected 500 becomes unexpectedStatus`() async throws {
+    func `should report the status when Notify! answers with an unexpected server error`() async throws {
         // Given
         let link = try makeLink()
         let tile = try makeTile()
@@ -1259,7 +1259,7 @@ struct NotifyGatewayClientTests {
     }
 
     @Test
-    func `a success carrying an unreadable body becomes malformedResponse`() async throws {
+    func `should say the answer was unreadable when Notify! succeeds with a body it cannot read`() async throws {
         // Given: the status said yes but the body is not the JSON the route documents
         let link = try makeLink()
         let tile = try makeTile()

@@ -18,26 +18,16 @@ struct SettingsSidebarView: View {
         Set(SettingsSection.matching(filter: filter))
     }
 
-    private var updateStatusText: String {
+    private var updateStatus: UpdateStatus {
         #if ENABLE_SPARKLE
-        if sparkleUpdater?.isUpdateAvailable == true {
-            return "v\(appVersion) · update available"
-        }
+        UpdateStatus(updater: sparkleUpdater)
+        #else
+        .installed
         #endif
-        return "v\(appVersion) · up to date"
     }
 
     private var updateStatusColor: Color {
-        #if ENABLE_SPARKLE
-        if sparkleUpdater?.isUpdateAvailable == true {
-            return theme.statusWarning
-        }
-        #endif
-        return theme.statusHealthy
-    }
-
-    private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        updateStatus.availableVersion == nil ? theme.statusHealthy : theme.statusWarning
     }
 
     private var enabledProviderCount: Int {
@@ -100,7 +90,7 @@ struct SettingsSidebarView: View {
                     .fill(updateStatusColor)
                     .frame(width: 7, height: 7)
 
-                Text(updateStatusText)
+                Text(updateStatus.footer)
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }

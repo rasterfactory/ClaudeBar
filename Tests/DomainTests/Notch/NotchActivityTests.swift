@@ -13,7 +13,7 @@ struct NotchActivityTests {
     }
 
     @Test
-    func `awaiting input outranks every other activity`() {
+    func `should rank a session awaiting input above every other notch activity`() {
         let blocked = NotchActivity.awaitingInput(session())
 
         #expect(blocked > .finished(session()))
@@ -23,7 +23,7 @@ struct NotchActivityTests {
     }
 
     @Test
-    func `finished outranks quota and work but not blocked`() {
+    func `should rank a finished session above quotas and work but below a blocked session`() {
         let finished = NotchActivity.finished(session())
 
         #expect(finished > .quotaThreshold(quota(2)))
@@ -32,7 +32,7 @@ struct NotchActivityTests {
     }
 
     @Test
-    func `quota threshold outranks working sessions`() {
+    func `should rank a quota past the threshold above working sessions`() {
         let quotaActivity = NotchActivity.quotaThreshold(quota(2))
 
         #expect(quotaActivity > .agentsWorking(session()))
@@ -40,12 +40,12 @@ struct NotchActivityTests {
     }
 
     @Test
-    func `agents working outranks plain working`() {
+    func `should rank a session with agents working above a plain working one`() {
         #expect(NotchActivity.agentsWorking(session()) > .working(session()))
     }
 
     @Test
-    func `the idle glance ranks below everything else`() {
+    func `should rank the headline glance below every other notch activity`() {
         let glance = NotchActivity.quotaGlance(quota(86))
 
         #expect(glance < .working(session()))
@@ -56,7 +56,7 @@ struct NotchActivityTests {
     }
 
     @Test
-    func `session accessor exposes the session for session-backed activities`() {
+    func `should name the session behind a session activity and none behind a quota`() {
         #expect(NotchActivity.working(session("a")).session?.id == "a")
         #expect(NotchActivity.agentsWorking(session("b")).session?.id == "b")
         #expect(NotchActivity.awaitingInput(session("c")).session?.id == "c")

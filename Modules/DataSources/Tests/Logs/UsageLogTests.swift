@@ -52,7 +52,7 @@ struct UsageLogTests {
 
     private func today() async -> DailyUsageStat { await log().days(last: 1)[0] }
 
-    @Test func `every day of the range is present, a day with nothing empty`() async throws {
+    @Test func `should show every day of the range, a day with no usage as empty`() async throws {
         try write([line(at: stamp())])
         let days = await log().days(last: 3)
         #expect(days.count == 3)
@@ -61,18 +61,18 @@ struct UsageLogTests {
         #expect(days[2].totalTokens == 1500)
     }
 
-    @Test func `a record counts on the day its own time falls in`() async throws {
+    @Test func `should count usage on the day it happened`() async throws {
         try write([line(at: stamp()), line(input: 2000, output: 1000, at: stamp(daysAgo: 1))])
         let days = await log().days(last: 2)
         #expect(days[1].totalTokens == 1500)
         #expect(days[0].totalTokens == 3000)
     }
 
-    @Test func `nothing logged is every day empty`() async {
+    @Test func `should show every day empty when nothing is logged`() async {
         #expect(await log().days(last: 2).allSatisfy(\.isEmpty))
     }
 
-    @Test func `the glob reaches any depth and only matching files`() async throws {
+    @Test func `should count logs in folders at any depth, and only the files that match`() async throws {
         try write([line(at: stamp())], to: "a/b/c/deep.jsonl")
         try write([line(at: stamp())], to: "notes.txt")
         #expect(await today().totalTokens == 1500)
@@ -80,26 +80,26 @@ struct UsageLogTests {
 
     // MARK: - Written twice, counted once
 
-    @Test func `a record written twice counts once`() async throws {
+    @Test func `should count usage written twice in a log once`() async throws {
         let copy = line(id: "1", at: stamp())
         try write([copy, copy, copy])
         #expect(await today().totalTokens == 1500)
     }
 
-    @Test func `the last copy of a record wins`() async throws {
+    @Test func `should count the last copy of usage written more than once`() async throws {
         try write([line(id: "1", output: 1, at: stamp()), line(id: "1", output: 1, at: stamp(0.1)), line(id: "1", output: 500, at: stamp(0.9))])
         let today = await today()
         #expect(today.outputTokens == 500)
         #expect(today.totalTokens == 1500)
     }
 
-    @Test func `a record copied into another file counts once`() async throws {
+    @Test func `should count usage copied into another log once`() async throws {
         try write([line(id: "1", at: stamp())], to: "p/one.jsonl")
         try write([line(id: "1", at: stamp())], to: "p/two.jsonl")
         #expect(await today().totalTokens == 1500)
     }
 
-    @Test func `records with different identities, or none, all count`() async throws {
+    @Test func `should count every distinct entry, and every entry without an identity`() async throws {
         try write([line(id: "1", at: stamp()), line(id: "2", input: 2000, output: 1000, at: stamp()),
                    line(at: stamp()), line(at: stamp())])
         #expect(await today().totalTokens == 7500)
@@ -107,7 +107,7 @@ struct UsageLogTests {
 
     // MARK: - Prices
 
-    @Test func `cost and cache savings come from the price list`() async throws {
+    @Test func `should show the day's cost and cache savings from the price list`() async throws {
         try write([line(input: 1000, output: 500, cacheRead: 1_000_000, at: stamp())])
         let today = await today()
         #expect(today.cacheReadTokens == 1_000_000)
@@ -115,7 +115,7 @@ struct UsageLogTests {
         #expect(today.totalCost == Decimal(string: "0.3105"))
     }
 
-    @Test func `the log's own cost wins over any price`() async throws {
+    @Test func `should show the cost the log gives over any price, with each entry its own session`() async throws {
         let definition = UsageLog.Definition(
             records: UsageLog.Records(files: "~/.acme/sessions/**/*.jsonl", at: "$.at",
                                       tokens: UsageLog.Tokens(total: "$.tokens"), cost: "$.cost"),
@@ -138,19 +138,19 @@ struct UsageLogTests {
         try #"{"baseURL":"\#(url)"}"#.write(to: config, atomically: true, encoding: .utf8)
     }
 
-    @Test func `on a local route an unpriced model costs nothing today`() async throws {
+    @Test func `should cost nothing today for an unlisted model when the tool runs on this Mac`() async throws {
         try route("http://localhost:11434")
         try write([line(model: "acme-internal-7b", at: stamp())])
         #expect(await today().totalCost == 0)
     }
 
-    @Test func `on a remote route an unpriced model keeps its estimate`() async throws {
+    @Test func `should estimate an unlisted model's cost when the tool runs on a remote gateway`() async throws {
         try route("https://gateway.example.com")
         try write([line(model: "acme-internal-7b", at: stamp())])
         #expect(await today().totalCost == Decimal(string: "0.0105"))
     }
 
-    @Test func `the route now never zeroes an earlier day`() async throws {
+    @Test func `should keep an earlier day's cost when the tool runs on this Mac only now`() async throws {
         try route("http://localhost:11434")
         try write([line(model: "acme-internal-7b", at: stamp(daysAgo: 1))])
         let days = await log().days(last: 2)
@@ -160,7 +160,7 @@ struct UsageLogTests {
 
     // MARK: - Sessions
 
-    @Test func `a long pause starts another session; working time spans each`() async throws {
+    @Test func `should start another session after a long pause and count working time within each`() async throws {
         let start = calendar.startOfDay(for: now).addingTimeInterval(60)
         guard now.timeIntervalSince(start) > 3 * 3600 else { return } // too early in the day to fit three hours
         let formatter = ISO8601DateFormatter()
@@ -171,7 +171,7 @@ struct UsageLogTests {
         #expect(today.workingTime == 15 * 60)
     }
 
-    @Test func `lines appended between reads count once`() async throws {
+    @Test func `should count lines added to a log since last time once each`() async throws {
         try write([line(id: "1", at: stamp())])
         let log = log()
         let before = await log.days(last: 1)[0]
@@ -183,7 +183,7 @@ struct UsageLogTests {
 
     // MARK: - The definition
 
-    @Test func `a usageHistory block decodes, a single url as a one-path entry`() throws {
+    @Test func `should read a usage history definition with its defaults, and keep it when written out and read back`() throws {
         let json = #"""
         { "records": { "files": "~/x/*.jsonl", "at": "$.at", "tokens": { "total": "$.n" } },
           "freeWhen": { "localEndpoint": { "file": "~/x.json", "url": ["$.a", ["$.b", "$.c"]] } } }
@@ -196,7 +196,7 @@ struct UsageLogTests {
         #expect(again == definition)
     }
 
-    @Test func `other apps decode with a label, their own records and no prices`() throws {
+    @Test func `should read other apps in a usage history with their label and own records, and no prices`() throws {
         let json = #"""
         { "records": { "files": "~/x/*.jsonl", "at": "$.at", "tokens": { "total": "$.n" } },
           "otherApps": [{ "label": "Desk", "records": { "files": "~/desk.json", "format": "json",
@@ -211,14 +211,14 @@ struct UsageLogTests {
         #expect(try JSONDecoder().decode(UsageLog.Definition.self, from: JSONEncoder().encode(definition)) == definition)
     }
 
-    @Test func `other apps never change how the login's own days were summed`() {
+    @Test func `should keep the login's own usage history unchanged when other apps are added`() {
         let app = UsageLog.OtherApp(label: "Desk", records: UsageLog.Records(files: "~/desk.json", format: .json, at: "$.at"))
         let with = UsageLog.Definition(records: Self.definition.records, prices: Self.definition.prices,
                                        freeWhen: Self.definition.freeWhen, sessionGap: Self.definition.sessionGap, otherApps: [app])
         #expect(log(with).fingerprint == log().fingerprint)
     }
 
-    @Test func `an app that keeps only today's sum counts on the day it names`() async throws {
+    @Test func `should count an app's daily total on the day it names, with no cost known`() async throws {
         let app = UsageLog.OtherApp(label: "Desk", records: UsageLog.Records(
             files: "~/desk/today.json", format: .json,
             at: .formatted(.init(field: "$.day", format: "yyyy-MM-dd")), tokens: UsageLog.Tokens(total: "$.n")))

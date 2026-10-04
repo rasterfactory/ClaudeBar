@@ -15,7 +15,7 @@ struct DirectoryFetchTests {
         return (home, { try? FileManager.default.removeItem(at: home) })
     }
 
-    @Test func `the matching entries come back, in order`() async throws {
+    @Test func `should be ready and list the folder's matching entries in order when the folder exists`() async throws {
         let (home, cleanUp) = try folder(["session_2", "session_1", "other"])
         defer { cleanUp() }
         let fetcher = DirectoryFetcher(call: DirectoryCall(path: "~/.acme/logs", match: "^session_"), homeDirectory: home, environment: { _ in nil })
@@ -24,12 +24,12 @@ struct DirectoryFetchTests {
         #expect(body["entries"] as? [String] == ["session_1", "session_2"])
     }
 
-    @Test func `a folder that isn't there isn't ready`() throws {
+    @Test func `should not be ready when the folder isn't there`() throws {
         let fetcher = DirectoryFetcher(call: DirectoryCall(path: "~/.nowhere"), homeDirectory: FileManager.default.temporaryDirectory, environment: { _ in nil })
         #expect(!fetcher.isReady())
     }
 
-    @Test func `it round-trips as written`() throws {
+    @Test func `should keep a folder fetch when the definition is written out and read back`() throws {
         let fetch = Fetch.directory(DirectoryCall(path: "~/.acme/logs", match: "^session_"))
         #expect(try JSONDecoder().decode(Fetch.self, from: JSONEncoder().encode(fetch)) == fetch)
     }

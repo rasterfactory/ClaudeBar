@@ -28,7 +28,7 @@ struct CredentialRecordTests {
     """
 
     @Test
-    func `the record that can be refreshed and lasts longest answers`() throws {
+    func `should use the record that can be renewed and lasts longest when a login file holds several`() throws {
         let (reader, _, cleanUp) = try file(three)
         defer { cleanUp() }
         let found = try #require(try reader.find())
@@ -37,7 +37,7 @@ struct CredentialRecordTests {
     }
 
     @Test
-    func `a record without a value gets the default, which is never written back`() throws {
+    func `should fill what a record lacks from the definition's defaults without ever writing them back`() throws {
         let (reader, url, cleanUp) = try file(#"{"only":{"key":"k","refresh_token":"r"}}"#)
         defer { cleanUp() }
         var found = try #require(try reader.find())
@@ -52,7 +52,7 @@ struct CredentialRecordTests {
     }
 
     @Test
-    func `a refreshed token goes back into its own record, and every other record stays`() throws {
+    func `should save a renewed token into its own record only, leaving every other record as it was`() throws {
         let (reader, url, cleanUp) = try file(three)
         defer { cleanUp() }
         var found = try #require(try reader.find())
@@ -69,7 +69,7 @@ struct CredentialRecordTests {
     }
 
     @Test
-    func `a file with no usable record has no key`() throws {
+    func `should find no key when no record in the login file holds one`() throws {
         let (reader, _, cleanUp) = try file(#"{"a":{"email":"x"},"b":"not a record"}"#)
         defer { cleanUp() }
         #expect(try reader.find() == nil)

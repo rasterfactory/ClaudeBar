@@ -11,28 +11,28 @@ struct NotificationAlerterTests {
     // MARK: - Should Alert Tests
 
     @Test
-    func `shouldAlert returns true for warning status`() {
+    func `should alert when a quota is at warning`() {
         let alerter = NotificationAlerter()
 
         #expect(alerter.shouldAlert(for: .warning) == true)
     }
 
     @Test
-    func `shouldAlert returns true for critical status`() {
+    func `should alert when a quota is critical`() {
         let alerter = NotificationAlerter()
 
         #expect(alerter.shouldAlert(for: .critical) == true)
     }
 
     @Test
-    func `shouldAlert returns true for depleted status`() {
+    func `should alert when a quota is depleted`() {
         let alerter = NotificationAlerter()
 
         #expect(alerter.shouldAlert(for: .depleted) == true)
     }
 
     @Test
-    func `shouldAlert returns false for healthy status`() {
+    func `should not alert when a quota is healthy`() {
         let alerter = NotificationAlerter()
 
         #expect(alerter.shouldAlert(for: .healthy) == false)
@@ -41,7 +41,7 @@ struct NotificationAlerterTests {
     // MARK: - Provider Display Name Tests
 
     @Test
-    func `providerDisplayName returns correct names for known providers`() {
+    func `should name each known provider as the person knows it`() {
         let alerter = NotificationAlerter()
 
         // Then - returns correct provider names
@@ -57,7 +57,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `providerDisplayName capitalizes unknown provider id`() {
+    func `should capitalise the id of a provider it does not know`() {
         // Given - unknown provider IDs (not in registry)
         let alerter = NotificationAlerter()
 
@@ -69,7 +69,7 @@ struct NotificationAlerterTests {
     // MARK: - Alert Body Tests
 
     @Test
-    func `alertBody for warning describes low quota`() {
+    func `should say the provider is running low at warning`() {
         let alerter = NotificationAlerter()
 
         let body = alerter.alertBody(for: .warning, providerName: "Claude")
@@ -79,7 +79,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `alertBody for critical describes critically low`() {
+    func `should say the provider is critically low when critical`() {
         let alerter = NotificationAlerter()
 
         let body = alerter.alertBody(for: .critical, providerName: "Codex")
@@ -89,7 +89,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `alertBody for depleted describes depletion`() {
+    func `should say the provider is depleted when depleted`() {
         let alerter = NotificationAlerter()
 
         let body = alerter.alertBody(for: .depleted, providerName: "Gemini")
@@ -99,7 +99,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `alertBody for healthy describes recovery`() {
+    func `should say the provider has recovered when healthy again`() {
         let alerter = NotificationAlerter()
 
         let body = alerter.alertBody(for: .healthy, providerName: "Claude")
@@ -111,34 +111,34 @@ struct NotificationAlerterTests {
     // MARK: - Status Degradation Detection (Domain Logic)
 
     @Test
-    func `status degradation from healthy to warning should trigger alert`() {
+    func `should rank warning as worse than healthy`() {
         #expect(QuotaStatus.warning > QuotaStatus.healthy)
     }
 
     @Test
-    func `status degradation from warning to critical should trigger alert`() {
+    func `should rank critical as worse than warning`() {
         #expect(QuotaStatus.critical > QuotaStatus.warning)
     }
 
     @Test
-    func `status degradation to depleted should trigger alert`() {
+    func `should rank depleted as worse than critical`() {
         #expect(QuotaStatus.depleted > QuotaStatus.critical)
     }
 
     @Test
-    func `status improvement should not trigger alert`() {
+    func `should rank healthy as better than warning`() {
         #expect(QuotaStatus.healthy < QuotaStatus.warning)
     }
 
     @Test
-    func `same status should not trigger alert`() {
+    func `should rank a status equal to itself`() {
         #expect(QuotaStatus.healthy == QuotaStatus.healthy)
     }
 
     // MARK: - Alert Integration Tests
 
     @Test
-    func `alert sends notification when status degrades to warning`() async {
+    func `should notify that the quota is running low when it drops to warning`() async {
         // Given
         let mockSender = MockAlertSender()
         given(mockSender).send(title: .any, body: .any, categoryIdentifier: .any).willReturn(())
@@ -156,7 +156,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `alert sends notification when status degrades to critical`() async {
+    func `should notify that the quota is critically low when it drops to critical`() async {
         // Given
         let mockSender = MockAlertSender()
         given(mockSender).send(title: .any, body: .any, categoryIdentifier: .any).willReturn(())
@@ -174,7 +174,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `alert sends notification when status degrades to depleted`() async {
+    func `should notify that the quota is depleted when it runs out`() async {
         // Given
         let mockSender = MockAlertSender()
         given(mockSender).send(title: .any, body: .any, categoryIdentifier: .any).willReturn(())
@@ -192,7 +192,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `alert does not send notification when status improves`() async {
+    func `should not notify when the quota recovers`() async {
         // Given
         let mockSender = MockAlertSender()
         let alerter = NotificationAlerter(alertSender: mockSender)
@@ -205,7 +205,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `alert does not send notification when status stays the same`() async {
+    func `should not notify when the quota's status stays the same`() async {
         // Given
         let mockSender = MockAlertSender()
         let alerter = NotificationAlerter(alertSender: mockSender)
@@ -218,7 +218,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `alert silently handles sender errors`() async {
+    func `should carry on quietly when the notification cannot be shown`() async {
         // Given - sender throws an error
         let mockSender = MockAlertSender()
         given(mockSender).send(title: .any, body: .any, categoryIdentifier: .any).willThrow(NSError(domain: "test", code: 1))
@@ -232,7 +232,7 @@ struct NotificationAlerterTests {
     }
 
     @Test
-    func `requestPermission delegates to alert sender`() async {
+    func `should grant notification permission when macOS grants it`() async {
         // Given
         let mockSender = MockAlertSender()
         given(mockSender).requestPermission().willReturn(true)

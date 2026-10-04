@@ -47,7 +47,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     // MARK: - Backward Compatibility
 
     @Test
-    func `accounts is empty for a provider that was never configured`() {
+    func `should have no added logins for a provider never set up`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -55,7 +55,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `existing single-account settings survive account writes`() {
+    func `should keep a provider's other settings when a login is added`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -68,7 +68,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     // MARK: - Adding
 
     @Test
-    func `addAccount persists the account`() {
+    func `should remember an added login and its name`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -81,7 +81,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `addAccount preserves insertion order`() {
+    func `should keep added logins in the order they were added`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -92,7 +92,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `addAccount round-trips every field`() {
+    func `should remember everything about an added login`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -109,7 +109,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `addAccount with an existing id replaces rather than duplicates`() {
+    func `should replace a login added again rather than list it twice`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -122,7 +122,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `accounts are namespaced per provider`() {
+    func `should keep each provider's added logins apart`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -136,7 +136,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     // MARK: - Updating
 
     @Test
-    func `updateAccount replaces the matching account in place`() {
+    func `should change a login in place, keeping its position`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -151,7 +151,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `updateAccount for an unknown id leaves accounts unchanged`() {
+    func `should leave the logins as they are when changing one that does not exist`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -164,7 +164,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     // MARK: - Removing
 
     @Test
-    func `removeAccount deletes only the named account`() {
+    func `should remove only the named login`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -177,7 +177,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `removeAccount for an unknown id leaves accounts unchanged`() {
+    func `should leave the logins as they are when removing one that does not exist`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -188,7 +188,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `removing the last account returns the provider to single-account state`() {
+    func `should leave the provider with only its default login once the last added one is removed`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -201,7 +201,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     // MARK: - The default login's name
 
     @Test
-    func `the default login's name is saved and forgotten`() {
+    func `should remember the default login's name per provider, and forget it when cleared`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
@@ -216,7 +216,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     // MARK: - Key Pattern (JSONSettingsStore)
 
     @Test
-    func `the default login's name is stored under providers dot id dot defaultAccountLabel`() {
+    func `should keep the default login's name under its provider in settings.json`() {
         let (store, repo, dir) = makeStore()
         defer { cleanup(dir) }
 
@@ -226,7 +226,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `accounts are stored under providers dot id dot accounts`() {
+    func `should keep added logins under their provider in settings.json`() {
         let (store, repo, dir) = makeStore()
         defer { cleanup(dir) }
 
@@ -238,7 +238,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `an empty accounts array in the file reads as single-account`() {
+    func `should have no added logins when settings.json lists none`() {
         let (store, repo, dir) = makeStore()
         defer { cleanup(dir) }
 
@@ -248,7 +248,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     }
 
     @Test
-    func `malformed account entries are skipped rather than failing the read`() {
+    func `should skip a broken login in settings.json and keep the rest`() {
         let (store, repo, dir) = makeStore()
         defer { cleanup(dir) }
 
@@ -263,7 +263,7 @@ struct JSONSettingsRepositoryMultiAccountTests {
     // MARK: - Persistence Across Instances
 
     @Test
-    func `accounts survive a new repository over the same file`() {
+    func `should remember added logins and the default login's name across restarts`() {
         let (store, repo, dir) = makeStore()
         defer { cleanup(dir) }
 

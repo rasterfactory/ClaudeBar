@@ -54,7 +54,7 @@ struct QuotaMonitorProviderOrderTests {
     // MARK: - Reading the persisted order
 
     @Test
-    func `no persisted order keeps registration order`() {
+    func `should list the providers in registration order when the person never reordered them`() {
         let settings = makeSettingsRepository(order: [])
         let repository = makeProviders(settings: settings)
         let monitor = makeMonitor(providers: repository, settings: settings)
@@ -64,7 +64,7 @@ struct QuotaMonitorProviderOrderTests {
     }
 
     @Test
-    func `enabledProviders follow the persisted order`() {
+    func `should show the lineup in the person's saved order (#141)`() {
         let settings = makeSettingsRepository(order: ["gemini", "claude", "codex"])
         let repository = makeProviders(settings: settings)
         let monitor = makeMonitor(providers: repository, settings: settings)
@@ -73,7 +73,7 @@ struct QuotaMonitorProviderOrderTests {
     }
 
     @Test
-    func `allProviders follow the persisted order`() {
+    func `should list every login in the person's saved order (#141)`() {
         let settings = makeSettingsRepository(order: ["gemini", "claude", "codex"])
         let repository = makeProviders(settings: settings)
         let monitor = makeMonitor(providers: repository, settings: settings)
@@ -82,7 +82,7 @@ struct QuotaMonitorProviderOrderTests {
     }
 
     @Test
-    func `stored order omitting a provider falls back to its registration position`() {
+    func `should place a provider missing from the saved order at its registration position`() {
         // "gone" was removed from the app; claude and codex are not listed, so
         // they keep their registration order behind the listed gemini.
         let settings = makeSettingsRepository(order: ["gemini", "gone"])
@@ -93,7 +93,7 @@ struct QuotaMonitorProviderOrderTests {
     }
 
     @Test
-    func `stored id whose provider is disabled is skipped in enabledProviders`() {
+    func `should leave a disabled provider out of the lineup while still listing its login in the saved order`() {
         let settings = makeSettingsRepository(order: ["gemini", "claude", "codex"])
         let repository = makeProviders(settings: settings)
         repository.provider(id: "codex")?.isEnabled = false
@@ -107,7 +107,7 @@ struct QuotaMonitorProviderOrderTests {
     // MARK: - Keyboard selection follows the persisted order
 
     @Test
-    func `selectProvider atPosition follows the persisted order`() {
+    func `should select providers with ⌘1–⌘3 in the person's saved order`() {
         let settings = makeSettingsRepository(order: ["gemini", "claude", "codex"])
         let repository = makeProviders(settings: settings)
         let monitor = makeMonitor(providers: repository, settings: settings)
@@ -123,7 +123,7 @@ struct QuotaMonitorProviderOrderTests {
     }
 
     @Test
-    func `selectProvider atPosition skips disabled providers`() {
+    func `should land ⌘1 on the first enabled provider when the first saved one is disabled`() {
         let settings = makeSettingsRepository(order: ["gemini", "claude", "codex"])
         let repository = makeProviders(settings: settings)
         repository.provider(id: "gemini")?.isEnabled = false
@@ -137,7 +137,7 @@ struct QuotaMonitorProviderOrderTests {
     // MARK: - Reordering
 
     @Test
-    func `moving a provider reorders what the monitor shows and saves it`() {
+    func `should show and select a moved provider at its new position`() {
         let settings = makeSettingsRepository()
         let repository = makeProviders(settings: settings)
         let monitor = makeMonitor(providers: repository, settings: settings)

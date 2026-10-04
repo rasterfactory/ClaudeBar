@@ -36,7 +36,7 @@ struct MistralUsageHistoryTests {
         #"{ "stats": { "session_total_llm_tokens": \#(tokens), "session_cost": \#(cost) } }"#
     }
 
-    @Test func `today's sessions are summed`() async throws {
+    @Test func `should sum today's Vibe sessions into today's tokens and session count`() async throws {
         try session(meta: meta(tokens: 1500))
         try session(meta: meta(tokens: 3000))
         let today = try #require(try await report()).today
@@ -46,7 +46,7 @@ struct MistralUsageHistoryTests {
         #expect(today.workingTime == 0)
     }
 
-    @Test func `yesterday's sessions count on yesterday`() async throws {
+    @Test func `should count yesterday's sessions on yesterday`() async throws {
         try session(meta: meta(tokens: 1500))
         try session(at: Calendar.current.date(byAdding: .day, value: -1, to: Date())!, meta: meta(tokens: 3000))
         let report = try #require(try await report())
@@ -54,12 +54,12 @@ struct MistralUsageHistoryTests {
         #expect(report.previous.totalTokens == 3000)
     }
 
-    @Test func `the session's own cost is passed through, exact`() async throws {
+    @Test func `should show each session's own cost exactly`() async throws {
         try session(meta: meta(tokens: 50_000, cost: "2.40"))
         #expect(try await report()?.today.totalCost == Decimal(string: "2.40"))
     }
 
-    @Test func `a malformed or incomplete session is skipped`() async throws {
+    @Test func `should skip a session whose log is broken or incomplete`() async throws {
         try session(meta: meta(tokens: 1500))
         try session(meta: "{ not valid json !! }")
         try session(meta: #"{ "title": "no stats" }"#)
@@ -69,11 +69,11 @@ struct MistralUsageHistoryTests {
         #expect(today.sessionCount == 1)
     }
 
-    @Test func `no sessions is no report`() async throws {
+    @Test func `should show no usage history when Vibe has no sessions`() async throws {
         #expect(try await report() == nil)
     }
 
-    @Test func `the time is read from the folder's name, in UTC`() throws {
+    @Test func `should date each session by its folder's name, in UTC`() throws {
         let rule = UsageLog.At.FromPath(pattern: #"session_(\d{8}_\d{6})"#, format: "yyyyMMdd_HHmmss", timeZone: "UTC")
         let definition = try #require(try ProviderFactory.builtIn("mistral").usageHistory)
         #expect(definition.records.at == .fromPath(rule))

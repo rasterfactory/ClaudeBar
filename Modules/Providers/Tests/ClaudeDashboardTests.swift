@@ -28,21 +28,21 @@ struct ClaudeDashboardTests {
     }
 
     @Test
-    func `dashboard opens claude.ai usage settings for a Max account`() async throws {
+    func `should open claude.ai usage settings from the dashboard for a Max account (#328)`() async throws {
         let provider = try await claude(afterReading: "Opus 4.7 · Claude Max\nCurrent session\n████ 65% left")
         #expect(provider.defaultAccount.snapshot?.accountTier == .claudeMax)
         #expect(provider.plainDashboardURL == Self.subscriptionUsageURL)
     }
 
     @Test
-    func `dashboard opens claude.ai usage settings for a Pro account`() async throws {
+    func `should open claude.ai usage settings from the dashboard for a Pro account (#328)`() async throws {
         let provider = try await claude(afterReading: "Sonnet 4.6 · Claude Pro\nCurrent session\n████ 65% left")
         #expect(provider.defaultAccount.snapshot?.accountTier == .claudePro)
         #expect(provider.plainDashboardURL == Self.subscriptionUsageURL)
     }
 
     @Test
-    func `dashboard opens Console billing for an API account`() async throws {
+    func `should open Console billing from the dashboard for an API account (#328)`() async throws {
         let provider = try await claude(
             afterReading: "/usage is only available for subscription plans.",
             cost: "Total cost:            $1.23\nTotal duration (API):  1m 30s"
@@ -52,7 +52,7 @@ struct ClaudeDashboardTests {
     }
 
     @Test
-    func `dashboard opens claude.ai usage settings for other plans and before the first refresh`() throws {
+    func `should open claude.ai usage settings from the dashboard for other plans and before the first refresh`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let definition = try ProviderFactory.builtIn("claude")

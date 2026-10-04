@@ -8,7 +8,7 @@ struct CLIResultTests {
     // MARK: - Initialization Tests
 
     @Test
-    func `creates result with output and exit code`() {
+    func `should keep what the CLI printed and its exit code`() {
         // Given
         let output = "Hello, World!"
         let exitCode: Int32 = 0
@@ -22,7 +22,7 @@ struct CLIResultTests {
     }
 
     @Test
-    func `creates result with default exit code of zero`() {
+    func `should take the CLI as having succeeded when no exit code is given`() {
         // Given
         let output = "Success output"
 
@@ -35,7 +35,7 @@ struct CLIResultTests {
     }
 
     @Test
-    func `creates result with non-zero exit code`() {
+    func `should keep the error the CLI printed and its failing exit code`() {
         // Given
         let output = "Error: command failed"
         let exitCode: Int32 = 1
@@ -49,7 +49,7 @@ struct CLIResultTests {
     }
 
     @Test
-    func `creates result with empty output`() {
+    func `should keep an empty answer when the CLI prints nothing`() {
         // Given & When
         let result = CLIResult(output: "", exitCode: 0)
 
@@ -59,7 +59,7 @@ struct CLIResultTests {
     }
 
     @Test
-    func `creates result with multiline output`() {
+    func `should keep every line the CLI printed`() {
         // Given
         let output = """
         Line 1
@@ -79,7 +79,7 @@ struct CLIResultTests {
     // MARK: - Equatable Tests
 
     @Test
-    func `results with same output and exit code are equal`() {
+    func `should treat two runs with the same output and exit code as the same`() {
         // Given
         let result1 = CLIResult(output: "test", exitCode: 0)
         let result2 = CLIResult(output: "test", exitCode: 0)
@@ -89,7 +89,7 @@ struct CLIResultTests {
     }
 
     @Test
-    func `results with different output are not equal`() {
+    func `should tell apart two runs that printed different output`() {
         // Given
         let result1 = CLIResult(output: "test1", exitCode: 0)
         let result2 = CLIResult(output: "test2", exitCode: 0)
@@ -99,7 +99,7 @@ struct CLIResultTests {
     }
 
     @Test
-    func `results with different exit codes are not equal`() {
+    func `should tell apart two runs that exited differently`() {
         // Given
         let result1 = CLIResult(output: "test", exitCode: 0)
         let result2 = CLIResult(output: "test", exitCode: 1)

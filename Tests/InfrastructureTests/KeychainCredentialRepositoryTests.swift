@@ -5,7 +5,7 @@ import Foundation
 @Suite(.serialized)
 struct KeychainCredentialRepositoryTests {
     @Test
-    func `saves updates retrieves and deletes a credential`() {
+    func `should keep, replace and forget a saved credential`() {
         let key = "credential-\(UUID().uuidString)"
         let repository = KeychainCredentialRepository(
             service: "com.tddworks.claudebar.tests.\(UUID().uuidString)"
@@ -28,7 +28,7 @@ struct KeychainCredentialRepositoryTests {
     }
 
     @Test
-    func `deleting a missing credential is idempotent`() {
+    func `should report success when forgetting a credential that was never saved`() {
         let repository = KeychainCredentialRepository(
             service: "com.tddworks.claudebar.tests.\(UUID().uuidString)"
         )

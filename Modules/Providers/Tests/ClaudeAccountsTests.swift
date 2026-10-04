@@ -34,7 +34,7 @@ struct ClaudeAccountsTests {
     // MARK: - Each login reads its own folder
 
     @Test
-    func `an added login reads its own key and its own email`() async throws {
+    func `should show an added login the usage of its own key and its own email`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(accessToken: "default-token")
@@ -55,7 +55,7 @@ struct ClaudeAccountsTests {
     }
 
     @Test
-    func `a folder now signed in to someone else fails closed and the others keep their usage`() async throws {
+    func `should fail closed for a folder now signed in to someone else while the others keep their usage`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeCredentials(accessToken: "default-token")
@@ -73,7 +73,7 @@ struct ClaudeAccountsTests {
     }
 
     @Test
-    func `the cli for an added login runs in its folder without the default login's keys`() throws {
+    func `should run the CLI for an added login in its own folder without the default login's keys`() throws {
         let sources = try ProviderFactory.builtIn("claude").dataSources(forAccount: [
             "configDirectory": "/Users/me/claude-work", "loginEmail": "work@example.com", "credentialService": "svc",
         ])
@@ -91,7 +91,7 @@ struct ClaudeAccountsTests {
     }
 
     @Test
-    func `folder trust is granted in the added login's own config`() throws {
+    func `should grant folder trust in the added login's own config`() throws {
         let sources = try ProviderFactory.builtIn("claude").dataSources(forAccount: [
             "configDirectory": "/Users/me/claude-work", "loginEmail": "work@example.com", "credentialService": "svc",
         ])
@@ -104,7 +104,7 @@ struct ClaudeAccountsTests {
     }
 
     @Test
-    func `the default login is untouched by the accounts block`() throws {
+    func `should leave the default login as it was when accounts are added`() throws {
         let definition = try ProviderFactory.builtIn("claude")
         let cli = try #require(definition.dataSource("cli"))
 
@@ -115,7 +115,7 @@ struct ClaudeAccountsTests {
     // MARK: - Guest passes are the default login's
 
     @Test
-    func `guest passes belong to the default login only`() throws {
+    func `should give guest passes to the default login only`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let work = try claude.writeLogin(in: "work", email: "work@example.com", token: "work-token")
@@ -132,7 +132,7 @@ struct ClaudeAccountsTests {
     // MARK: - Add Account: choosing a signed-in folder
 
     @Test
-    func `choosing a signed-in folder saves the folder, its email and its keychain service`() throws {
+    func `should save the folder, its email and its keychain service when the person chooses a signed-in folder`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let settings = InMemoryProviderSettings()
@@ -150,7 +150,7 @@ struct ClaudeAccountsTests {
     }
 
     @Test
-    func `the same login is not added twice`() throws {
+    func `should not add the same login twice`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let work = try claude.writeLogin(in: "work", email: "work@example.com")
@@ -164,7 +164,7 @@ struct ClaudeAccountsTests {
     }
 
     @Test
-    func `a folder with an email but no key is not a login`() throws {
+    func `should refuse a folder with an email but no key as a login`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let folder = try claude.writeLogin(in: "half", email: "half@example.com")
@@ -175,7 +175,7 @@ struct ClaudeAccountsTests {
     }
 
     @Test
-    func `the default login is not added again from another folder`() throws {
+    func `should not add the default login again from another folder`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(email: "me@example.com")

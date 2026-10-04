@@ -23,7 +23,7 @@ struct ClaudeGuestPassSourceTests {
     // MARK: - Parsing Tests (for legacy format with URL in output)
 
     @Test
-    func `parses guest passes with 3 remaining`() throws {
+    func `should show 3 guest passes left and the referral link when Claude lists them`() throws {
         // Given
         let output = """
         Guest passes · 3 left
@@ -46,7 +46,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `parses guest passes with 1 remaining`() throws {
+    func `should show 1 guest pass left and the referral link when Claude lists one`() throws {
         let output = """
         Guest passes · 1 left
 
@@ -66,7 +66,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `parses guest passes with 0 remaining`() throws {
+    func `should show no guest passes left but still the referral link when Claude has none to give`() throws {
         let output = """
         Guest passes · 0 left
 
@@ -82,7 +82,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `parses URL without pass count`() throws {
+    func `should show the referral link with no count when Claude prints only the link`() throws {
         // Format where count is not shown but URL is
         let output = """
         https://claude.ai/referral/ABC123
@@ -97,7 +97,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `throws error when no referral URL found`() {
+    func `should fail when Claude prints no referral link`() {
         let output = """
         Guest passes · 3 left
 
@@ -110,7 +110,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `strips ANSI codes before parsing`() throws {
+    func `should read the pass count and link through Claude's terminal colors`() throws {
         // Output with ANSI color codes
         let output = "\u{001B}[1mGuest passes\u{001B}[0m · \u{001B}[32m3 left\u{001B}[0m\n\nhttps://claude.ai/referral/ABC123"
 
@@ -123,7 +123,7 @@ struct ClaudeGuestPassSourceTests {
     // MARK: - Probe Behavior Tests (with URL in output)
 
     @Test
-    func `probe returns GuestPass with URL from output`() async throws {
+    func `should show the pass count and referral link Claude prints for /passes`() async throws {
         // Given
         let mockExecutor = MockCLIExecutor()
         let passOutput = """
@@ -157,7 +157,7 @@ struct ClaudeGuestPassSourceTests {
     // MARK: - Probe Behavior Tests (clipboard mode - current behavior)
 
     @Test
-    func `probe reads URL from clipboard when not in output`() async throws {
+    func `should take the referral link from the clipboard when Claude only copies it there`() async throws {
         // Given
         let mockExecutor = MockCLIExecutor()
         let mockClipboard = MockClipboardReader(content: "https://claude.ai/referral/CLIPBOARD123")
@@ -189,7 +189,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `probe throws when URL not in output or clipboard`() async {
+    func `should fail when the referral link is neither printed nor on the clipboard`() async {
         let mockExecutor = MockCLIExecutor()
         let mockClipboard = MockClipboardReader(content: "Some other clipboard content")
 
@@ -216,7 +216,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `isAvailable returns true when binary exists`() async {
+    func `should offer guest passes when the Claude CLI is installed`() async {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
 
@@ -226,7 +226,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `isAvailable returns false when binary not found`() async {
+    func `should not offer guest passes when the Claude CLI is not installed`() async {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.any).willReturn(nil)
 
@@ -236,7 +236,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `probe throws on CLI execution failure`() async {
+    func `should fail when the Claude CLI fails to run`() async {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
         given(mockExecutor).execute(
@@ -256,7 +256,7 @@ struct ClaudeGuestPassSourceTests {
     }
 
     @Test
-    func `guest passes run the claude cli at its chosen location`() async {
+    func `should offer guest passes when the Claude CLI lives at the location the person chose`() async {
         let mockExecutor = MockCLIExecutor()
         given(mockExecutor).locate(.value("/opt/tools/bin/claude-work")).willReturn("/opt/tools/bin/claude-work")
         given(mockExecutor).locate(.value("claude")).willReturn(nil)

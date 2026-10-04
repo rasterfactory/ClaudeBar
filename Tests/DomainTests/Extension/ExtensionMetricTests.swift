@@ -5,7 +5,7 @@ import Testing
 @Suite
 struct ExtensionMetricTests {
     @Test
-    func `creates metric with all fields`() {
+    func `should keep every detail of an extension's metric, from label to progress`() {
         let metric = ExtensionMetric(
             label: "API Calls",
             value: "1,234",
@@ -28,7 +28,7 @@ struct ExtensionMetricTests {
     }
 
     @Test
-    func `creates metric with minimal fields`() {
+    func `should leave a metric's icon, colour, change and progress empty when only label, value and unit are given`() {
         let metric = ExtensionMetric(
             label: "Requests",
             value: "42",
@@ -45,7 +45,7 @@ struct ExtensionMetricTests {
     }
 
     @Test
-    func `decodes metric from JSON`() throws {
+    func `should read every detail of a metric an extension reports`() throws {
         let json = """
         {
             "label": "Cost",
@@ -76,7 +76,7 @@ struct ExtensionMetricTests {
     }
 
     @Test
-    func `decodes metric without optional fields`() throws {
+    func `should read a metric an extension reports without its optional details`() throws {
         let json = """
         {
             "label": "Tokens",
@@ -93,7 +93,7 @@ struct ExtensionMetricTests {
     }
 
     @Test
-    func `metric delta tracks comparison data`() {
+    func `should keep what a metric's change compares with, by how much and in percent`() {
         let delta = MetricDelta(vs: "Mar 16", value: "-$701.58", percent: 98.6)
 
         #expect(delta.vs == "Mar 16")
@@ -102,7 +102,7 @@ struct ExtensionMetricTests {
     }
 
     @Test
-    func `metric delta with nil percent`() throws {
+    func `should read a metric's change without a percent when the extension gives none`() throws {
         let json = """
         {
             "vs": "Yesterday",

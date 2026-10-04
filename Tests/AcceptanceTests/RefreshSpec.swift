@@ -40,7 +40,7 @@ struct RefreshSpec {
         }
 
         @Test
-        func `refresh updates snapshot with fresh data`() async {
+        func `should show Claude's latest quotas after the person clicks Refresh`() async {
             // Given
             let settings = RefreshSpec.makeSettings()
             let probe = MockUsageProbe()
@@ -69,7 +69,7 @@ struct RefreshSpec {
         }
 
         @Test
-        func `failed refresh stores error without affecting other providers`() async {
+        func `should show Codex's error and still show Claude's quotas when only Codex times out`() async {
             // Given
             let settings = RefreshSpec.makeSettings()
 
@@ -115,7 +115,7 @@ struct RefreshSpec {
         }
 
         @Test
-        func `continuous monitoring emits refresh events`() async throws {
+        func `should keep refreshing in the background while monitoring runs`() async throws {
             // Given
             let settings = RefreshSpec.makeSettings()
             let probe = MockUsageProbe()
@@ -149,7 +149,7 @@ struct RefreshSpec {
         }
 
         @Test
-        func `monitoring stops when requested`() async throws {
+        func `should stop refreshing in the background once monitoring is stopped`() async throws {
             // Given
             let settings = RefreshSpec.makeSettings()
             let probe = MockUsageProbe()
@@ -233,7 +233,7 @@ struct RefreshSpec {
         }
 
         @Test
-        func `CLI mode keeps auto-refreshing in the background`() async {
+        func `should keep showing the CLI's quotas when Claude refreshes in the background in CLI mode`() async {
             // Given — a CLI-mode Claude provider (base settings → CLI).
             let settings = RefreshSpec.makeSettings()
             let probe = MockUsageProbe()
@@ -260,7 +260,7 @@ struct RefreshSpec {
         }
 
         @Test
-        func `API mode background cadence is at least 15 minutes`() async {
+        func `should refresh Claude in the background no more than every 15 minutes in API mode, even when the person picked 1 minute (#204)`() async {
             // Given — API-mode Claude and a user who picked the 1-minute option.
             let settings = ClaudeModeSettings(mode: .api)
             let snapshot = UsageSnapshot(
@@ -289,7 +289,7 @@ struct RefreshSpec {
         }
 
         @Test
-        func `interactive refresh is not throttled by the API background floor`() async {
+        func `should show fresh quotas on every Refresh click in API mode, despite the 15-minute background floor (#204)`() async {
             // Given — an API-mode Claude provider (which imposes a 15-min background
             // floor) returning a different snapshot on each probe.
             let settings = ClaudeModeSettings(mode: .api)

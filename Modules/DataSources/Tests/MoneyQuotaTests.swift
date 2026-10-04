@@ -16,21 +16,21 @@ struct MoneyQuotaTests {
     }
 
     @Test(arguments: ["0.123456789", "1245.67", "-1.25", "1e2"])
-    func `money sent as text stays exact`(_ amount: String) throws {
+    func `should show money the answer sends as text exactly`(_ amount: String) throws {
         let usage = try usage(#"{ "quotas": [{ "kind": "model", "name": "Balance", "left": { "money": "$.balance", "currency": "USD" } }] }"#,
                               "{\"balance\":\"\(amount)\"}")
         #expect(usage.quotas.first?.left == .money(Money(Decimal(string: amount)!, currency: "USD"), of: nil))
     }
 
     @Test(arguments: ["0x10", "12abc", "", "NaN"])
-    func `text that isn't a decimal amount is no money`(_ text: String) throws {
+    func `should show no quota when the money text isn't a decimal amount`(_ text: String) throws {
         let usage = try usage(#"{ "quotas": [{ "kind": "model", "name": "Balance", "left": { "money": "$.balance", "currency": "USD" } }] }"#,
                               "{\"balance\":\"\(text)\"}")
         #expect(usage.quotas.isEmpty)
     }
 
     @Test
-    func `money with a limit is money of that limit`() throws {
+    func `should show money left out of its limit with the percentage left`() throws {
         let usage = try usage("""
         { "quotas": [{ "kind": "time", "name": "Credits",
                        "left": { "money": "$.data.limit_remaining", "of": "$.data.limit", "currency": "USD" } }] }
@@ -42,7 +42,7 @@ struct MoneyQuotaTests {
     }
 
     @Test
-    func `a balance has no percentage and no window`() throws {
+    func `should show a balance with no percentage and no window`() throws {
         let usage = try usage("""
         { "quotas": [{ "kind": "time", "name": "Balance", "left": { "money": "$.balance" } }] }
         """, #"{"balance":7.5}"#)

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Account setup finds desktop Codex and keeps logins separate. Refresh uses your chosen tools and AWS profile, respects cancellation, and explains Claude login problems and monthly usage correctly. ([#458](https://github.com/tddworks/ClaudeBar/pull/458))
+- **Settings → Updates** now says which version is ready ("Version 0.5.4 is ready to install") and its button reads Install Update; the sidebar footer names the new version too, instead of only "update available". ([#473](https://github.com/tddworks/ClaudeBar/pull/473))
+
+---
+
+## [0.5.4] - 2026-10-04
+
 ### Removed
 - **Breaking:** extensions' `dailyUsage`, `metricsRow` and `statusBanner` sections are no longer read; their quotas, cost and health check still show. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/extensions/README.md) ([#471](https://github.com/tddworks/ClaudeBar/pull/471))
 
@@ -16,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extensions now show like any provider: their settings sit on the provider's page in Settings and their secret fields move to the Keychain. → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/features/extensions/README.md) ([#471](https://github.com/tddworks/ClaudeBar/pull/471))
 
 ### Fixed
-- Account setup finds desktop Codex and keeps logins separate. Refresh uses your chosen tools and AWS profile, respects cancellation, and explains Claude login problems and monthly usage correctly. ([#458](https://github.com/tddworks/ClaudeBar/pull/458))
 - **Leaderboard:** your upload stays hourly after your Mac sleeps, instead of falling hours behind, and Refresh now uploads it too. ([#468](https://github.com/tddworks/ClaudeBar/pull/468))
 - In overview mode, and with several accounts, a provider with no usage no longer reads Healthy: it says Unavailable, Not set up or Syncing, like the header does. ([#259](https://github.com/tddworks/ClaudeBar/issues/259))
 
@@ -93,7 +100,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [0.4](docs/changelog/0.4.md) · [0.3](docs/changelog/0.3.md) · [0.2](docs/changelog/0.2.md) · [0.1](docs/changelog/0.1.md)
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.5.4...HEAD
+[0.5.4]: https://github.com/tddworks/ClaudeBar/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/tddworks/ClaudeBar/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/tddworks/ClaudeBar/compare/v0.5.0...v0.5.2
 [0.5.0]: https://github.com/tddworks/ClaudeBar/compare/v0.4.95...v0.5.0

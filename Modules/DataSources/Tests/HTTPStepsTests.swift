@@ -42,7 +42,7 @@ struct HTTPStepsTests {
      "mapping":{"json":{"quotas":[{"kind":"weekly","usedPercent":"usage.used"}]}}}
     """
 
-    @Test func `a cancelled optional request stops the workflow`() async throws {
+    @Test func `should stop the workflow when an optional request is cancelled`() async throws {
         let definition = try decode(#"{"kind":"api","fetch":{"http":{"steps":[{"name":"optional","optional":true,"request":{"url":"https://example.invalid/optional"}},{"name":"usage","request":{"url":"https://example.invalid/usage"}}]}},"mapping":{"json":{"quotas":[]}}}"#)
         guard case .httpSteps(let steps) = definition.fetch else { Issue.record("Expected HTTP steps"); return }
         let network = MockNetworkClient()
@@ -53,7 +53,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `a later step is filled with what an earlier step kept`() async throws {
+    func `should show the quota from a second request that uses what the first one learned`() async throws {
         let sent = Sent()
         let source = make(try decode(twoSteps), network: network([
             "/project": (200, #"{"project":{"id":"p-7"}}"#),
@@ -67,7 +67,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `the response is every step's answer, by name`() async throws {
+    func `should show every step's answer by its name when the connection is tested`() async throws {
         let source = make(try decode(twoSteps), network: network([
             "/project": (200, #"{"project":{"id":"p-7"}}"#),
             "/usage/p-7": (200, #"{"used":40}"#),
@@ -82,7 +82,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `a value is kept from the first path that answers`() async throws {
+    func `should use a value from the next place the answer holds it when the first is empty`() async throws {
         let sent = Sent()
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"steps":[
@@ -97,7 +97,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `a query value that came out empty is left out of the URL`() async throws {
+    func `should leave a value the earlier step didn't find out of the URL`() async throws {
         let sent = Sent()
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"steps":[
@@ -113,7 +113,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `a header filled with a value that came out empty is left out`() async throws {
+    func `should send no header for a value that wasn't found`() async throws {
         let sent = Sent()
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"steps":[
@@ -129,7 +129,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `a kept value never replaces a credential value`() async throws {
+    func `should always send the person's own key, never one a server answered with`() async throws {
         let sent = Sent()
         let source = make(try decode("""
         {"kind":"api","credential":{"environment":"KEY"},
@@ -146,7 +146,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `an optional step that fails leaves its value unknown and the fetch goes on`() async throws {
+    func `should still show the quota when an optional step fails, without its value`() async throws {
         let sent = Sent()
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"steps":[
@@ -163,7 +163,7 @@ struct HTTPStepsTests {
     }
 
     @Test(arguments: [(401, "authenticationRequired"), (429, "rateLimited")])
-    func `an optional step's refused key or rate limit is never swallowed`(_ status: Int, _ tag: String) async throws {
+    func `should still ask to sign in or wait when an optional step is refused or rate limited`(_ status: Int, _ tag: String) async throws {
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"steps":[
            {"name":"project","request":{"url":"https://acme.test/project"},"optional":true},
@@ -175,7 +175,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `a step is skipped when the value it would find is already known`() async throws {
+    func `should skip a step whose value is already known`() async throws {
         let sent = Sent()
         let source = make(try decode("""
         {"kind":"api","credential":{"environment":"KEY"},
@@ -191,7 +191,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `a value is kept from text by a pattern`() async throws {
+    func `should pick a value out of a page's text by its pattern for the next step`() async throws {
         let sent = Sent()
         let source = make(try decode("""
         {"kind":"api","fetch":{"http":{"steps":[
@@ -206,7 +206,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `a step with attempts tries again after a server error`() async throws {
+    func `should try a step again after a server error when the definition allows attempts`() async throws {
         let sent = Sent()
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { request in
@@ -227,7 +227,7 @@ struct HTTPStepsTests {
     }
 
     @Test
-    func `a required step that fails ends the fetch at the fetch step`() async throws {
+    func `should fail at fetching when a required step fails`() async throws {
         let source = make(try decode(twoSteps), network: network(["/project": (500, "")], sent: Sent()),
                           environment: ["KEY": "k"])
 
@@ -239,14 +239,14 @@ struct HTTPStepsTests {
         #"{"steps":[{"name":"a","request":{"url":"u"}},{"name":"a","request":{"url":"u"}}]}"#,
         #"{"steps":[{"name":"a","request":{"url":"u"},"attempts":9}]}"#,
     ])
-    func `steps are refused when empty, named twice or tried too often`(_ http: String) {
+    func `should reject steps that are empty, share a name or try too many times`(_ http: String) {
         #expect(throws: DecodingError.self) {
             try decode(#"{"kind":"api","fetch":{"http":\#(http)},"mapping":{"json":{"quotas":[]}}}"#)
         }
     }
 
     @Test
-    func `steps encode back under http`() throws {
+    func `should keep multi-step requests when the definition is written out and read back`() throws {
         let definition = try decode(twoSteps)
         let again = try JSONDecoder().decode(DataSourceDefinition.self, from: JSONEncoder().encode(definition))
         #expect(again == definition)

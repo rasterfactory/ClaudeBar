@@ -34,7 +34,7 @@ struct LeaderboardStorageTests {
 
     // MARK: - Settings
 
-    @Test func `a membership is kept and read back`() {
+    @Test func `should remember the leaderboard membership across reads`() {
         let (settings, _) = repository()
         let record = LeaderboardRecord(username: "tokenwhale", sharing: ["codex", "claude"], visible: false,
                                        lastUpload: Date(timeIntervalSince1970: 1_791_080_000),
@@ -46,7 +46,7 @@ struct LeaderboardStorageTests {
         #expect(settings.leaderboardRecord() == record)
     }
 
-    @Test func `forgetting a membership leaves nothing behind`() throws {
+    @Test func `should leave nothing of the membership in settings when it is forgotten`() throws {
         let (settings, url) = repository()
         settings.saveLeaderboardRecord(LeaderboardRecord(username: "tokenwhale", sharing: ["claude"], visible: true, lastUpload: nil))
 
@@ -58,7 +58,7 @@ struct LeaderboardStorageTests {
 
     // MARK: - The key
 
-    @Test func `the key goes to the Keychain when it takes it`() {
+    @Test func `should keep the signing key in the Keychain when the Keychain accepts it`() {
         let secure = KeepingCredentials()
         let fallback = KeepingCredentials()
         let store = CredentialSigningKeyStore(secure: secure, fallback: fallback)
@@ -71,7 +71,7 @@ struct LeaderboardStorageTests {
         #expect(store.isSecure)
     }
 
-    @Test func `a Keychain that refuses leaves the key in the fallback store`() {
+    @Test func `should keep the signing key in the fallback store when the Keychain refuses it`() {
         let fallback = KeepingCredentials()
         let store = CredentialSigningKeyStore(secure: RefusingCredentials(), fallback: fallback)
 
@@ -82,7 +82,7 @@ struct LeaderboardStorageTests {
         #expect(!store.isSecure)
     }
 
-    @Test func `deleting the key clears both stores`() {
+    @Test func `should forget the signing key from both stores when it is deleted`() {
         let secure = KeepingCredentials()
         let fallback = KeepingCredentials()
         secure.values[CredentialKey.leaderboardSigningKey] = Data([9]).base64EncodedString()

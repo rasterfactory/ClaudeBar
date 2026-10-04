@@ -6,7 +6,7 @@ import Infrastructure
 
 @Suite @MainActor
 struct AppSettingsNativeIconsTests {
-    @Test func `native icons are opt in and persist independently of status colors`() {
+    @Test func `should remember native menu bar icons, off by default, without changing status colors`() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("settings.json")

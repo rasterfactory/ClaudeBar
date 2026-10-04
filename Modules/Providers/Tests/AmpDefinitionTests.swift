@@ -61,7 +61,7 @@ struct AmpDefinitionTests {
     // MARK: - Parsing Tests
 
     @Test
-    func `parses free tier credits into money of its ceiling`() async throws {
+    func `should show the free tier as money left of its ceiling, $17.59 of $20`() async throws {
         // Given
         let text = Self.sampleOutput
 
@@ -76,7 +76,7 @@ struct AmpDefinitionTests {
     }
 
     @Test
-    func `extracts account email`() async throws {
+    func `should show the email the person is signed in as`() async throws {
         // Given
         let text = Self.sampleOutput
 
@@ -88,7 +88,7 @@ struct AmpDefinitionTests {
     }
 
     @Test
-    func `handles zero remaining with total`() async throws {
+    func `should show 0% left when the free tier is spent`() async throws {
         // Given
         let text = Self.sampleOutputZeroRemaining
 
@@ -102,7 +102,7 @@ struct AmpDefinitionTests {
     }
 
     @Test
-    func `parses both free and individual credits as separate quotas`() async throws {
+    func `should show free tier and individual credits as separate quotas`() async throws {
         // Given - both lines present with non-zero values
         let text = Self.sampleOutputWithIndividualCredits
 
@@ -118,7 +118,7 @@ struct AmpDefinitionTests {
     }
 
     @Test
-    func `individual credits has dollarRemaining set`() async throws {
+    func `should show individual credits as $50 left, with no percentage`() async throws {
         // Given
         let text = Self.sampleOutputWithIndividualCredits
 
@@ -132,7 +132,7 @@ struct AmpDefinitionTests {
     }
 
     @Test
-    func `individual credits zero remaining has dollarRemaining zero`() async throws {
+    func `should show individual credits as $0 left, with no percentage, when they are spent`() async throws {
         // Given - "$0 remaining" with no denominator
         let text = Self.sampleOutput
 
@@ -146,14 +146,14 @@ struct AmpDefinitionTests {
     }
 
     @Test
-    func `free tier quota keeps its dollars, so the card shows them`() async throws {
+    func `should keep the free tier's dollars so the card shows them`() async throws {
         let freeQuota = try await parse(Self.sampleOutputZeroRemaining).quotas.first { $0.quotaType == .modelSpecific("Free") }
         #expect(freeQuota?.left == .money(Money(0, currency: "USD"), of: Money(20, currency: "USD")))
         #expect(freeQuota?.dollarRemaining == 0)
     }
 
     @Test
-    func `individual credits only is valid snapshot`() async throws {
+    func `should show individual credits alone when there is no free tier`() async throws {
         // Given - no free tier line, only individual credits
         let text = Self.sampleOutputIndividualCreditsOnly
 
@@ -168,7 +168,7 @@ struct AmpDefinitionTests {
     }
 
     @Test
-    func `maps to correct QuotaType`() async throws {
+    func `should name the free tier quota Free`() async throws {
         // Given
         let text = Self.sampleOutput
 
@@ -185,7 +185,7 @@ struct AmpDefinitionTests {
     }
 
     @Test
-    func `sets providerId correctly`() async throws {
+    func `should tag the usage and every quota as Amp's`() async throws {
         // Given
         let text = Self.sampleOutput
 
@@ -200,7 +200,7 @@ struct AmpDefinitionTests {
     // MARK: - Error Handling Tests
 
     @Test
-    func `throws parseFailed on empty output`() async throws {
+    func `should fail when Amp prints nothing`() async throws {
         // Given
         let text = ""
 
@@ -211,7 +211,7 @@ struct AmpDefinitionTests {
     }
 
     @Test
-    func `throws parseFailed on garbage output`() async throws {
+    func `should fail when Amp prints something that is not its usage`() async throws {
         // Given
         let text = "some random text that is not amp usage output"
 
@@ -220,18 +220,18 @@ struct AmpDefinitionTests {
             try await parse(text)
         }
     }
-    @Test func `missing binary keeps the legacy error`() async throws {
+    @Test func `should be unavailable and say the CLI is not found when Amp is not installed`() async throws {
         let product = try make(Self.sampleOutput, located: false)
         let account = product.defaultAccount
         #expect(!(await product.isAvailable(account)))
         await #expect(throws: UsageError.cliNotFound("AmpCode")) { try await product.refresh(account) }
     }
-    @Test func `nonzero exit cannot become usage`() async throws {
+    @Test func `should fail when Amp exits with an error`() async throws {
         await #expect(throws: UsageError.executionFailed("`amp` exited with code 1")) {
             try await make(Self.sampleOutput, exitCode: 1).refreshPlain()
         }
     }
-    @Test func `added account cannot use a default CLI login without its own key`() async throws {
+    @Test func `should show an added account only by its own key, never the default CLI login`() async throws {
         let vault = MemoryVault()
         let provider = try make(Self.sampleOutput, vault: vault)
         let work = try provider.accounts.add(filling: ["apiKey": "work-key"])
@@ -242,7 +242,7 @@ struct AmpDefinitionTests {
         #expect(try await provider.refreshPlain().quotas.count == 2)
     }
 
-    @Test func `a failure while running is reported as it happened`() async throws {
+    @Test func `should report a failure while running as it happened`() async throws {
         await #expect(throws: UsageError.executionFailed("timeout")) {
             try await make(Self.sampleOutput, executionError: .executionFailed("timeout")).refreshPlain()
         }

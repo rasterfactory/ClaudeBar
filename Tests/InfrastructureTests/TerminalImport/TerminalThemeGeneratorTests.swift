@@ -33,52 +33,52 @@ struct TerminalThemeGeneratorTests {
         ]
     )
 
-    @Test func `generates theme properties from dark scheme`() {
+    @Test func `should turn a dark terminal scheme into a dark theme named after it`() {
         let props = TerminalThemeGenerator.generate(from: Self.darkScheme)
         #expect(props.id == "imported-dracula")
         #expect(props.displayName == "Dracula")
         #expect(props.isDark)
     }
 
-    @Test func `maps ANSI red to statusCritical`() {
+    @Test func `should colour critical quotas with the scheme's red`() {
         let props = TerminalThemeGenerator.generate(from: Self.darkScheme)
         #expect(abs(props.statusCritical.red - 1.0) < 0.001)
         #expect(abs(props.statusCritical.green - 0.333) < 0.001)
     }
 
-    @Test func `maps ANSI green to statusHealthy`() {
+    @Test func `should colour healthy quotas with the scheme's green`() {
         let props = TerminalThemeGenerator.generate(from: Self.darkScheme)
         #expect(abs(props.statusHealthy.red - 0.314) < 0.001)
         #expect(abs(props.statusHealthy.green - 0.980) < 0.001)
     }
 
-    @Test func `maps ANSI yellow to statusWarning`() {
+    @Test func `should colour warning quotas with the scheme's yellow`() {
         let props = TerminalThemeGenerator.generate(from: Self.darkScheme)
         #expect(abs(props.statusWarning.red - 0.945) < 0.001)
     }
 
-    @Test func `maps ANSI cyan to accentPrimary`() {
+    @Test func `should accent the theme with the scheme's cyan`() {
         let props = TerminalThemeGenerator.generate(from: Self.darkScheme)
         #expect(abs(props.accentPrimary.red - 0.545) < 0.001)
         #expect(abs(props.accentPrimary.green - 0.914) < 0.001)
     }
 
-    @Test func `maps foreground to textPrimary`() {
+    @Test func `should write text in the scheme's foreground colour`() {
         let props = TerminalThemeGenerator.generate(from: Self.darkScheme)
         #expect(abs(props.textPrimary.red - 0.973) < 0.001)
     }
 
-    @Test func `derives card background from background lightened`() {
+    @Test func `should give cards a lighter shade of the scheme's background`() {
         let props = TerminalThemeGenerator.generate(from: Self.darkScheme)
         #expect(props.cardBackground.luminance > Self.darkScheme.background.luminance)
     }
 
-    @Test func `uses selection for progressTrack when available`() {
+    @Test func `should draw progress tracks in the scheme's selection colour when it has one`() {
         let props = TerminalThemeGenerator.generate(from: Self.darkScheme)
         #expect(abs(props.progressTrack.red - 0.267) < 0.001)
     }
 
-    @Test func `handles scheme without optional colors`() {
+    @Test func `should still make a usable theme from a scheme without optional colours`() {
         let scheme = TerminalColorScheme(
             name: "Minimal",
             background: .init(red: 0.0, green: 0.0, blue: 0.0),

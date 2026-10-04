@@ -21,7 +21,7 @@ struct UserDefaultsCredentialRepositoryTests {
     // MARK: - Save Tests
 
     @Test
-    func `save stores value in UserDefaults`() {
+    func `should keep a saved credential`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -35,7 +35,7 @@ struct UserDefaultsCredentialRepositoryTests {
     }
 
     @Test
-    func `save overwrites existing value`() {
+    func `should replace a credential saved again`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -50,7 +50,7 @@ struct UserDefaultsCredentialRepositoryTests {
     }
 
     @Test
-    func `save handles empty string`() {
+    func `should keep a credential saved as empty text`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -66,7 +66,7 @@ struct UserDefaultsCredentialRepositoryTests {
     // MARK: - Get Tests
 
     @Test
-    func `get returns nil for non-existent key`() {
+    func `should have no credential that was never saved`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -79,7 +79,7 @@ struct UserDefaultsCredentialRepositoryTests {
     }
 
     @Test
-    func `get returns stored value`() {
+    func `should give back the credential that was saved`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -95,7 +95,7 @@ struct UserDefaultsCredentialRepositoryTests {
     // MARK: - Delete Tests
 
     @Test
-    func `delete removes stored value`() {
+    func `should forget a credential once it is removed`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -110,19 +110,21 @@ struct UserDefaultsCredentialRepositoryTests {
     }
 
     @Test
-    func `delete does not throw for non-existent key`() {
+    func `should quietly remove a credential that was never saved`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
 
         // When/Then - should not throw
         repository.delete(forKey: "non-existent-key")
+
+        #expect(repository.get(forKey: "non-existent-key") == nil)
     }
 
     // MARK: - Exists Tests
 
     @Test
-    func `exists returns false for non-existent key`() {
+    func `should not count a credential that was never saved as present`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -135,7 +137,7 @@ struct UserDefaultsCredentialRepositoryTests {
     }
 
     @Test
-    func `exists returns true for stored value`() {
+    func `should count a saved credential as present`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -149,7 +151,7 @@ struct UserDefaultsCredentialRepositoryTests {
     }
 
     @Test
-    func `exists returns false after delete`() {
+    func `should not count a removed credential as present`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -166,7 +168,7 @@ struct UserDefaultsCredentialRepositoryTests {
     // MARK: - Integration Tests
 
     @Test
-    func `full lifecycle: save, get, exists, delete`() {
+    func `should keep, replace and forget a credential over its whole life`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }
@@ -191,7 +193,7 @@ struct UserDefaultsCredentialRepositoryTests {
     }
 
     @Test
-    func `multiple keys are independent`() {
+    func `should keep each credential apart from the others`() {
         // Given
         let repository = makeRepository()
         defer { cleanupDefaults() }

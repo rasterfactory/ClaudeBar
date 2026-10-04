@@ -8,7 +8,7 @@ struct UsagePaceTests {
     // MARK: - Factory Method
 
     @Test
-    func `on pace when usage matches time elapsed within threshold`() {
+    func `should be on pace when usage is within 5 points of the time gone`() {
         // Given: 50% time elapsed, 52% used (within 5% threshold)
         let pace = UsagePace.from(percentUsed: 52, percentTimeElapsed: 50)
 
@@ -17,20 +17,20 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `on pace when usage exactly matches time elapsed`() {
+    func `should be on pace when usage equals the time gone`() {
         let pace = UsagePace.from(percentUsed: 50, percentTimeElapsed: 50)
         #expect(pace == .onPace)
     }
 
     @Test
-    func `on pace at threshold boundary`() {
+    func `should still be on pace when usage is exactly 5 points ahead of the time gone`() {
         // Exactly 5% difference should still be on pace
         let pace = UsagePace.from(percentUsed: 55, percentTimeElapsed: 50)
         #expect(pace == .onPace)
     }
 
     @Test
-    func `ahead when consuming faster than expected`() {
+    func `should run ahead when usage outpaces the time gone`() {
         // Given: 30% time elapsed, 50% used
         let pace = UsagePace.from(percentUsed: 50, percentTimeElapsed: 30)
 
@@ -39,7 +39,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `behind when consuming slower than expected`() {
+    func `should run behind when usage trails the time gone`() {
         // Given: 50% time elapsed, 30% used
         let pace = UsagePace.from(percentUsed: 30, percentTimeElapsed: 50)
 
@@ -48,28 +48,28 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `ahead just beyond threshold`() {
+    func `should run ahead when usage is just over 5 points ahead of the time gone`() {
         // 5.1% difference (just beyond 5% threshold)
         let pace = UsagePace.from(percentUsed: 55.1, percentTimeElapsed: 50)
         #expect(pace == .ahead)
     }
 
     @Test
-    func `behind just beyond threshold`() {
+    func `should run behind when usage is just over 5 points behind the time gone`() {
         // -5.1% difference (just beyond 5% threshold)
         let pace = UsagePace.from(percentUsed: 44.9, percentTimeElapsed: 50)
         #expect(pace == .behind)
     }
 
     @Test
-    func `ahead when fully used early in period`() {
+    func `should run ahead when the quota is used up early in the window`() {
         // Given: 10% time elapsed, 100% used
         let pace = UsagePace.from(percentUsed: 100, percentTimeElapsed: 10)
         #expect(pace == .ahead)
     }
 
     @Test
-    func `behind when nothing used late in period`() {
+    func `should run behind when nothing is used late in the window`() {
         // Given: 90% time elapsed, 0% used
         let pace = UsagePace.from(percentUsed: 0, percentTimeElapsed: 90)
         #expect(pace == .behind)
@@ -78,7 +78,7 @@ struct UsagePaceTests {
     // MARK: - Display Properties
 
     @Test
-    func `display names are correct`() {
+    func `should print the pace as On track, Running hot, Room to spare or Unknown`() {
         #expect(UsagePace.onPace.displayName == "On track")
         #expect(UsagePace.ahead.displayName == "Running hot")
         #expect(UsagePace.behind.displayName == "Room to spare")
@@ -86,7 +86,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `symbol names are valid SF Symbols`() {
+    func `should show an equals sign, a hare, a tortoise or a question mark for the pace`() {
         #expect(UsagePace.onPace.symbolName == "equal.circle.fill")
         #expect(UsagePace.ahead.symbolName == "hare.fill")
         #expect(UsagePace.behind.symbolName == "tortoise.fill")
@@ -96,7 +96,7 @@ struct UsagePaceTests {
     // MARK: - UsageQuota Pace Integration
 
     @Test
-    func `quota percentTimeElapsed is nil without resetsAt`() {
+    func `should know no time gone when the quota has no reset time`() {
         let quota = UsageQuota(
             percentRemaining: 50,
             quotaType: .session,
@@ -106,7 +106,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `quota percentTimeElapsed calculates correctly for session halfway through`() {
+    func `should count half the window gone when the session resets in two and a half hours`() {
         // Session = 5 hours. If resets in 2.5 hours, we're 50% through.
         let resetsAt = Date().addingTimeInterval(2.5 * 3600) // 2.5 hours from now
         let quota = UsageQuota(
@@ -122,7 +122,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `quota percentTimeElapsed is clamped to 0 when just reset`() {
+    func `should count no time gone when the session has just reset`() {
         // Reset time is the full duration away (just started)
         let resetsAt = Date().addingTimeInterval(5 * 3600) // 5 hours from now (full session)
         let quota = UsageQuota(
@@ -138,7 +138,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `quota percentTimeElapsed is clamped to 100 when past reset time`() {
+    func `should count the whole window gone when the reset time has passed`() {
         // Reset time is in the past (timeUntilReset will be 0)
         let resetsAt = Date().addingTimeInterval(-60) // 1 minute ago
         let quota = UsageQuota(
@@ -153,7 +153,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `quota pacePercent is nil without resetsAt`() {
+    func `should know no pace gap when the quota has no reset time`() {
         let quota = UsageQuota(
             percentRemaining: 50,
             quotaType: .session,
@@ -163,7 +163,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `quota pacePercent is positive when ahead`() {
+    func `should show a positive pace gap when usage runs ahead of the time gone`() {
         // 50% used, ~25% time elapsed → pacePercent ≈ +25
         let resetsAt = Date().addingTimeInterval(3.75 * 3600) // 75% remaining of 5h session
         let quota = UsageQuota(
@@ -179,7 +179,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `quota pacePercent is negative when behind`() {
+    func `should show a negative pace gap when usage trails the time gone`() {
         // 25% used, ~50% time elapsed → pacePercent ≈ -25
         let resetsAt = Date().addingTimeInterval(2.5 * 3600) // 50% remaining of 5h session
         let quota = UsageQuota(
@@ -195,7 +195,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `quota pace is unknown without resetsAt`() {
+    func `should show an unknown pace when the quota has no reset time`() {
         let quota = UsageQuota(
             percentRemaining: 50,
             quotaType: .session,
@@ -205,7 +205,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `quota pace is ahead when consuming fast`() {
+    func `should show the quota running ahead when it is used fast`() {
         // 70% used, ~25% time elapsed
         let resetsAt = Date().addingTimeInterval(3.75 * 3600)
         let quota = UsageQuota(
@@ -219,7 +219,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `quota pace is behind when consuming slow`() {
+    func `should show the quota running behind when it is used slowly`() {
         // 10% used, ~75% time elapsed
         let resetsAt = Date().addingTimeInterval(1.25 * 3600)
         let quota = UsageQuota(
@@ -235,7 +235,7 @@ struct UsagePaceTests {
     // MARK: - Display Percent in Pace Mode
 
     @Test
-    func `displayPercent in pace mode returns percentRemaining`() {
+    func `should show the percent left when the person picks pace mode`() {
         let resetsAt = Date().addingTimeInterval(3.75 * 3600)
         let quota = UsageQuota(
             percentRemaining: 30,
@@ -249,7 +249,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `displayPercent in pace mode returns percentRemaining when no resetsAt`() {
+    func `should show the percent left in pace mode when the quota has no reset time`() {
         let quota = UsageQuota(
             percentRemaining: 50,
             quotaType: .session,
@@ -259,7 +259,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `displayProgressPercent in pace mode returns percentRemaining`() {
+    func `should fill the progress bar with the percent left in pace mode`() {
         let quota = UsageQuota(
             percentRemaining: 30,
             quotaType: .session,
@@ -271,7 +271,7 @@ struct UsagePaceTests {
     // MARK: - Weekly Quota Pace
 
     @Test
-    func `weekly quota percentTimeElapsed calculates correctly`() {
+    func `should count half the week gone when the weekly quota resets in three and a half days`() {
         // Weekly = 7 days. If resets in 3.5 days, we're 50% through.
         let resetsAt = Date().addingTimeInterval(3.5 * 24 * 3600)
         let quota = UsageQuota(
@@ -289,7 +289,7 @@ struct UsagePaceTests {
     // MARK: - Pace Insight
 
     @Test
-    func `paceInsight returns nil without resetsAt`() {
+    func `should give no pace insight when the quota has no reset time`() {
         let quota = UsageQuota(
             percentRemaining: 50,
             quotaType: .session,
@@ -299,7 +299,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `paceInsight returns below expected when behind`() {
+    func `should say usage is below expected when it trails the time gone`() {
         // 10% used, ~75% time elapsed → behind, pacePercent ≈ -65
         let resetsAt = Date().addingTimeInterval(1.25 * 3600)
         let quota = UsageQuota(
@@ -314,7 +314,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `paceInsight returns above expected when ahead`() {
+    func `should say usage is above expected when it runs ahead of the time gone`() {
         // 70% used, ~25% time elapsed → ahead, pacePercent ≈ +45
         let resetsAt = Date().addingTimeInterval(3.75 * 3600)
         let quota = UsageQuota(
@@ -329,7 +329,7 @@ struct UsagePaceTests {
     }
 
     @Test
-    func `paceInsight returns right on track when on pace`() {
+    func `should say Right on track when usage matches the time gone`() {
         // 50% used, ~50% time elapsed → on pace
         let resetsAt = Date().addingTimeInterval(2.5 * 3600)
         let quota = UsageQuota(

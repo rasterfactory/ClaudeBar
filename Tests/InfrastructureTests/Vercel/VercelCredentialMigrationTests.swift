@@ -18,7 +18,7 @@ struct VercelCredentialMigrationTests {
     }
 
     @Test
-    func `the old Keychain item moves to the default login and an added login never inherits it`() {
+    func `should move the old Vercel Keychain key to the default login, never to an added one`() {
         let (defaults, credentials, cleanUp) = stores()
         defer { cleanUp() }
         credentials.save("old-secure", forKey: CredentialKey.vercelApiKey)
@@ -33,7 +33,7 @@ struct VercelCredentialMigrationTests {
     }
 
     @Test
-    func `a key from before the Keychain moves too`() {
+    func `should move a Vercel key saved before the Keychain into the default login too`() {
         let (defaults, credentials, cleanUp) = stores()
         defer { cleanUp() }
         defaults.set("older", forKey: "com.claudebar.credentials.vercel-api-key")

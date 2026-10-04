@@ -88,7 +88,7 @@ struct ZaiDefinitionTests {
     // MARK: - Quota Limit Parsing Tests
 
     @Test
-    func `parses quota limits into UsageQuota`() throws {
+    func `should show a quota for each limit Z.ai reports`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
@@ -100,7 +100,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `maps percentage used to percentRemaining`() throws {
+    func `should show 35% of the session left when Z.ai reports 65% of tokens used`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
@@ -114,7 +114,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `creates session quota type for TOKENS_LIMIT`() throws {
+    func `should show the token limit as the session`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
@@ -127,7 +127,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `creates MCP quota type for TIME_LIMIT`() throws {
+    func `should show the time limit as the MCP quota, with 70% left when 30% is used`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
@@ -141,7 +141,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `handles only TOKENS_LIMIT present`() throws {
+    func `should show only the session when Z.ai reports only a token limit`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponseOnlyTokens.utf8)
 
@@ -155,7 +155,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `sets providerId correctly`() throws {
+    func `should report every quota as Z.ai's`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponse.utf8)
 
@@ -168,7 +168,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `treats 100% used as 0% remaining`() throws {
+    func `should show nothing left when Z.ai reports 100% used`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponseFullUsage.utf8)
 
@@ -180,7 +180,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `treats 0% used as 100% remaining`() throws {
+    func `should show everything left when Z.ai reports 0% used`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponseNoUsage.utf8)
 
@@ -194,7 +194,7 @@ struct ZaiDefinitionTests {
     // MARK: - Error Handling Tests
 
     @Test
-    func `throws parseFailed for invalid JSON`() throws {
+    func `should fail to read usage when Z.ai answers with something that is not JSON`() throws {
         // Given
         let invalidData = Data("not json".utf8)
 
@@ -205,7 +205,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `throws parseFailed when no limits found`() throws {
+    func `should fail to read usage when Z.ai reports no limits`() throws {
         // Given
         let data = Data(Self.sampleQuotaLimitResponseEmpty.utf8)
 
@@ -216,7 +216,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `handles missing data field gracefully`() throws {
+    func `should fail to read usage when Z.ai answers with an error instead of usage`() throws {
         // Given
         let responseWithoutData = """
         {
@@ -257,7 +257,7 @@ struct ZaiDefinitionTests {
     """
 
     @Test
-    func `parses real z.ai response with all three quota tiers (session/weekly/MCP)`() throws {
+    func `should show the session, the weekly quota and MCP when Z.ai reports all three`() throws {
         let data = Data(Self.sampleQuotaLimitResponseRealZai.utf8)
         let snapshot = try read(data, providerId: "zai")
 
@@ -268,7 +268,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `maps TOKENS_LIMIT unit=3 to session`() throws {
+    func `should show a 5-hour token limit as the session (unit 3)`() throws {
         let json = """
         { "data": { "limits": [
           { "type": "TOKENS_LIMIT", "unit": 3, "percentage": 13 }
@@ -281,7 +281,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `maps TOKENS_LIMIT unit=6 to weekly`() throws {
+    func `should show a 7-day token limit as the weekly quota (unit 6)`() throws {
         let json = """
         { "data": { "limits": [
           { "type": "TOKENS_LIMIT", "unit": 6, "percentage": 46 }
@@ -294,7 +294,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `does not collapse session and weekly into same quota`() throws {
+    func `should show the session and the weekly quota apart when Z.ai reports two token limits`() throws {
         // Regression test: prior implementation mapped both TOKENS_LIMIT entries
         // to .session, so the second one (weekly) was effectively hidden.
         let data = Data(Self.sampleQuotaLimitResponseRealZai.utf8)
@@ -308,7 +308,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `legacy TOKENS_LIMIT response without unit still maps to session (backward-compat)`() throws {
+    func `should show a token limit with no window as the session`() throws {
         // Existing tests use payloads without `unit` — preserve original behavior.
         let json = """
         { "data": { "limits": [
@@ -320,7 +320,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `unknown TOKENS_LIMIT unit is preserved via modelSpecific (no silent drop)`() throws {
+    func `should still show a token limit whose window is unknown, named by its unit`() throws {
         let json = """
         { "data": { "limits": [
           { "type": "TOKENS_LIMIT", "unit": 99, "percentage": 25 }
@@ -336,7 +336,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `clamps percentage to valid range`() throws {
+    func `should show all left for a negative usage and none left past 100% when Z.ai reports an out-of-range percentage`() throws {
         // Given - edge case where percentage might be negative or > 100
         let responseWithInvalidPercentage = """
         {
@@ -361,8 +361,8 @@ struct ZaiDefinitionTests {
 
         // Then - should clamp to 0-100 range
         #expect(snapshot.quotas.count == 2)
-        #expect(snapshot.quotas[0].percentRemaining >= 0 && snapshot.quotas[0].percentRemaining <= 100)
-        #expect(snapshot.quotas[1].percentRemaining >= 0 && snapshot.quotas[1].percentRemaining <= 100)
+        #expect(snapshot.quotas[0].percentRemaining == 100)
+        #expect(snapshot.quotas[1].percentRemaining == 0)
     }
 
     // MARK: - CREDIT_LIMIT Tests
@@ -389,7 +389,7 @@ struct ZaiDefinitionTests {
     """
 
     @Test
-    func `parses credit-based plan response instead of failing`() throws {
+    func `should show the session and the weekly quota when the plan counts credits`() throws {
         let data = Data(Self.sampleQuotaLimitResponseCreditPlan.utf8)
         let snapshot = try read(data, providerId: "zai")
 
@@ -399,7 +399,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `maps CREDIT_LIMIT unit=3 to session`() throws {
+    func `should show a 5-hour credit limit as the session (unit 3)`() throws {
         let json = """
         { "data": { "limits": [
           { "type": "CREDIT_LIMIT", "unit": 3, "percentage": 13 }
@@ -412,7 +412,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `maps CREDIT_LIMIT unit=6 to weekly`() throws {
+    func `should show a 7-day credit limit as the weekly quota (unit 6)`() throws {
         let json = """
         { "data": { "limits": [
           { "type": "CREDIT_LIMIT", "unit": 6, "percentage": 20 }
@@ -425,7 +425,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `preserves CREDIT_LIMIT with unknown unit rather than dropping it`() throws {
+    func `should still show a credit limit whose window is unknown, named by its unit`() throws {
         let json = """
         { "data": { "limits": [
           { "type": "CREDIT_LIMIT", "unit": 99, "percentage": 5 }
@@ -437,7 +437,7 @@ struct ZaiDefinitionTests {
     }
 
     @Test
-    func `handles mixed TOKENS_LIMIT and CREDIT_LIMIT entries`() throws {
+    func `should show the session, the weekly quota and MCP when Z.ai mixes token and credit limits`() throws {
         let json = """
         { "data": { "limits": [
           { "type": "TOKENS_LIMIT", "unit": 3, "percentage": 13 },

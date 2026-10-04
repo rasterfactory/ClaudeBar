@@ -38,7 +38,7 @@ struct SettingAndFileTests {
     """
 
     @Test
-    func `a key saved in ClaudeBar is sent as the definition says`() async throws {
+    func `should send the key the person saved in ClaudeBar as the definition says`() async throws {
         let network = MockNetworkClient()
         given(network).request(.matching { @Sendable in $0.value(forHTTPHeaderField: "Authorization") == "Bearer sk-or-1" })
             .willReturn((Data("{}".utf8), HTTPURLResponse(url: URL(string: "https://openrouter.ai")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
@@ -49,7 +49,7 @@ struct SettingAndFileTests {
     }
 
     @Test
-    func `no saved key is the lookup step`() async throws {
+    func `should ask for a key at the lookup step when none is saved`() async throws {
         let source = make(try source(Self.api))
 
         await #expect(throws: DataSourceError(.lookup, .authenticationRequired)) { try await source.fetchResponse() }
@@ -57,12 +57,12 @@ struct SettingAndFileTests {
     }
 
     @Test
-    func `a saved key reads as ClaudeBar's, never its value`() throws {
+    func `should name where the key is kept, never its value, when it is saved in ClaudeBar`() throws {
         #expect(try source(Self.api).credential?.lookupOrder == ["API key saved in ClaudeBar"])
     }
 
     @Test
-    func `a file answers with what it holds`() async throws {
+    func `should show what a usage file holds`() async throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent("file-fetch-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: home) }
@@ -77,7 +77,7 @@ struct SettingAndFileTests {
     }
 
     @Test
-    func `a missing file is the fetch step`() async throws {
+    func `should not be ready and fail at the fetch step when the usage file is missing`() async throws {
         let source = make(try source("""
         { "kind": "file", "fetch": { "file": { "path": "/nonexistent/usage.json" } }, "mapping": { "json": { "quotas": [] } } }
         """))

@@ -8,27 +8,27 @@ struct ShellTests {
     // MARK: - Detection Tests
 
     @Test
-    func `detects nushell from path`() {
+    func `should recognise nushell from its path`() {
         #expect(Shell.detect(from: "/opt/homebrew/bin/nu") == .nushell)
         #expect(Shell.detect(from: "/usr/local/bin/nushell") == .nushell)
         #expect(Shell.detect(from: "/home/user/.nix-profile/bin/nu") == .nushell)
     }
 
     @Test
-    func `detects nushell case insensitively`() {
+    func `should recognise nushell whatever the case of its name`() {
         #expect(Shell.detect(from: "/bin/Nu") == .nushell)
         #expect(Shell.detect(from: "/bin/NUSHELL") == .nushell)
     }
 
     @Test
-    func `detects fish from path`() {
+    func `should recognise fish from its path`() {
         #expect(Shell.detect(from: "/opt/homebrew/bin/fish") == .fish)
         #expect(Shell.detect(from: "/usr/local/bin/fish") == .fish)
         #expect(Shell.detect(from: "/usr/bin/fish") == .fish)
     }
 
     @Test
-    func `detects posix shells`() {
+    func `should treat zsh, bash and sh as POSIX shells`() {
         #expect(Shell.detect(from: "/bin/zsh") == .posix)
         #expect(Shell.detect(from: "/bin/bash") == .posix)
         #expect(Shell.detect(from: "/bin/sh") == .posix)
@@ -37,7 +37,7 @@ struct ShellTests {
     }
 
     @Test
-    func `defaults to posix for unknown shells`() {
+    func `should treat a shell it does not know as POSIX`() {
         #expect(Shell.detect(from: "/some/unknown/shell") == .posix)
         #expect(Shell.detect(from: "/bin/ksh") == .posix)
         #expect(Shell.detect(from: "/bin/dash") == .posix)
@@ -46,31 +46,31 @@ struct ShellTests {
     // MARK: - Command Generation Tests
 
     @Test
-    func `posix which command format`() {
+    func `should ask a POSIX login shell where a CLI lives with which`() {
         let args = Shell.posix.whichArguments(for: "claude")
         #expect(args == ["-l", "-c", "which claude"])
     }
 
     @Test
-    func `fish which command format`() {
+    func `should ask fish where a CLI lives with which`() {
         let args = Shell.fish.whichArguments(for: "codex")
         #expect(args == ["-l", "-c", "which codex"])
     }
 
     @Test
-    func `nushell which command uses external which`() {
+    func `should ask nushell where a CLI lives with the external which`() {
         let args = Shell.nushell.whichArguments(for: "claude")
         #expect(args == ["-l", "-c", "^which claude"])
     }
 
     @Test
-    func `which command allows dots and hyphens in tool names`() {
+    func `should look up a CLI whose name has dots and hyphens`() {
         let args = Shell.posix.whichArguments(for: "my-tool.sh")
         #expect(args == ["-l", "-c", "which my-tool.sh"])
     }
 
     @Test
-    func `which command rejects shell metacharacters`() {
+    func `should look up nothing when a CLI name holds shell metacharacters`() {
         let args1 = Shell.posix.whichArguments(for: "claude; rm -rf /")
         #expect(args1 == ["-l", "-c", "which ''"])
 
@@ -91,19 +91,19 @@ struct ShellTests {
     }
 
     @Test
-    func `posix path command format`() {
+    func `should ask a POSIX login shell for its PATH`() {
         let args = Shell.posix.pathArguments()
         #expect(args == ["-l", "-c", "echo $PATH"])
     }
 
     @Test
-    func `fish path command format`() {
+    func `should ask fish for its PATH`() {
         let args = Shell.fish.pathArguments()
         #expect(args == ["-l", "-c", "echo $PATH"])
     }
 
     @Test
-    func `nushell path command joins with colon`() {
+    func `should ask nushell for its PATH joined with colons`() {
         let args = Shell.nushell.pathArguments()
         #expect(args == ["-l", "-c", "$env.PATH | str join ':'"])
     }
@@ -111,37 +111,37 @@ struct ShellTests {
     // MARK: - Output Parsing Tests
 
     @Test
-    func `posix parses simple path output`() {
+    func `should find the CLI where a POSIX shell says it lives`() {
         let output = "/usr/local/bin/claude\n"
         #expect(Shell.posix.parseWhichOutput(output) == "/usr/local/bin/claude")
     }
 
     @Test
-    func `posix parses path with spaces`() {
+    func `should find the CLI when a POSIX shell pads its path with whitespace`() {
         let output = "  /usr/local/bin/claude  \n"
         #expect(Shell.posix.parseWhichOutput(output) == "/usr/local/bin/claude")
     }
 
     @Test
-    func `posix returns nil for empty output`() {
+    func `should find no CLI when a POSIX shell prints nothing`() {
         #expect(Shell.posix.parseWhichOutput("") == nil)
         #expect(Shell.posix.parseWhichOutput("   \n") == nil)
     }
 
     @Test
-    func `fish parses simple path output`() {
+    func `should find the CLI where fish says it lives`() {
         let output = "/opt/homebrew/bin/gemini\n"
         #expect(Shell.fish.parseWhichOutput(output) == "/opt/homebrew/bin/gemini")
     }
 
     @Test
-    func `nushell parses clean path output`() {
+    func `should find the CLI where nushell says it lives`() {
         let output = "/Users/user/.local/bin/claude\n"
         #expect(Shell.nushell.parseWhichOutput(output) == "/Users/user/.local/bin/claude")
     }
 
     @Test
-    func `nushell rejects table output as safety fallback`() {
+    func `should find no CLI when nushell prints a table instead of a path`() {
         let tableOutput = """
         ╭───┬─────────┬─────────────────────────────────────────────────────┬──────────╮
         │ # │ command │                        path                         │   type   │
@@ -153,14 +153,14 @@ struct ShellTests {
     }
 
     @Test
-    func `nushell rejects partial table output`() {
+    func `should find no CLI when nushell prints part of a table`() {
         #expect(Shell.nushell.parseWhichOutput("│ some output") == nil)
         #expect(Shell.nushell.parseWhichOutput("╭───") == nil)
         #expect(Shell.nushell.parseWhichOutput("╰───╯") == nil)
     }
 
     @Test
-    func `nushell rejects all table box-drawing characters`() {
+    func `should find no CLI when the answer holds any table box-drawing character`() {
         #expect(Shell.nushell.parseWhichOutput("╮───") == nil)
         #expect(Shell.nushell.parseWhichOutput("╯───") == nil)
         #expect(Shell.nushell.parseWhichOutput("path─with─box") == nil)
@@ -172,7 +172,7 @@ struct ShellTests {
     }
 
     @Test
-    func `path output parsing trims whitespace`() {
+    func `should read the login shell's PATH without the whitespace around it`() {
         let output = "  /usr/bin:/bin:/usr/local/bin  \n"
         #expect(Shell.posix.parsePathOutput(output) == "/usr/bin:/bin:/usr/local/bin")
         #expect(Shell.nushell.parsePathOutput(output) == "/usr/bin:/bin:/usr/local/bin")
@@ -181,7 +181,7 @@ struct ShellTests {
     // MARK: - Shell.current Tests
 
     @Test
-    func `current returns shell based on SHELL environment variable`() {
+    func `should use the shell the SHELL environment variable names`() {
         let current = Shell.current
         let shellPath = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         let expected = Shell.detect(from: shellPath)

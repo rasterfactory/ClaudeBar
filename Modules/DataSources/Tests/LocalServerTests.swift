@@ -39,7 +39,7 @@ struct LocalServerTests {
         return try await LocalServerFetcher(call: call, commands: commands, network: network, processPaths: { [] }).fetch(with: nil)
     }
 
-    @Test func `the running app is asked on each listening port until one answers`() async throws {
+    @Test func `should ask the running app on each port it listens on, with the token it was started with, until one answers`() async throws {
         let seen = Seen()
         let response = try await fetch(pgrep: "42 /opt/acme/acme_server --app acme --csrf tok-1 --http_port 8080", seen: seen)
         #expect(response.status == 200)
@@ -49,36 +49,36 @@ struct LocalServerTests {
         #expect(seen.commands.last == ["/usr/sbin/lsof", "-nP", "-iTCP", "-sTCP:LISTEN", "-a", "-p", "42"])
     }
 
-    @Test func `the plain HTTP port it was started with is asked last`() async throws {
+    @Test func `should ask the plain HTTP port the app was started with last`() async throws {
         let seen = Seen()
         _ = try await fetch(pgrep: "42 /opt/acme/acme_server --app acme --csrf tok-1 --http_port 8080",
                             answering: ["http://127.0.0.1:8080/usage"], seen: seen)
         #expect(seen.urls.last == "http://127.0.0.1:8080/usage")
     }
 
-    @Test func `another app's process with the same name is not it`() async throws {
+    @Test func `should treat the app as not running when only another app's process shares its name`() async throws {
         await #expect(throws: CLIMissingError.self) {
             try await fetch(pgrep: "77 /Applications/Other.app/acme_server --csrf x")
         }
     }
 
-    @Test func `no process at all is the app not running`() async throws {
+    @Test func `should treat the app as not running when no process is found`() async throws {
         await #expect(throws: CLIMissingError.self) { try await fetch(pgrep: "") }
     }
 
-    @Test func `running without its token needs signing in`() async throws {
+    @Test func `should ask to sign in when the app runs without its token`() async throws {
         await #expect(throws: UsageError.authenticationRequired) {
             try await fetch(pgrep: "42 /opt/acme/acme_server --app acme")
         }
     }
 
-    @Test func `no port answering is a failure, not a guess`() async throws {
+    @Test func `should say it couldn't connect to the app when no port answers`() async throws {
         await #expect(throws: UsageError.executionFailed("Could not connect to Acme")) {
             try await fetch(pgrep: "42 /opt/acme/acme_server --app acme --csrf t", answering: [])
         }
     }
 
-    @Test func `readiness reads running executables without starting a process`() throws {
+    @Test func `should be ready only while the app itself is running, without starting a process to check`() throws {
         let call = try JSONDecoder().decode(LocalServerCall.self, from: Data(#"{"app":"Acme","process":{"names":["acme_server"],"match":["/acme/"]},"paths":["/u"]}"#.utf8))
         let running = LocalServerFetcher(call: call, commands: MockCLIExecutor(), network: MockNetworkClient(), processPaths: { ["/opt/acme/acme_server"] })
         let other = LocalServerFetcher(call: call, commands: MockCLIExecutor(), network: MockNetworkClient(), processPaths: { ["/Applications/Other.app/acme_server"] })
@@ -86,7 +86,7 @@ struct LocalServerTests {
         #expect(!other.isReady())
     }
 
-    @Test func `it round-trips, and Import lists what it runs and where it asks`() throws {
+    @Test func `should list what it runs and where it asks for Import, and keep the definition when written out and read back`() throws {
         let call = try JSONDecoder().decode(LocalServerCall.self, from: Data(callJSON.utf8))
         #expect(try JSONDecoder().decode(LocalServerCall.self, from: JSONEncoder().encode(call)) == call)
         let fetch = Fetch.localServer(call)
@@ -97,12 +97,12 @@ struct LocalServerTests {
 }
 
 @Suite struct LoopbackRedirectTests {
-    @Test func `a loopback client rejects remote requests before opening a connection`() async {
+    @Test func `should reject a remote request before opening a connection`() async {
         await #expect(throws: URLError.self) {
             try await InsecureLocalhostNetworkClient().request(URLRequest(url: URL(string: "https://example.invalid/usage")!))
         }
     }
-    @Test func `redirects within the local server keep working`() {
+    @Test func `should follow redirects within the same local server`() {
         let delegate: any URLSessionTaskDelegate = InsecureLocalhostDelegate()
         let session = URLSession(configuration: .ephemeral)
         defer { session.invalidateAndCancel() }
@@ -117,7 +117,7 @@ struct LocalServerTests {
     }
 
     @Test(arguments: ["https://example.com/status", "https://127.0.0.1:8888/status"])
-    func `local server redirects cannot send its credential to another origin`(_ destination: String) throws {
+    func `should refuse local server redirects to another origin`(_ destination: String) throws {
         let delegate: any URLSessionTaskDelegate = InsecureLocalhostDelegate()
         let session = URLSession(configuration: .ephemeral)
         defer { session.invalidateAndCancel() }

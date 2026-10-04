@@ -40,28 +40,28 @@ struct OAuth2RefresherTests {
     // MARK: - isDue
 
     @Test
-    func `an expired token is due`() {
+    func `should renew a login whose token has expired`() {
         #expect(refresher().isDue(credential(expiresIn: -3600)) == true)
     }
 
     @Test
-    func `a token expiring within the skew is due`() {
+    func `should renew a login whose token expires within five minutes`() {
         // 4 minutes left, less than the 5 minute skew
         #expect(refresher().isDue(credential(expiresIn: 4 * 60)) == true)
     }
 
     @Test
-    func `a token with more than the skew left is not due`() {
+    func `should not renew a login whose token has more than five minutes left`() {
         #expect(refresher().isDue(credential(expiresIn: 3600)) == false)
     }
 
     @Test
-    func `a token with no expiry is due`() {
+    func `should renew a login whose token has no expiry`() {
         #expect(refresher().isDue(credential(expiresIn: nil)) == true)
     }
 
     @Test
-    func `a token with no refresh token is never due`() {
+    func `should never renew a long-lived token that has no refresh token`() {
         // A long-lived setup token: no expiry and nothing to trade.
         #expect(refresher().isDue(credential(expiresIn: nil, refreshToken: nil)) == false)
         #expect(refresher().isDue(credential(expiresIn: -3600, refreshToken: nil)) == false)
@@ -70,7 +70,7 @@ struct OAuth2RefresherTests {
     // MARK: - refresh
 
     @Test
-    func `a json refresh sends the grant, client id and scope`() async throws {
+    func `should renew a login by posting its refresh token, client and scope as JSON`() async throws {
         let sent = SentRequest()
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
@@ -94,7 +94,7 @@ struct OAuth2RefresherTests {
     }
 
     @Test
-    func `a form refresh sends an encoded form body`() async throws {
+    func `should renew a login by posting its refresh token, client and scope as a form when the server wants one`() async throws {
         let sent = SentRequest()
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
@@ -111,7 +111,7 @@ struct OAuth2RefresherTests {
     }
 
     @Test
-    func `a refresh stores the new tokens and expires_in as milliseconds`() async throws {
+    func `should keep the renewed tokens and their new expiry, so the login isn't renewed again at once`() async throws {
         let network = MockNetworkClient()
         given(network).request(.any).willReturn((
             Data(#"{"access_token":"token-2","refresh_token":"refresh-2","expires_in":3600}"#.utf8),
@@ -128,7 +128,7 @@ struct OAuth2RefresherTests {
     }
 
     @Test
-    func `a refresh without a new refresh token keeps the old one`() async throws {
+    func `should keep the old refresh token when the renewal gives no new one`() async throws {
         let network = MockNetworkClient()
         given(network).request(.any).willReturn((Data(#"{"access_token":"token-2"}"#.utf8), Self.response(200)))
 
@@ -138,7 +138,7 @@ struct OAuth2RefresherTests {
     }
 
     @Test
-    func `a refused refresh means the session expired`() async throws {
+    func `should say the session expired, with the hint, when the renewal is refused`() async throws {
         let network = MockNetworkClient()
         given(network).request(.any).willReturn((
             Data(#"{ "error": "invalid_grant", "error_description": "Refresh token has been revoked" }"#.utf8),
@@ -151,7 +151,7 @@ struct OAuth2RefresherTests {
     }
 
     @Test
-    func `a refresh answered with another error status fails to execute`() async throws {
+    func `should say the renewal failed, naming the HTTP status, when the server errors`() async throws {
         let network = MockNetworkClient()
         given(network).request(.any).willReturn((Data(), Self.response(503)))
 
@@ -161,7 +161,7 @@ struct OAuth2RefresherTests {
     }
 
     @Test
-    func `a refresh with no refresh token needs authentication`() async throws {
+    func `should ask to sign in when a renewal is needed but the login has no refresh token`() async throws {
         await #expect(throws: UsageError.authenticationRequired) {
             try await refresher().refresh(credential(expiresIn: nil, refreshToken: nil))
         }
@@ -181,7 +181,7 @@ struct OAuth2RefresherTests {
     }
 
     @Test
-    func `an ISO 8601 expiry is due within the skew, and a missing one need not be`() {
+    func `should renew within five minutes of a written-out expiry, and without one only when the definition says so`() {
         let expired = Credential(["token": "t", "refreshToken": "r", "expiresAt": "2023-11-14T22:13:00.123456Z"])
         let later = Credential(["token": "t", "refreshToken": "r", "expiresAt": "2023-11-15T22:13:20Z"])
         let none = Credential(["token": "t", "refreshToken": "r"])
@@ -192,7 +192,7 @@ struct OAuth2RefresherTests {
     }
 
     @Test
-    func `the token endpoint and client come from the credential, with no doubled slash`() async throws {
+    func `should renew at the address the login names, keeping the saved refresh token when the server sends an empty one`() async throws {
         let network = MockNetworkClient()
         let seen = RequestBox()
         given(network).request(.any).willProduce { request in
@@ -211,7 +211,7 @@ struct OAuth2RefresherTests {
     }
 
     @Test
-    func `with no refresh token there is nothing to trade, so the key is needed`() async {
+    func `should ask to sign in when a login whose renewal address it names has no refresh token`() async {
         await #expect(throws: UsageError.authenticationRequired) {
             try await issuerRefresher(network: MockNetworkClient()).refresh(Credential(["token": "old", "issuer": "https://x.test"]))
         }

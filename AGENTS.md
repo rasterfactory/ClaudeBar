@@ -72,6 +72,7 @@ UI changes come with a mockup in `design-concept/<feature>/` first, and, once bu
 - An empty `pgrep` result surfaces as a runner timeout, not "not found" → [providers/antigravity/design.md](docs/providers/antigravity/design.md)
 - A key exported only in the user's shell profile is invisible when the app starts from Finder or at login → provider Gotchas
 - Local builds are ad-hoc signed and the Keychain can refuse them; code that stores secrets needs a fallback (Notify! has one, Vercel doesn't) → [docs/settings.md](docs/settings.md), [providers/vercel-gateway](docs/providers/vercel-gateway/README.md)
+- AppTests run inside the ClaudeBar app; launched that way it starts nothing (`LaunchMode.testHost` → an empty `TestHostApp`), so tests never ask for the Keychain or read real usage. Keep new startup work in `ClaudeBarApp.init()`, never in `ClaudeBarMain`
 - `docs/appcast.xml` is Sparkle's live update feed URL. Never move or hand-edit it
 
 ## Changes that touch docs

@@ -58,12 +58,12 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `parses provider id`() async throws {
+    func `should file the usage under Command Code`() async throws {
         #expect(try await parse(Self.sampleResponse).providerId == "commandcode")
     }
 
     @Test
-    func `maps five hour window to session quota`() async throws {
+    func `should show the five-hour window as the session, with its reset`() async throws {
         let session = try #require(try await parse(Self.sampleResponse).quota(for: .session))
 
         #expect(session.percentRemaining == 75)
@@ -72,7 +72,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `maps weekly window to weekly quota`() async throws {
+    func `should show the weekly window with its reset`() async throws {
         let weekly = try #require(try await parse(Self.sampleResponse).quota(for: .weekly))
 
         #expect(weekly.percentRemaining == 75)
@@ -81,7 +81,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `maps plan allowance to a credits meter`() async throws {
+    func `should show the plan's credits left in dollars out of its allowance`() async throws {
         let credits = try #require(try await parse(Self.sampleResponse).quota(for: .timeLimit("Credits")))
 
         #expect(credits.left == .money(Money(Decimal(string: "8.5")!, currency: "USD"), of: Money(10, currency: "USD")))
@@ -92,14 +92,14 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `passes account email through`() async throws {
+    func `should show the account's user name`() async throws {
         let snapshot = try await parse(Self.sampleResponse, accountEmail: "alice@example.com")
 
         #expect(snapshot.accountEmail == "alice@example.com")
     }
 
     @Test
-    func `unwraps a data envelope`() async throws {
+    func `should show the usage when Command Code wraps it in a data envelope`() async throws {
         let json = """
         { "data": \(Self.sampleResponse) }
         """
@@ -111,17 +111,17 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `returns empty snapshot for empty object`() async throws {
+    func `should show no quotas when Command Code reports nothing`() async throws {
         #expect(try await parse("{}").quotas.isEmpty)
     }
 
     @Test
-    func `throws parseFailed on invalid JSON`() async {
+    func `should fail when Command Code answers with something that isn't JSON`() async {
         await #expect(throws: UsageError.self) { try await parse("not json") }
     }
 
     @Test
-    func `skips a window with zero cap`() async throws {
+    func `should show no window whose cap is zero`() async throws {
         let json = """
         {
           "windowLimits": {
@@ -138,7 +138,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `treats missing used as zero`() async throws {
+    func `should show a window full when Command Code omits how much is used`() async throws {
         let json = """
         { "windowLimits": { "fiveHour": { "cap": 40, "resetAt": 1770000000000 } } }
         """
@@ -147,7 +147,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `parses ISO-8601 reset timestamp`() async throws {
+    func `should know the reset when it is a date string`() async throws {
         let json = """
         { "windowLimits": { "fiveHour": { "used": 10, "cap": 40, "resetAt": "2026-09-11T12:00:00Z" } } }
         """
@@ -158,7 +158,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `parses epoch-second reset timestamp`() async throws {
+    func `should know the reset when it is in seconds`() async throws {
         let json = """
         { "windowLimits": { "fiveHour": { "used": 10, "cap": 40, "resetAt": 1770000000 } } }
         """
@@ -169,7 +169,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `prefers the longest matching plan id`() async throws {
+    func `should size the credits by the most specific plan name`() async throws {
         // individual-pro-v1 ($80) must not match individual-pro ($30)
         let json = """
         { "credits": { "monthlyCredits": 80, "purchasedCredits": 0, "freeCredits": 0, "planId": "individual-pro-v1" } }
@@ -182,7 +182,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `normalizes underscores and case in plan id`() async throws {
+    func `should recognise a plan whatever its case or underscores`() async throws {
         let json = """
         { "credits": { "monthlyCredits": 4, "purchasedCredits": 0, "freeCredits": 0, "planId": "Teams_Pro" } }
         """
@@ -194,7 +194,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `adds purchased and free credits to the allowance`() async throws {
+    func `should add purchased and free credits to the plan's allowance`() async throws {
         let json = """
         {
           "credits": {
@@ -210,7 +210,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `shows a balance-only meter for an unknown plan with no windows`() async throws {
+    func `should show only the dollars left, with no percentage, for an unknown plan with no windows`() async throws {
         let json = """
         { "credits": { "monthlyCredits": 12.5, "purchasedCredits": 0, "freeCredits": 0, "planId": "mystery-tier" } }
         """
@@ -225,7 +225,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `skips a balance-only meter when windows already report usage`() async throws {
+    func `should show no balance meter when windows already report usage`() async throws {
         let json = """
         {
           "credits": { "monthlyCredits": 12.5, "planId": "mystery-tier" },
@@ -240,7 +240,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `reports zero remaining when the plan allowance is exhausted`() async throws {
+    func `should show no credits left when the plan's allowance is spent`() async throws {
         let json = """
         { "credits": { "monthlyCredits": 0, "purchasedCredits": 0, "freeCredits": 0, "planId": "individual-go" } }
         """
@@ -251,14 +251,14 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test
-    func `reports over-cap windows as negative remaining`() async throws {
+    func `should show a window past its cap as below zero`() async throws {
         let json = """
         { "windowLimits": { "fiveHour": { "used": 44, "cap": 40, "resetAt": 1770000000000 } } }
         """
 
         #expect(try await parse(json).quota(for: .session)?.percentRemaining == -10)
     }
-    @Test func `account key is isolated from the default environment`() async throws {
+    @Test func `should read an added login with its own key, never the environment's`() async throws {
         let vault = MemoryVault(["commandcode.apiKey":"personal"])
         let provider = try make(vault:vault,environment:["COMMAND_CODE_API_KEY":"personal"])
         let work = try provider.accounts.add(filling:["apiKey":"work"])
@@ -267,12 +267,12 @@ struct CommandCodeDefinitionTests {
         vault.secrets["\(work.id).apiKey"] = nil
         await #expect(throws:UsageError.authenticationRequired) { try await provider.refresh(work) }
     }
-    @Test(arguments:[401,403]) func `rejected keys preserve the login hint`(_ status:Int) async throws {
+    @Test(arguments:[401,403]) func `should ask to sign in again with cmd login when the key is refused`(_ status:Int) async throws {
         await #expect(throws:UsageError.sessionExpired(hint:"Run `cmd login` or set COMMAND_CODE_API_KEY.")) {
             try await make(status:status).refreshPlain()
         }
     }
-    @Test func `saved CLI credentials remain readable`() async throws {
+    @Test func `should read the key the Command Code CLI saved`() async throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at:home) }
         let dir = home.appendingPathComponent(".commandcode")
@@ -282,7 +282,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test(arguments:["{}",#"{"data":{"user":{"name":"Alice"},"org":{"id":"team & org"}}}"#])
-    func `missing organization and wrapped organization queries remain valid`(_ whoami:String) async throws {
+    func `should show the credits when the account names no organization or a wrapped one`(_ whoami:String) async throws {
         #expect(try await make(whoami:whoami).refreshPlain().quotas.count == 3)
     }
 
@@ -295,7 +295,7 @@ struct CommandCodeDefinitionTests {
         ("not JSON", [:], false),
         ("", [:], false)
     ])
-    func `legacy credential fixtures preserve precedence and availability`(_ file: String, _ environment: [String:String], _ available: Bool) async throws {
+    func `should prefer an environment key over the CLI's saved key, and be unavailable without a usable key`(_ file: String, _ environment: [String:String], _ available: Bool) async throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: home) }
         let directory = home.appendingPathComponent(".commandcode")
@@ -308,7 +308,7 @@ struct CommandCodeDefinitionTests {
         else { await #expect(throws: UsageError.authenticationRequired) { try await provider.refreshPlain() } }
     }
 
-    @Test func `definition preserves identity and initial state`() throws {
+    @Test func `should start as Command Code, run by cmd, with its usage dashboard and nothing read yet`() throws {
         let providerProduct = try make()
         let provider = providerProduct.defaultAccount
         #expect(provider.id == "commandcode")
@@ -322,7 +322,7 @@ struct CommandCodeDefinitionTests {
     }
 
     @Test(arguments: [401,403,500])
-    func `credits errors keep the legacy failure instead of accepting identity alone`(_ status: Int) async throws {
+    func `should fail, not show the account alone, when the credits request is refused or errors`(_ status: Int) async throws {
         let error: UsageError = [401,403].contains(status)
             ? .sessionExpired(hint: "Run `cmd login` or set COMMAND_CODE_API_KEY.")
             : .executionFailed("HTTP error: \(status)")
@@ -332,21 +332,21 @@ struct CommandCodeDefinitionTests {
         #expect(account.snapshot == nil)
         #expect(account.lastError as? UsageError == error)
     }
-    @Test func `a rate limit on credits is remembered, not reported as an HTTP error`() async throws {
+    @Test func `should say it is rate limited, not an HTTP error, when the credits request is`() async throws {
         let product = try make(creditsStatus: 429)
         let account = product.defaultAccount
         await #expect { try await product.refresh(account) } throws: { ($0 as? UsageError)?.tag == "rateLimited" }
         #expect(account.snapshot == nil)
     }
 
-    @Test func `network failure cannot become a successful snapshot`() async throws {
+    @Test func `should show no usage when the network fails`() async throws {
         let product = try make(networkFailure: true)
         let account = product.defaultAccount
         await #expect(throws: UsageError.self) { try await product.refresh(account) }
         #expect(account.snapshot == nil)
     }
     @Test(arguments: ["[]", "not JSON"])
-    func `both responses must be JSON objects`(_ body: String) async throws {
+    func `should fail when either answer is not a JSON object`(_ body: String) async throws {
         await #expect(throws: UsageError.parseFailed("Failed to parse Command Code response as JSON")) {
             try await make(body).refreshPlain()
         }

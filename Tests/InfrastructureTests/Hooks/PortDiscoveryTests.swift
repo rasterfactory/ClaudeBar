@@ -5,14 +5,14 @@ import Foundation
 @Suite
 struct PortDiscoveryTests {
     @Test
-    func `port file path is under dot-claude directory`() {
+    func `should leave ClaudeBar's port in claudebar-hook-port under the .claude folder`() {
         let path = PortDiscovery.portFilePath
         #expect(path.contains(".claude"))
         #expect(path.hasSuffix("claudebar-hook-port"))
     }
 
     @Test
-    func `write and read port round-trips`() throws {
+    func `should read back the port ClaudeBar left`() throws {
         // Write port
         try PortDiscovery.writePort(19847)
 
@@ -25,7 +25,7 @@ struct PortDiscoveryTests {
     }
 
     @Test
-    func `readPort returns nil after remove`() throws {
+    func `should find no port once ClaudeBar removes its port file`() throws {
         try PortDiscovery.writePort(12345)
         PortDiscovery.removePortFile()
 
@@ -34,14 +34,14 @@ struct PortDiscoveryTests {
     }
 
     @Test
-    func `readPort returns nil when file does not exist`() {
+    func `should find no port when ClaudeBar left no port file`() {
         PortDiscovery.removePortFile()
         let port = PortDiscovery.readPort()
         #expect(port == nil)
     }
 
     @Test
-    func `write creates directory if needed`() throws {
+    func `should read back the port ClaudeBar left on a later write`() throws {
         // The .claude directory should be created if it doesn't exist
         // Since we're writing to ~/.claude/ which likely exists, just verify no error
         try PortDiscovery.writePort(9999)

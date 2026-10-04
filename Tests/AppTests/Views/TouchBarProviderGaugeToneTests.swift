@@ -23,7 +23,7 @@ struct TouchBarProviderGaugeToneTests {
     }
 
     @Test
-    func `93 percent remaining is healthy in every display mode`() {
+    func `should colour the Touch Bar gauge healthy at 93% left in every display mode`() {
         for mode in [UsageDisplayMode.remaining, .used, .pace] {
             let g = gauge(percentRemaining: 93, mode: mode)
             #expect(g.tone == .healthy, "mode \(mode)")
@@ -32,7 +32,7 @@ struct TouchBarProviderGaugeToneTests {
     }
 
     @Test
-    func `18 percent remaining is an alarm in every display mode`() {
+    func `should colour the Touch Bar gauge as an alarm at 18% left in every display mode`() {
         for mode in [UsageDisplayMode.remaining, .used, .pace] {
             let g = gauge(percentRemaining: 18, mode: mode)
             #expect(g.tone == .alarm, "mode \(mode)")
@@ -41,14 +41,14 @@ struct TouchBarProviderGaugeToneTests {
     }
 
     @Test
-    func `tone follows status not the displayed number`() {
+    func `should colour the Touch Bar gauge by the quota's status, not the number it shows`() {
         #expect(gauge(percentRemaining: 35, mode: .remaining).tone == .warning)
         #expect(gauge(percentRemaining: 0, mode: .remaining).tone == .alarm)
         #expect(gauge(percentRemaining: 0, mode: .used).tone == .alarm)
     }
 
     @Test
-    func `pace aware status drives the tone`() {
+    func `should colour the Touch Bar gauge as a warning when the pace says so, whatever the number`() {
         // Same number, worse status: the driver passes a pace-aware status when burn-rate warning is on.
         let g = TouchBarProviderGauge(
             providerId: "claude", name: "Claude", percentUsed: 93, resetText: nil,
@@ -58,7 +58,7 @@ struct TouchBarProviderGaugeToneTests {
     }
 
     @Test
-    func `no quota has no tone`() {
+    func `should leave the Touch Bar gauge uncoloured when there is no quota`() {
         let g = TouchBarProviderGauge(
             providerId: "claude", name: "Claude", percentUsed: 0, resetText: nil,
             status: .healthy, hasQuota: false

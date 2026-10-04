@@ -33,7 +33,7 @@ struct SharingTests {
     }
 
     @Test
-    func `an exported provider names its key and holds no key`() throws {
+    func `should name the key, never hold it, when a provider is exported`() throws {
         let file = String(decoding: try gateway().exported(), as: UTF8.self)
 
         #expect(file.contains("\"setting\" : \"apiKey\""))
@@ -42,7 +42,7 @@ struct SharingTests {
     }
 
     @Test
-    func `an import says where the key will be sent and what it needs`() throws {
+    func `should say where the key will be sent and what it needs when a provider is imported`() throws {
         let review = try ProviderCatalog(directory: folder()).review(try gateway().exported())
 
         #expect(review.definition.profile.name == "Team Gateway")
@@ -53,7 +53,7 @@ struct SharingTests {
     }
 
     @Test
-    func `an import of a CLI provider shows its command first`() throws {
+    func `should show the command it will run when a CLI provider is imported`() throws {
         let review = try ProviderCatalog(directory: folder()).review(try tool().exported())
 
         #expect(review.runs == ["teamtool usage --json"])
@@ -62,7 +62,7 @@ struct SharingTests {
     }
 
     @Test
-    func `an import keeps its id unless it is taken`() throws {
+    func `should keep an imported provider's id unless a provider already has it`() throws {
         let catalog = ProviderCatalog(directory: folder())
         defer { try? FileManager.default.removeItem(at: catalog.directory) }
         let gateway = try gateway()
@@ -80,7 +80,7 @@ struct SharingTests {
     }
 
     @Test
-    func `an imported provider is saved as custom`() throws {
+    func `should save an imported provider among the person's own`() throws {
         let catalog = ProviderCatalog(directory: folder())
         defer { try? FileManager.default.removeItem(at: catalog.directory) }
 
@@ -91,7 +91,7 @@ struct SharingTests {
     }
 
     @Test
-    func `a file that isn't a provider is refused`() {
+    func `should refuse to import a file that is not a provider`() {
         #expect(throws: (any Error).self) { try ProviderCatalog(directory: folder()).review(Data("{}".utf8)) }
     }
 }

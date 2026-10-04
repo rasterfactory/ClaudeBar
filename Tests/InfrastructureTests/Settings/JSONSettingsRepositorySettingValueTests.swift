@@ -13,7 +13,7 @@ struct JSONSettingsRepositorySettingValueTests {
     }
 
     @Test
-    func `a value is kept under the provider and setting name`() {
+    func `should remember a provider's setting under the provider and setting name`() {
         let (store, repository, directory) = make()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -24,7 +24,7 @@ struct JSONSettingsRepositorySettingValueTests {
     }
 
     @Test
-    func `a region saved before reads as the setting's value`() {
+    func `should keep a region chosen before settings were data`() {
         let (store, repository, directory) = make()
         defer { try? FileManager.default.removeItem(at: directory) }
         store.write(value: "international", key: "kimi.region")
@@ -33,7 +33,7 @@ struct JSONSettingsRepositorySettingValueTests {
     }
 
     @Test
-    func `forgetting a value leaves the setting's default to apply`() {
+    func `should fall back to the setting's default once its value is forgotten`() {
         let (_, repository, directory) = make()
         defer { try? FileManager.default.removeItem(at: directory) }
         repository.setValue("international", "region", forProvider: "acme")
@@ -44,7 +44,7 @@ struct JSONSettingsRepositorySettingValueTests {
     }
 
     @Test
-    func `a value an old card kept under another key is read, and moves when saved`() {
+    func `should keep a value an old card saved under another name, and move it when changed`() {
         let (store, repository, directory) = make()
         defer { try? FileManager.default.removeItem(at: directory) }
         store.write(value: "MY_GATEWAY_KEY", key: "vercel.authEnvVar")
@@ -57,7 +57,7 @@ struct JSONSettingsRepositorySettingValueTests {
     }
 
     @Test
-    func `a list an old card saved reads as comma-separated text`() {
+    func `should show a list an old card saved as comma-separated text`() {
         let (store, repository, directory) = make()
         defer { try? FileManager.default.removeItem(at: directory) }
         store.write(value: ["us-east-1", "eu-west-1"], key: "bedrock.regions")
@@ -66,7 +66,7 @@ struct JSONSettingsRepositorySettingValueTests {
     }
 
     @Test
-    func `a number an old card saved reads as text`() {
+    func `should show a number an old card saved as text`() {
         let (store, repository, directory) = make()
         defer { try? FileManager.default.removeItem(at: directory) }
         store.write(value: 300, key: "copilot.monthlyLimit")
@@ -75,7 +75,7 @@ struct JSONSettingsRepositorySettingValueTests {
     }
 
     @Test
-    func `a value an old card kept in UserDefaults is read, and moves when saved`() {
+    func `should keep a value an old card saved in UserDefaults, and move it to settings.json when changed`() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("claudebar-test-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = JSONSettingsStore(fileURL: directory.appendingPathComponent("settings.json"))

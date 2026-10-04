@@ -119,7 +119,7 @@ struct ClaudeConfigSpec {
     struct SwitchProbeMode {
 
         @Test
-        func `switching to API mode uses the API for refresh`() async throws {
+        func `should show the API's quotas after the person switches Claude to API mode`() async throws {
             // Given — the CLI says 80% left, the API 45% left
             let world = try World()
             world.cliAnswers(ClaudeConfigSpec.usageScreen)
@@ -140,7 +140,7 @@ struct ClaudeConfigSpec {
         }
 
         @Test
-        func `probe mode is persisted in UserDefaults`() {
+        func `should remember the chosen Claude data source, CLI by default`() {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             #expect(settings.claudeProbeMode() == .cli)
 
@@ -151,7 +151,7 @@ struct ClaudeConfigSpec {
         }
 
         @Test
-        func `api mode falls back to CLI when OAuth API is unavailable`() async throws {
+        func `should show the CLI's quotas in API mode when nobody is logged in to the API`() async throws {
             // Given — API mode, nobody logged in, the CLI works
             let world = try World()
             world.cliAnswers(ClaudeConfigSpec.usageScreen)
@@ -169,7 +169,7 @@ struct ClaudeConfigSpec {
         }
 
         @Test
-        func `api mode does not fall back to CLI when cli fallback is disabled`() async throws {
+        func `should be unavailable and ask to sign in when the API has no login and CLI fallback is off`() async throws {
             // Given — API mode with the card's "CLI fallback" off
             let world = try World()
             world.cliAnswers(ClaudeConfigSpec.usageScreen)
@@ -185,7 +185,7 @@ struct ClaudeConfigSpec {
         }
 
         @Test
-        func `cli mode falls back to API when CLI parsing fails and OAuth is available`() async throws {
+        func `should show the API's quotas in CLI mode when the CLI screen shows no usage and the person is logged in`() async throws {
             // Given — the CLI screen has no usage, the API answers
             let world = try World()
             world.cliAnswers("Claude Code v2.1.0\nSomething unexpected")
@@ -212,7 +212,7 @@ struct ClaudeConfigSpec {
     struct CredentialStatus {
 
         @Test
-        func `OAuth credentials are found once claude has logged in`() throws {
+        func `should find the API key once the person has logged in to Claude`() throws {
             let world = try World()
             let claudeProduct = try world.claude()
             let claude = claudeProduct.defaultAccount
@@ -232,7 +232,7 @@ struct ClaudeConfigSpec {
     struct SessionExpired {
 
         @Test
-        func `sessionExpired error has user-friendly description`() async throws {
+        func `should tell the person their session expired, naming claude, when the saved login and its refresh are refused`() async throws {
             // Given — API mode, the token is refused and so is its refresh
             let world = try World()
             world.settings.setClaudeProbeMode(.api)

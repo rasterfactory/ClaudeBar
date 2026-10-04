@@ -7,7 +7,7 @@ struct UsageDisplayModeTests {
     // MARK: - Display Label
 
     @Test
-    func `remaining mode has Remaining label`() {
+    func `should label the remaining mode Remaining`() {
         // Given
         let mode = UsageDisplayMode.remaining
 
@@ -16,7 +16,7 @@ struct UsageDisplayModeTests {
     }
 
     @Test
-    func `used mode has Used label`() {
+    func `should label the used mode Used`() {
         // Given
         let mode = UsageDisplayMode.used
 
@@ -27,17 +27,17 @@ struct UsageDisplayModeTests {
     // MARK: - Raw Value Persistence
 
     @Test
-    func `remaining mode has remaining raw value`() {
+    func `should save the remaining mode as remaining in settings`() {
         #expect(UsageDisplayMode.remaining.rawValue == "remaining")
     }
 
     @Test
-    func `used mode has used raw value`() {
+    func `should save the used mode as used in settings`() {
         #expect(UsageDisplayMode.used.rawValue == "used")
     }
 
     @Test
-    func `can be created from raw value`() {
+    func `should read back the saved mode and ignore an unknown one`() {
         #expect(UsageDisplayMode(rawValue: "remaining") == .remaining)
         #expect(UsageDisplayMode(rawValue: "used") == .used)
         #expect(UsageDisplayMode(rawValue: "invalid") == nil)

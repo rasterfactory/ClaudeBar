@@ -28,7 +28,7 @@ struct ClaudeCostScreenTests {
     // MARK: - /cost Command Parsing
 
     @Test
-    func `parses cost command output total cost`() throws {
+    func `should show the session's total cost, with no budget and no quotas, on an API plan`() throws {
         let snapshot = try read(Self.costCommandOutput)
 
         #expect(snapshot.accountTier == .claudeApi)
@@ -39,7 +39,7 @@ struct ClaudeCostScreenTests {
     }
 
     @Test
-    func `parses cost command output API duration`() throws {
+    func `should show the time spent in the API, 6m 19.7s, from the cost screen`() throws {
         let snapshot = try read(Self.costCommandOutput)
 
         // 6m 19.7s = 6*60 + 19.7 = 379.7 seconds
@@ -48,7 +48,7 @@ struct ClaudeCostScreenTests {
     }
 
     @Test
-    func `parses cost command with large cost and commas`() throws {
+    func `should show a cost over a thousand dollars written with commas`() throws {
         let snapshot = try read(Self.costCommandOutputLargeCost)
 
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "1234.56"))
@@ -61,12 +61,12 @@ struct ClaudeCostScreenTests {
     ]
 
     @Test(arguments: costLines)
-    func `extracts cost value from total cost line`(line: String, cost: String) throws {
+    func `should show the total cost however the cost line is spaced or written`(line: String, cost: String) throws {
         #expect(try read(line).costUsage?.totalCost == Decimal(string: cost))
     }
 
     @Test
-    func `extracts API duration from duration line`() throws {
+    func `should show the API time when the screen holds only the cost and the duration`() throws {
         let snapshot = try read("Total cost: $0.55\nTotal duration (API):  6m 19.7s")
 
         // 6*60 + 19.7 = 379.7
@@ -75,7 +75,7 @@ struct ClaudeCostScreenTests {
     }
 
     @Test
-    func `a screen without an API duration has none`() throws {
+    func `should show no API time when the cost screen has none`() throws {
         #expect(try read("Total cost: $0.55").costUsage?.apiDuration == 0)
     }
 
@@ -88,7 +88,7 @@ struct ClaudeCostScreenTests {
     ]
 
     @Test(arguments: durations)
-    func `parses duration string with hours minutes seconds`(duration: String, seconds: Double) throws {
+    func `should show the API time in seconds however its hours, minutes and seconds are written`(duration: String, seconds: Double) throws {
         let snapshot = try read("Total cost: $0.55\nTotal duration (API):  \(duration)")
 
         #expect(abs((snapshot.costUsage?.apiDuration ?? -1) - seconds) < 0.001)
@@ -101,7 +101,7 @@ struct ClaudeCostScreenTests {
     /// panel, `$0.0000` reads off it, and the data source *succeeds* with a cost
     /// of nothing — which is both wrong and final (#317).
     @Test
-    func `a rate-limited cost screen is an error rather than a cost of zero`() {
+    func `should report a rate limit rather than a cost of zero (#317)`() {
         let rateLimited = Self.costCommandOutput + "\nError: Usage endpoint is rate limited. Please try again in a moment."
 
         #expect(throws: UsageError.executionFailed("Rate limited - too many requests")) {
@@ -110,7 +110,7 @@ struct ClaudeCostScreenTests {
     }
 
     @Test
-    func `a logged-out cost screen is an error rather than a cost of zero`() {
+    func `should ask to sign in rather than show a cost of zero when the CLI is logged out`() {
         let loggedOut = Self.costCommandOutput + "\nInvalid API key · Please log in with /login"
 
         #expect(throws: UsageError.authenticationRequired) {
@@ -121,7 +121,7 @@ struct ClaudeCostScreenTests {
     /// A capture that ended before the cost panel was painted at all has no
     /// `Total cost` row, and says so instead of answering `$0.00`.
     @Test
-    func `a capture with no cost panel is a parse failure rather than a cost of zero`() {
+    func `should fail to read rather than show a cost of zero when the cost panel was never painted`() {
         let beforeThePanel = """
         Claude Code v2.1.274
         Opus 5 (1M context) with high effort · API Usage Billing
@@ -138,7 +138,7 @@ struct ClaudeCostScreenTests {
     /// probe session's own spend, not a misread; the fix is upstream — a
     /// subscription must not be routed here at all.
     @Test
-    func `a fully painted cost panel of an empty session reads as zero`() throws {
+    func `should show a cost of zero when the fully painted panel is of an empty session`() throws {
         let panelOnly = """
         Claude Code v2.1.274
         Opus 5 (1M context) with high effort · API Usage Billing

@@ -60,12 +60,12 @@ struct CLICompletionRuleTests {
     """
 
     @Test
-    func `output is pending while the placeholder is the only thing rendered`() {
+    func `should keep waiting while Claude's usage screen shows only its loading placeholder`() {
         #expect(CLICompletionRule.claudeUsage.isPending(Self.loadingScreen))
     }
 
     @Test
-    func `output is ready once quota bars arrive even though the placeholder remains`() {
+    func `should stop waiting once the quota bars arrive, even with the placeholder still on screen`() {
         #expect(!CLICompletionRule.claudeUsage.isPending(Self.loadedScreen))
     }
 
@@ -76,7 +76,7 @@ struct CLICompletionRuleTests {
     /// captures with nothing in them. Readiness is now positive evidence: a ready
     /// marker on screen, and without one the capture is still filling in.
     @Test
-    func `output that never reached the Usage tab is pending even without a placeholder`() {
+    func `should keep waiting when the CLI hasn't reached the Usage tab, even with no placeholder (#317)`() {
         let costPanelOnly = """
         Opus 5 (1M context) · API Usage Billing
           Session
@@ -88,7 +88,7 @@ struct CLICompletionRuleTests {
     /// #317: the screen the CLI shows while still booting carries no ready marker
     /// at all, so a capture that stops there has nothing to parse.
     @Test
-    func `the boot screen from issue 317 is still pending`() {
+    func `should keep waiting while the CLI is still booting (#317)`() {
         #expect(CLICompletionRule.claudeUsage.isPending(Self.bootScreen))
     }
 
@@ -98,7 +98,7 @@ struct CLICompletionRuleTests {
     /// never finds them, which would hold the capture open on a screen that is
     /// already finished.
     @Test
-    func `a ready marker split across cursor positions still ends the wait`() {
+    func `should stop waiting when the quota bars are drawn in pieces across the screen`() {
         let split = """
         \u{1B}[3C\u{1B}[2BCurre\u{1B}[10Gt\u{1B}[12Gsession
         \u{1B}[1B█████\u{1B}[55G38%\u{1B}[59Gused
@@ -111,7 +111,7 @@ struct CLICompletionRuleTests {
     /// 430 captures attached to #317 and a normalised match in 12, so a raw
     /// search could never have fired on a real screen.
     @Test
-    func `a cursor-split placeholder is still pending`() {
+    func `should keep waiting when the loading placeholder is drawn in pieces across the screen`() {
         let split = "\u{1B}[3C\u{1B}[2BLoading\u{1B}[12Gusage\u{1B}[18Gdata…"
         #expect(CLICompletionRule.claudeUsage.isPending(split))
     }
@@ -120,7 +120,7 @@ struct CLICompletionRuleTests {
     /// terminal's padding is what lets a phrase match across a word seam, so the
     /// boundary has to be checked rather than assumed (#317).
     @Test
-    func `a marker does not match inside a longer word`() {
+    func `should not take a word that merely contains a section label as the label`() {
         let label = CLICompletionRule(readyMarkers: [.row("Current session")])
         #expect(!label.isReady("myCurrent session here"))
         #expect(!label.isReady("XCurrent sessionY"))
@@ -134,7 +134,7 @@ struct CLICompletionRuleTests {
     /// paints a section label as a whole row, so the marker has to end at the end
     /// of its row; the hook's words sit mid-sentence.
     @Test
-    func `hook prose that happens to contain the label is not a ready screen`() {
+    func `should keep waiting when a startup hook's text happens to mention the current session (#317)`() {
         let hookProse = """
         \u{1B}[1B  \u{1B}[5C\u{1B}[6G\u{1B}[25GSessionStart:startup says: # claude-mem status
         \u{1B}[1B    \u{1B}[5CThis project has no memory yet. The current session will seed it; subsequent sessions will receive auto-injected context for relevant past work.
@@ -150,7 +150,7 @@ struct CLICompletionRuleTests {
     /// only a section label is painted as a whole row. These are the rows the
     /// old rule turned down that a real Usage screen still paints.
     @Test
-    func `a value marker on a row that carries trailing content still ends the wait`() {
+    func `should stop waiting when a percentage or rate-limit message shares its row with other text (#317)`() {
         // The CLI shares rows: the percentage sits beside the reset time, and a
         // redraw artifact repeats the reset text on that same line (see
         // `deduplicateResetText`). Requiring `% used` to end its row meant
@@ -171,7 +171,7 @@ struct CLICompletionRuleTests {
     }
 
     @Test
-    func `a value marker on the same row as its number still ends the wait`() {
+    func `should stop waiting when the percentage used is shown, wherever it sits on its row`() {
         // The percentage and the word are written in separate runs, and the
         // label's own row is not the row the value is on.
         let value = CLICompletionRule(readyMarkers: [CLICompletionRule.Marker("% used")])
@@ -186,7 +186,7 @@ struct CLICompletionRuleTests {
     /// Nothing else on this screen is ready evidence, so `.claudeUsage` is
     /// pending for the same reason.
     @Test
-    func `the section label must still be the whole row`() {
+    func `should stop waiting on a section label only when it fills its own row`() {
         let label = CLICompletionRule(readyMarkers: [.row("Current session")])
         #expect(label.isReady("Current session\n  expires in 5m"))
         #expect(!label.isReady("Current session  expires in 5m"))
@@ -194,7 +194,7 @@ struct CLICompletionRuleTests {
     }
 
     @Test
-    func `a settled error ends the wait instead of stalling until the timeout`() {
+    func `should stop waiting at once when the CLI shows a rate-limit error`() {
         let rateLimited = Self.loadingScreen + "\nError: Usage endpoint is rate limited. Please try again in a moment."
         #expect(!CLICompletionRule.claudeUsage.isPending(rateLimited))
     }
@@ -219,7 +219,7 @@ struct CLICompletionRuleTests {
     """
 
     @Test
-    func `a settled cost screen matches none of the usage ready markers`() {
+    func `should keep waiting on a finished cost screen, which is why the cost run uses no such rule (#317)`() {
         // This is the reason `/cost` runs under no rule at all rather than this
         // one: borrowed as-is, the rule can never say "done" here, and the run
         // waits out the full timeout before the parser sees a finished screen.
@@ -232,13 +232,13 @@ struct CLICompletionRuleTests {
     /// the probe would answer $0.00. Recorded here so the reason `/cost` takes
     /// no rule is not "revisit this and add a marker" (#317).
     @Test
-    func `a total-cost marker would fire on the boot screen before cost is submitted`() {
+    func `should keep waiting on the boot screen even though it already shows a total cost (#317)`() {
         #expect(CLICompletionRule.claudeUsage.isPending(Self.bootScreen))
         #expect(Self.bootScreen.contains("Total cost"))
     }
 
     @Test
-    func `a marker matches an uppercase screen and not an uppercase non-match`() {
+    func `should recognise what ends the wait in any letter case, and nothing else`() {
         let rule = CLICompletionRule(readyMarkers: [CLICompletionRule.Marker("done")])
         #expect(rule.isPending("LOADING…"))
         #expect(!rule.isPending("LOADING… DONE"))

@@ -57,7 +57,7 @@ struct AccountFormTests {
     // MARK: - The form, from the definition
 
     @Test
-    func `an API someone added asks a second account for its own key`() throws {
+    func `should ask a second account for its own key when the API is one someone added`() throws {
         let accounts = try #require(try openRouter().accounts)
 
         #expect(accounts.ways == [.form])
@@ -66,7 +66,7 @@ struct AccountFormTests {
     }
 
     @Test
-    func `a key read from an environment variable is the default login's; an added one types its own`() throws {
+    func `should give an added login a key field of its own when the default login's key comes from an environment variable`() throws {
         var draft = ProviderDraft(start: .api)
         draft.url = "https://example.test/usage"
         draft.key = .environment("EXAMPLE_API_KEY")
@@ -84,7 +84,7 @@ struct AccountFormTests {
     // MARK: - Each account, its own key
 
     @Test
-    func `an account added by its form reads its own key`() async throws {
+    func `should show each account the money left on its own key`() async throws {
         let vault = MemoryVault(["custom-openrouter.apiKey": "sk-mine"])
         let openRouter = provider(try openRouter(), vault: vault, network: network(["sk-mine": 40, "sk-work": 7]))
 
@@ -98,7 +98,7 @@ struct AccountFormTests {
     }
 
     @Test
-    func `adding an account with its key is an opt-in to the product too`() throws {
+    func `should turn the provider on and put the account in the lineup when an account is added with its key`() throws {
         let openRouter = provider(try openRouter(), vault: MemoryVault(), network: network([:]))
         openRouter.isEnabled = false
 
@@ -109,7 +109,7 @@ struct AccountFormTests {
     }
 
     @Test
-    func `a key is kept in the vault, never in the saved account`() throws {
+    func `should keep an account's key in the vault, never in the saved account`() throws {
         let vault = MemoryVault()
         let settings = InMemoryProviderSettings()
         let openRouter = provider(try openRouter(), vault: vault, network: network([:]), settings: settings)
@@ -121,7 +121,7 @@ struct AccountFormTests {
     }
 
     @Test
-    func `an account without its own key never borrows the default's`() async throws {
+    func `should fail at the lookup step, never borrowing the default's key, when an account has no key of its own`() async throws {
         let vault = MemoryVault(["custom-openrouter.apiKey": "sk-mine"])
         let openRouter = provider(try openRouter(), vault: vault, network: network(["sk-mine": 40]))
         let work = try openRouter.accounts.add(filling: ["apiKey": "sk-work"])
@@ -133,7 +133,7 @@ struct AccountFormTests {
     }
 
     @Test
-    func `a field left empty is refused, and nothing is added`() throws {
+    func `should refuse a field left empty and add nothing`() throws {
         let openRouter = provider(try openRouter(), vault: MemoryVault(), network: network([:]))
 
         #expect(throws: UsageError.self) { try openRouter.accounts.add(filling: ["apiKey": "  "]) }
@@ -141,7 +141,7 @@ struct AccountFormTests {
     }
 
     @Test
-    func `removing an account forgets its keys`() throws {
+    func `should forget an account's keys when it is removed`() throws {
         let vault = MemoryVault()
         let openRouter = provider(try openRouter(), vault: vault, network: network([:]))
         let work = try openRouter.accounts.add(filling: ["apiKey": "sk-work"])
@@ -152,7 +152,7 @@ struct AccountFormTests {
     }
 
     @Test
-    func `a saved form account comes back with its key after a relaunch`() async throws {
+    func `should bring back a saved form account with its key after a relaunch`() async throws {
         let vault = MemoryVault()
         let settings = InMemoryProviderSettings()
         let first = provider(try openRouter(), vault: vault, network: network(["sk-work": 7]), settings: settings)

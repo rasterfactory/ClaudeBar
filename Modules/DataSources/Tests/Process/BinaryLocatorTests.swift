@@ -6,27 +6,27 @@ import Foundation
 struct BinaryLocatorTests {
 
     @Test
-    func `which finds system binary`() {
+    func `should find a system CLI such as ls`() {
         let path = BinaryLocator.which("ls")
         #expect(path != nil)
         #expect(path?.hasSuffix("/ls") == true)
     }
 
     @Test
-    func `which returns nil for unknown binary`() {
+    func `should find nothing for a CLI that isn't installed`() {
         let path = BinaryLocator.which("unknown-binary-xyz-123")
         #expect(path == nil)
     }
 
     @Test
-    func `locate instance method finds binary`() {
+    func `should find a system CLI when a data source looks for it`() {
         let locator = BinaryLocator()
         let path = locator.locate("ls")
         #expect(path != nil)
     }
 
     @Test
-    func `findInCommonPaths finds executable in homebrew bin`() {
+    func `should find Homebrew's CLI in Homebrew's folder when the app's PATH lacks it`() {
         // Given - a binary that exists in /opt/homebrew/bin (common on Apple Silicon)
         // This tests the fallback mechanism for launchd contexts
 
@@ -43,7 +43,7 @@ struct BinaryLocatorTests {
     }
 
     @Test
-    func `findInCommonPaths returns nil for non-existent binary`() {
+    func `should find nothing in the common folders for a CLI that isn't installed`() {
         // Given - a binary that doesn't exist anywhere
         // When - we search common paths
         let path = BinaryLocator.findInCommonPaths("unknown-binary-xyz-123-fallback")
@@ -53,7 +53,7 @@ struct BinaryLocatorTests {
     }
 
     @Test
-    func `common paths include bun global bin`() {
+    func `should look in Bun's global folder for CLIs installed with Bun`() {
         // Bun-installed CLIs (e.g. omp) live in ~/.bun/bin, which launchd
         // contexts never have on PATH.
         let home = FileManager.default.homeDirectoryForCurrentUser.path
@@ -61,7 +61,7 @@ struct BinaryLocatorTests {
     }
 
     @Test
-    func `which falls back to common paths when shell fails`() {
+    func `should find a system CLI whichever way it is looked up`() {
         // This test verifies the overall behavior: which() should find binaries
         // even in launchd contexts where the shell PATH is restricted.
         // If 'ls' is in /bin/ls, the fallback should find it even if shell which fails.

@@ -46,7 +46,7 @@ struct ClaudeProviderTests {
     // MARK: - Identity
 
     @Test
-    func `claude is identified and enabled by default`() throws {
+    func `should be Claude, on by default, run from the CLI, with no usage or error yet`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let provider = try claude.provider()
@@ -65,7 +65,7 @@ struct ClaudeProviderTests {
     // MARK: - CLI mode
 
     @Test
-    func `cli mode reads the usage screen`() async throws {
+    func `should show the usage screen when Claude reads from the CLI`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         answerCLI(claude, Self.usageScreen)
@@ -79,7 +79,7 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `cli mode falls back to the api when the cli fails`() async throws {
+    func `should show the usage API's quotas when the CLI fails`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         failCLI(claude)
@@ -94,7 +94,7 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `when the cli and the api both fail the cli failure is reported`() async throws {
+    func `should report the CLI's failure when the CLI and the API both fail`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         failCLI(claude, .executionFailed("claude is not running"))
@@ -106,7 +106,7 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `an api billed account hands off to cost before the api`() async throws {
+    func `should show the cost screen before trying the API when the account is billed by API`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         given(claude.cli).locate(.any).willReturn("/usr/local/bin/claude")
@@ -127,7 +127,7 @@ struct ClaudeProviderTests {
     // MARK: - API mode
 
     @Test
-    func `api mode falls back to the cli unless the setting turns it off`() async throws {
+    func `should fall back from the API to the CLI unless the person turns the fallback off`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         answerCLI(claude, Self.usageScreen)
@@ -145,7 +145,7 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `a rate limited api does not fall back to the cli`() async throws {
+    func `should report the rate limit and not fall back to the CLI when the API is rate-limited`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         answerCLI(claude, Self.usageScreen)
@@ -162,7 +162,7 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `when the api and the cli both fail the api failure is reported`() async throws {
+    func `should report the API's failure when the API and the CLI both fail`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         failCLI(claude)
@@ -173,7 +173,7 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `the api sets a fifteen minute background floor and the cli none`() throws {
+    func `should refresh in the background no more than every fifteen minutes on the API, with no floor on the CLI`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
 
@@ -184,7 +184,7 @@ struct ClaudeProviderTests {
     // MARK: - Guest passes
 
     @Test
-    func `guest passes are offered to max and not to pro or before a refresh`() async throws {
+    func `should offer guest passes to Max, not to Pro or API, nor before a refresh`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         let passes = GuestPasses(source: MockGuestPassSource())
@@ -196,7 +196,7 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `a fetched pass is kept`() async throws {
+    func `should keep a guest pass once it is fetched`() async throws {
         let source = MockGuestPassSource()
         let pass = GuestPass(passesRemaining: 3, referralURL: URL(string: "https://claude.ai/referral/abc")!)
         given(source).fetch().willReturn(pass)
@@ -210,7 +210,7 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `a failed pass fetch is kept apart from usage and can be dismissed`() async throws {
+    func `should keep a failed guest pass fetch apart from usage and let it be dismissed`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         answerCLI(claude, Self.usageScreen)

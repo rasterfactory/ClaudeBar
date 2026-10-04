@@ -124,7 +124,7 @@ struct QuotaMonitorTests {
     // MARK: - After a refresh: the one extension point
 
     @Test
-    func `every observer hears each refreshed login, and the monitor knows none of them`() async throws {
+    func `should tell every listener, in turn, about each login that refreshed`() async throws {
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)
@@ -142,7 +142,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `a failed refresh is not heard`() async throws {
+    func `should tell no listener when the login's refresh fails`() async throws {
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)
@@ -159,7 +159,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `monitor can refresh a provider by ID`() async throws {
+    func `should show a provider's session and weekly quotas after refreshing it`() async throws {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -186,7 +186,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar percentage display uses selected quota and display mode`() async {
+    func `should show the chosen weekly quota as 65% used, in warning, in the menu bar`() async {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -217,7 +217,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar percentage display falls back when quota data is missing`() {
+    func `should show no menu bar percentage before the provider has any quotas`() {
         // Given
         let settings = makeSettingsRepository()
         let providerProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -236,7 +236,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar duration display returns compact reset time for selected quota`() async {
+    func `should show the session's reset as 3:58 in the menu bar`() async {
         // Given - claude session quota with reset ~3h 58m away
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -270,7 +270,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar duration display is nil when quota data is missing`() {
+    func `should show no menu bar countdown before the provider has any quotas`() {
         // Given
         let settings = makeSettingsRepository()
         let providerProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -288,7 +288,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `additional menu bar labels use first quota and identify provider`() async {
+    func `should name each extra menu bar provider beside its first quota, and show nothing when percentages are off`() async {
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
         ])
@@ -307,7 +307,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `additional labels keep selection order and omit disabled providers`() async {
+    func `should show extra menu bar providers once each, in the chosen order, leaving out disabled ones`() async {
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: CountingUsageProbe(providerId: "claude"), settings: settings)
         let claude = claudeProduct.defaultAccount
@@ -328,7 +328,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `additional provider awaiting first snapshot has a named placeholder`() {
+    func `should show an extra menu bar provider as a dash beside its name before its first quotas arrive`() {
         let providerProduct = stubbedProduct(
             "claude", probe: CountingUsageProbe(providerId: "claude"), settings: makeSettingsRepository()
         )
@@ -340,7 +340,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `additional providers honor their own primary secondary and stacked choices`() async {
+    func `should show an extra menu bar provider with its own primary, secondary and stacked choices`() async {
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
             UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
@@ -378,7 +378,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label shows single window with no prefix when secondary empty`() async {
+    func `should show one window without a prefix when no second window is chosen`() async {
         // Given
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
@@ -401,7 +401,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label shows both windows prefixed by short label`() async {
+    func `should show both windows prefixed 5h and 7d, in the worse status, when two are chosen`() async {
         // Given — session 75% (healthy), weekly 35% (warning)
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
@@ -424,7 +424,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label ignores secondary equal to primary`() async {
+    func `should show one window without a prefix when the second window is the same as the first`() async {
         // Given
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
@@ -445,7 +445,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label falls back to single window when secondary quota missing`() async {
+    func `should show the first window alone when the provider has no quota for the second`() async {
         // Given — only session quota present, but weekly requested as secondary
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
@@ -466,7 +466,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label is nil when neither percentage nor duration enabled`() async {
+    func `should show no menu bar label when neither percentage nor countdown is on`() async {
         // Given
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
@@ -488,7 +488,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label carries a single segment when secondary empty`() async {
+    func `should give a stacked menu bar one line when one window is chosen`() async {
         // Given
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
@@ -512,7 +512,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label carries both windows as separate segments`() async {
+    func `should give a stacked menu bar one line per window, each in its own status`() async {
         // Given: session 75% (healthy), weekly 35% (warning)
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
@@ -541,7 +541,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label segments cover the duration-only variant`() async {
+    func `should give a stacked menu bar the countdown line when only the countdown is on`() async {
         // Given: session quota with reset ~3h 58m away
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(
@@ -570,7 +570,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label segments cover percentage plus duration windows`() async {
+    func `should give a stacked menu bar each window's percentage and countdown on its own line`() async {
         // Given: both windows carry reset times
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
             UsageQuota(
@@ -608,7 +608,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `monitor skips unavailable providers`() async {
+    func `should show no quotas for a provider that is not available`() async {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -626,7 +626,7 @@ struct QuotaMonitorTests {
     // MARK: - Multiple Provider Monitoring
 
     @Test
-    func `monitor refreshes all providers concurrently`() async {
+    func `should show every provider's quotas after refreshing all`() async {
         // Given
         let claudeProbe = MockUsageProbe()
         given(claudeProbe).isAvailable().willReturn(true)
@@ -660,7 +660,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `one provider failure does not affect others`() async {
+    func `should still show the other providers' quotas when one provider fails`() async {
         // Given
         let settings = makeSettingsRepository()
         let claudeProbe = MockUsageProbe()
@@ -693,7 +693,7 @@ struct QuotaMonitorTests {
     // MARK: - Refresh Others
 
     @Test
-    func `refreshOthers excludes the specified provider`() async {
+    func `should refresh every provider but the one just refreshed`() async {
         // Given
         let claudeProbe = MockUsageProbe()
         given(claudeProbe).isAvailable().willReturn(true)
@@ -740,7 +740,7 @@ struct QuotaMonitorTests {
     // MARK: - Provider Access
 
     @Test
-    func `monitor can find provider by ID`() async {
+    func `should find a login by its provider's id`() async {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -756,7 +756,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `monitor returns nil for unknown provider ID`() async {
+    func `should find no login for an unknown provider id`() async {
         // Given
         let monitor = makeMonitor(providers: kept([]))
 
@@ -770,7 +770,7 @@ struct QuotaMonitorTests {
     // MARK: - Overall Status
 
     @Test
-    func `monitor calculates overall status from all providers`() async {
+    func `should take the worst provider's status as the overall status`() async {
         // Given
         let claudeProbe = MockUsageProbe()
         given(claudeProbe).isAvailable().willReturn(true)
@@ -807,7 +807,7 @@ struct QuotaMonitorTests {
     // MARK: - Refresh Selected
 
     @Test
-    func `refreshSelected only refreshes the selected provider`() async {
+    func `should refresh only the selected provider`() async {
         // Given
         let claudeProbe = MockUsageProbe()
         given(claudeProbe).isAvailable().willReturn(true)
@@ -843,7 +843,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `refreshSelected refreshes newly selected provider`() async {
+    func `should refresh the provider the person just switched to`() async {
         // Given
         let claudeProbe = MockUsageProbe()
         given(claudeProbe).isAvailable().willReturn(true)
@@ -880,7 +880,7 @@ struct QuotaMonitorTests {
     // MARK: - Continuous Monitoring
 
     @Test
-    func `monitor can start continuous monitoring`() async throws {
+    func `should report each background refresh while monitoring runs`() async throws {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -914,7 +914,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `background monitoring refreshes configured menu bar provider in percentage mode`() async {
+    func `should refresh the selected provider and the menu bar's providers in the background`() async {
         // Given
         let settings = makeSettingsRepository()
         let claudeProbe = CountingUsageProbe(providerId: "claude")
@@ -941,7 +941,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `background monitoring does not duplicate refreshes when selected and menu bar provider match`() async {
+    func `should refresh a provider once in the background when it is both selected and in the menu bar`() async {
         // Given
         let settings = makeSettingsRepository()
         let probe = CountingUsageProbe(providerId: "claude")
@@ -962,7 +962,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `background monitoring without provider ids preserves selected provider refresh behaviour`() async {
+    func `should refresh only the selected provider in the background when the menu bar names none`() async {
         // Given
         let settings = makeSettingsRepository()
         let claudeProbe = CountingUsageProbe(providerId: "claude")
@@ -985,7 +985,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `monitor stops when requested`() async throws {
+    func `should stop reporting refreshes once monitoring is stopped`() async throws {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -1016,7 +1016,7 @@ struct QuotaMonitorTests {
     /// off at stop entirely on the main actor (this @MainActor suite would not
     /// compile otherwise), so observable state is never mutated off-main.
     @Test
-    func `startMonitoring keeps observable state on the main actor`() async {
+    func `should show monitoring on while it runs and off once stopped, on the main actor (#182)`() async {
         // Reading and writing isMonitoring here compiles only because both this
         // suite and QuotaMonitor are @MainActor — the structural guard against
         // the #182 off-main mutation. The flow asserts the flag flips on, then off.
@@ -1037,7 +1037,7 @@ struct QuotaMonitorTests {
     /// Sub-minute and zero intervals clamp up to the 1-minute floor, while
     /// at- or above-floor intervals pass through unchanged (energy — #67).
     @Test
-    func `clampedInterval enforces the one minute floor`() {
+    func `should never refresh more often than once a minute (#67)`() {
         #expect(QuotaMonitor.clampedInterval(.seconds(5)) == .seconds(60))
         #expect(QuotaMonitor.clampedInterval(.zero) == .seconds(60))
         #expect(QuotaMonitor.clampedInterval(.seconds(60)) == .seconds(60))
@@ -1049,7 +1049,7 @@ struct QuotaMonitorTests {
     /// floor, then raised to the slowest provider-imposed floor in the active set
     /// (Claude API → 15 min — issue #204).
     @Test
-    func `effectiveInterval clamps then raises to the slowest provider floor`() {
+    func `should slow the refresh to the slowest provider's minimum, like Claude API's 15 minutes (#204)`() {
         // No provider floor → clamped requested.
         #expect(QuotaMonitor.effectiveInterval(requested: .seconds(600), floors: []) == .seconds(600))
         #expect(QuotaMonitor.effectiveInterval(requested: .seconds(5), floors: []) == .seconds(60))
@@ -1151,7 +1151,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `background loop pauses while display asleep and refreshes on wake`() async {
+    func `should not refresh while the display sleeps, and refresh once on wake (#204)`() async {
         let settings = makeSettingsRepository()
         let probe = CountingUsageProbe(providerId: "claude")
         let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
@@ -1176,7 +1176,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `background loop doubles the cadence while on battery`() async {
+    func `should refresh half as often on battery (#204)`() async {
         let settings = makeSettingsRepository()
         let providerProduct = stubbedProduct("claude", probe: CountingUsageProbe(providerId: "claude"), settings: settings)
         let provider = providerProduct.defaultAccount
@@ -1196,7 +1196,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `background loop keeps the normal cadence on AC power`() async {
+    func `should refresh at the chosen cadence on AC power`() async {
         let settings = makeSettingsRepository()
         let providerProduct = stubbedProduct("claude", probe: CountingUsageProbe(providerId: "claude"), settings: settings)
         let provider = providerProduct.defaultAccount
@@ -1217,7 +1217,7 @@ struct QuotaMonitorTests {
     // MARK: - Provider Collections
 
     @Test
-    func `allProviders returns all registered providers`() {
+    func `should list every registered login`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1231,7 +1231,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `the lineup holds only enabled logins`() {
+    func `should show only enabled logins in the lineup`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1249,7 +1249,7 @@ struct QuotaMonitorTests {
     // MARK: - Lowest Quota
 
     @Test
-    func `lowestQuota returns lowest across all providers`() async {
+    func `should find the lowest quota across every provider`() async {
         // Given
         let claudeProbe = MockUsageProbe()
         given(claudeProbe).isAvailable().willReturn(true)
@@ -1284,7 +1284,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `lowestQuota returns nil when no snapshots`() {
+    func `should find no lowest quota before any provider has quotas`() {
         // Given
         let settings = makeSettingsRepository()
         let monitor = makeMonitor(providers: kept([stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)]))
@@ -1296,7 +1296,7 @@ struct QuotaMonitorTests {
     // MARK: - Selection
 
     @Test
-    func `selectedProvider returns provider matching selectedProviderId`() {
+    func `should show the login of the selected provider`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1313,7 +1313,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `selectedProvider returns nil when selected provider is disabled`() {
+    func `should show no selected login when the selected provider is disabled`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1327,7 +1327,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `selectedProviderStatus returns healthy when no snapshot`() {
+    func `should show the selected provider as healthy before its quotas arrive`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1339,7 +1339,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `selectedProviderStatus returns provider status when snapshot exists`() async {
+    func `should show the selected provider's status once its quotas arrive`() async {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -1360,7 +1360,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `the selected tab's badge and status come from its logins' usage`() async {
+    func `should show the selected tab awaiting data, then critical once its login's usage arrives`() async {
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)
@@ -1385,7 +1385,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `selectProvider updates selectedProviderId for enabled provider`() {
+    func `should select an enabled provider the person picks`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1404,7 +1404,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `selectProvider ignores disabled provider`() {
+    func `should keep the current selection when the person picks a disabled provider`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1422,7 +1422,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `selectProvider at position selects the enabled provider shown in that slot`() {
+    func `should select the enabled provider shown in the pill slot, skipping disabled ones`() {
         // Given - gemini sits between two enabled providers but is disabled,
         // so the pills read: 1 Claude, 2 Codex
         let settings = makeSettingsRepository()
@@ -1443,7 +1443,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `selectProvider at position ignores a slot with no provider`() {
+    func `should keep the current selection when the shortcut's slot has no provider`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1461,7 +1461,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `init selects first enabled when default claude is disabled`() {
+    func `should select the first enabled provider at launch when Claude is disabled`() {
         // Given - claude (default) is disabled before init
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1478,7 +1478,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `init keeps claude when enabled`() {
+    func `should select Claude at launch when it is enabled`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1496,7 +1496,7 @@ struct QuotaMonitorTests {
     // MARK: - Refreshing State
 
     @Test
-    func `isRefreshing returns false when no providers syncing`() {
+    func `should not show refreshing when no provider is syncing`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1510,7 +1510,7 @@ struct QuotaMonitorTests {
     // MARK: - Providers Init
 
     @Test
-    func `init with the providers you keep works`() {
+    func `should list the logins of the providers the app keeps`() {
         // Given
         let settings = makeSettingsRepository()
         let repository = kept([
@@ -1528,7 +1528,7 @@ struct QuotaMonitorTests {
     // MARK: - Quota Alerter
 
     @Test
-    func `alerter is called on status change`() async {
+    func `should alert when a provider turns critical`() async {
         // Given
         let mockAlerter = MockQuotaAlerter()
         given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
@@ -1557,7 +1557,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `alerter not called when status unchanged`() async {
+    func `should not alert when a provider's status stays healthy`() async {
         // Given
         let mockAlerter = MockQuotaAlerter()
         given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
@@ -1584,7 +1584,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `with pace-aware status an on-pace quota raises no warning`() async {
+    func `should neither warn nor alert for an on-pace quota when status is pace-aware`() async {
         // Given — 40% left with 90% of the window gone: on pace, so healthy
         let mockAlerter = MockQuotaAlerter()
         given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
@@ -1614,7 +1614,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `with absolute status the same quota warns`() async {
+    func `should alert a warning for the same quota when status is absolute`() async {
         let mockAlerter = MockQuotaAlerter()
         given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
         let probe = MockUsageProbe()
@@ -1644,7 +1644,7 @@ struct QuotaMonitorTests {
     // MARK: - Disabled Provider Skipping
 
     @Test
-    func `refreshAll skips disabled providers`() async {
+    func `should not refresh a disabled provider`() async {
         // Given
         let claudeProbe = MockUsageProbe()
         given(claudeProbe).isAvailable().willReturn(true)
@@ -1675,7 +1675,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `overallStatus only considers enabled providers`() async {
+    func `should leave a disabled provider out of the overall status`() async {
         // Given
         let claudeProbe = MockUsageProbe()
         given(claudeProbe).isAvailable().willReturn(true)
@@ -1715,7 +1715,7 @@ struct QuotaMonitorTests {
     // MARK: - Set Provider Enabled
 
     @Test
-    func `setProviderEnabled disables provider and updates selection`() {
+    func `should select the next enabled provider when the person disables the selected one`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -1734,7 +1734,7 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `setProviderEnabled enables provider without changing selection`() {
+    func `should keep the selection when the person enables another provider`() {
         // Given
         let settings = makeSettingsRepository()
         let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)

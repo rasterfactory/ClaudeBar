@@ -40,7 +40,7 @@ struct MenuBarSpec {
         }
 
         @Test
-        func `worst status across providers wins`() async {
+        func `should show critical in the menu bar when one provider is critical and another healthy`() async {
             // Given — Claude healthy (70%), Codex critical (15%)
             let settings = MenuBarSpec.makeSettings()
 
@@ -77,7 +77,7 @@ struct MenuBarSpec {
         }
 
         @Test
-        func `disabled provider does not affect overall status`() async {
+        func `should stay healthy in the menu bar when only a turned-off provider is critical`() async {
             // Given — Claude healthy, Codex critical but disabled
             let settings = MenuBarSpec.makeSettings()
 
@@ -115,7 +115,7 @@ struct MenuBarSpec {
         }
 
         @Test
-        func `selected provider status shown in menu bar`() async {
+        func `should show a warning for the selected provider when it has 30% left`() async {
             // Given
             let settings = MenuBarSpec.makeSettings()
 
@@ -142,7 +142,7 @@ struct MenuBarSpec {
         }
 
         @Test
-        func `no snapshots defaults to healthy`() {
+        func `should show healthy before any quota has been read`() {
             // Given — fresh monitor, no refresh yet
             let settings = MenuBarSpec.makeSettings()
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)

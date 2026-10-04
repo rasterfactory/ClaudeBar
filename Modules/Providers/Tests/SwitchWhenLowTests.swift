@@ -8,7 +8,7 @@ import Testing
 @Suite
 struct SwitchWhenLowTests {
     @Test
-    func `off until the person turns it on`() async throws {
+    func `should switch nowhere until the person turns it on`() async throws {
         let (stub, codex, _) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         let inUse = try #require(codex.inUse)
@@ -19,7 +19,7 @@ struct SwitchWhenLowTests {
     }
 
     @Test
-    func `below the threshold, the ticked login with the most left is next`() async throws {
+    func `should switch to the ticked login with the most left when the login in use falls below the threshold`() async throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         let inUse = try #require(codex.inUse)
@@ -31,7 +31,7 @@ struct SwitchWhenLowTests {
     }
 
     @Test
-    func `above the threshold nothing is next`() async throws {
+    func `should not switch when the login in use is above the threshold`() async throws {
         let (stub, codex, _) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         let inUse = try #require(codex.inUse)
@@ -43,7 +43,7 @@ struct SwitchWhenLowTests {
     }
 
     @Test
-    func `a login the person unticked is never next`() async throws {
+    func `should never switch to a login the person unticked`() async throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         let inUse = try #require(codex.inUse)
@@ -56,7 +56,7 @@ struct SwitchWhenLowTests {
     }
 
     @Test
-    func `its choices are kept`() throws {
+    func `should remember whether it is on, its threshold and the unticked logins across a relaunch`() throws {
         let (stub, codex, work) = try InUseFixture.twoLogins()
         defer { stub.cleanUp() }
         let policy = try #require(codex.inUse?.switchWhenLow)

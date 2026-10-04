@@ -35,7 +35,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `with the lines in the shell, a chosen login is in use at once`() {
+    func `should start new sessions with the chosen login at once when the shell is set up`() {
         lines.installed = [.zsh]
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
@@ -47,7 +47,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `without the lines, the choice waits for the setup`() {
+    func `should hold the chosen login until the shell is set up`() {
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
 
@@ -58,7 +58,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `setting up writes the lines and makes the waiting choice`() {
+    func `should set up the shell and start new sessions with the held login when the person sets up`() {
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .bash)
         sessions.use(codex.accounts[1])
@@ -72,7 +72,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `adding the lines by hand makes the choice and hands over the lines`() {
+    func `should hand the person the shell lines and start new sessions with the held login when they set up by hand`() {
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
         sessions.use(codex.accounts[1])
@@ -84,7 +84,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `cancelling leaves the login in use as it was`() {
+    func `should keep the login in use as it was when the person cancels the setup`() {
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
         sessions.use(codex.accounts[1])
@@ -96,7 +96,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `the plain login never waits for the lines`() {
+    func `should start new sessions with the plain login without waiting for the shell setup`() {
         lines.installed = [.zsh]
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
@@ -110,7 +110,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `turning off takes the lines out and every CLI back to its plain login`() {
+    func `should remove the shell lines and put every CLI back on its plain login when the person turns new sessions off`() {
         lines.installed = [.zsh]
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
@@ -124,7 +124,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `a setup that can't write says so, and keeps the choice waiting`() {
+    func `should name the shell file and keep the login held when the setup can't write it`() {
         lines.failing = true
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
@@ -139,7 +139,7 @@ struct NewSessionsTests {
     // MARK: - What the strip shows
 
     @Test
-    func `the strip shows the login in use`() {
+    func `should show the login new sessions start with`() {
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
 
@@ -147,7 +147,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `while a choice waits, the strip shows the setup`() {
+    func `should show the setup while a chosen login waits for it`() {
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
         sessions.use(codex.accounts[1])
@@ -156,7 +156,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `a product with one login shows nothing`() throws {
+    func `should show nothing for a provider with one login`() throws {
         let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: temp.appendingPathComponent("one.json")))
         let alone = try ProviderFactory.make("codex", settings: settings,
                                        loginsInUse: DiskLoginsInUse(root: temp.appendingPathComponent("in-use")))
@@ -166,7 +166,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `each CLI is named once, however many products run it`() {
+    func `should name each CLI once, however many providers run it`() {
         let sessions = NewSessions(products: [codex(), codex()], shellLines: lines, shell: .zsh)
 
         #expect(sessions.commands == ["codex"])
@@ -175,7 +175,7 @@ struct NewSessionsTests {
     // MARK: - claudebar://use
 
     @Test
-    func `a link names a login by its product and name`() {
+    func `should start new sessions with the login a link names by provider and name`() {
         lines.installed = [.zsh]
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
@@ -185,7 +185,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `a link before the setup waits for it`() {
+    func `should hold the login a link names until the shell is set up`() {
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
 
@@ -193,7 +193,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `a link to no such product or login does nothing`() {
+    func `should do nothing for a link to an unknown provider or login`() {
         let codex = codex()
         let sessions = NewSessions(products: [codex], shellLines: lines, shell: .zsh)
 
@@ -205,7 +205,7 @@ struct NewSessionsTests {
     // MARK: - The alert a notice becomes
 
     @Test
-    func `a switch's alert links back to where sessions were; a suggestion's links on`() {
+    func `should link a switch's alert back to the earlier login and a suggestion's alert on to the suggested one`() {
         let codex = codex()
         let (me, work) = (codex.defaultAccount, codex.accounts[1])
 
@@ -219,7 +219,7 @@ struct NewSessionsTests {
     }
 
     @Test
-    func `only products whose new sessions can be chosen are listed`() throws {
+    func `should list only providers whose new sessions can start with a chosen login`() throws {
         let settings = JSONSettingsRepository(store: JSONSettingsStore(fileURL: temp.appendingPathComponent("s.json")))
         let gemini = try ProviderFactory.make("gemini", settings: settings)
         let codex = codex()

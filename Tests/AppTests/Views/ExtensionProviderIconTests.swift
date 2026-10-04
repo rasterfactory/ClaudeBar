@@ -19,19 +19,19 @@ struct ExtensionProviderIconTests {
     }
 
     @Test
-    func `extension provider uses the SF Symbol its manifest declares`() throws {
+    func `should show an extension with the SF Symbol its manifest names (#302)`() throws {
         try register(id: "icon-atom", icon: "atom")
         #expect(ProviderVisualIdentityLookup.symbolIcon(for: "ext-icon-atom") == "atom")
     }
 
     @Test
-    func `extension provider without an icon keeps the question mark`() throws {
+    func `should show a question mark for an extension that names no icon`() throws {
         try register(id: "icon-none", icon: nil)
         #expect(ProviderVisualIdentityLookup.symbolIcon(for: "ext-icon-none") == "questionmark.circle.fill")
     }
 
     @Test
-    func `extension provider with an unknown symbol name keeps the question mark`() throws {
+    func `should show a question mark for an extension whose icon doesn't exist`() throws {
         try register(id: "icon-bogus", icon: "not.a.real.symbol.name")
         #expect(ProviderVisualIdentityLookup.symbolIcon(for: "ext-icon-bogus") == "questionmark.circle.fill")
     }

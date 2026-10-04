@@ -13,7 +13,7 @@ struct DataSourceSectionTextTests {
     private func claude() throws -> ProviderDefinition { try ProviderFactory.builtIn("claude") }
 
     @Test
-    func `the header names the product and its origin`() throws {
+    func `should title the data source section with the provider's name and that it is built in`() throws {
         let text = DataSourceSectionText(definition: try codex())
 
         #expect(text.title == "Codex Configuration")
@@ -23,7 +23,7 @@ struct DataSourceSectionTextTests {
     }
 
     @Test
-    func `only the data sources a person can pick are offered`() throws {
+    func `should offer only the data sources a person can pick`() throws {
         let text = DataSourceSectionText(definition: try codex())
 
         #expect(text.choices.map(\.kind) == ["rpc", "api"])
@@ -31,7 +31,7 @@ struct DataSourceSectionTextTests {
     }
 
     @Test
-    func `the key lookup order reads as a path through places`() throws {
+    func `should show where the key is looked for as a path through places`() throws {
         let text = DataSourceSectionText(definition: try claude())
 
         #expect(text.lookupOrder(for: "api") == "~/.claude/.credentials.json → Keychain “Claude Code-credentials” → $CLAUDE_CODE_OAUTH_TOKEN")
@@ -39,21 +39,21 @@ struct DataSourceSectionTextTests {
     }
 
     @Test
-    func `the fallback is one sentence`() throws {
+    func `should say in one sentence what ClaudeBar tries when a data source is unavailable`() throws {
         #expect(DataSourceSectionText(definition: try claude()).fallback(for: "api") == "If API is unavailable, ClaudeBar tries CLI.")
         #expect(DataSourceSectionText(definition: try codex()).fallback(for: "rpc") == "If RPC is unavailable, ClaudeBar tries Terminal.")
         #expect(DataSourceSectionText(definition: try codex()).fallback(for: "api") == nil)
     }
 
     @Test
-    func `a cached data source says what that does to background refresh`() throws {
+    func `should say background refresh is capped at 15 min while Claude's cached API is in use`() throws {
         #expect(DataSourceSectionText(definition: try claude()).cacheNote(for: "api")
             == "Usage data is cached for 15 min, so background refresh is capped at 15 min while API is in use.")
         #expect(DataSourceSectionText(definition: try claude()).cacheNote(for: "cli") == nil)
     }
 
     @Test
-    func `a test connection says what came back, or which step failed`() {
+    func `should say what came back from a connection test, or which step failed`() {
         #expect(DataSourceSectionText.testResult(.success(Response(status: 200, body: Data()))) == "Connected · 200")
         #expect(DataSourceSectionText.testResult(.success(Response(text: "screen"))) == "Connected")
         #expect(DataSourceSectionText.testResult(.failure(DataSourceError(.lookup, .authenticationRequired)))
@@ -61,7 +61,7 @@ struct DataSourceSectionTextTests {
     }
 
     @Test
-    func `a provider that runs a cli says where it finds it`() throws {
+    func `should say where a provider's CLI is found`() throws {
         let text = DataSourceSectionText(definition: try claude())
 
         #expect(text.cliLocation?.placeholder == "Found automatically: claude")
@@ -69,7 +69,7 @@ struct DataSourceSectionTextTests {
     }
 
     @Test
-    func `a provider without a cli has no cli location`() throws {
+    func `should show no CLI location for a provider without a CLI`() throws {
         var draft = ProviderDraft(start: .api)
         draft.url = "https://example.test/usage"
         draft.key = .apiKey

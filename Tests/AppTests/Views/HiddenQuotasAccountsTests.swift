@@ -11,7 +11,7 @@ import Testing
 @Suite
 struct HiddenQuotasAccountsTests {
     @Test
-    func `every account of a product shares its hidden quotas`() throws {
+    func `should hide a quota for every account of a provider once it is hidden (#140)`() throws {
         let settings = JSONSettingsRepository(store: JSONSettingsStore(
             fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("hidden-\(UUID().uuidString).json")))
         settings.setHiddenQuotaKeys(["model:codex-spark"], forProvider: "codex")

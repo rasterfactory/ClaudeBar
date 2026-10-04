@@ -26,7 +26,7 @@ struct CLILocationTests {
                               probeConfig: ["codexHome": "/tmp/\(id)", "chatgptAccountId": id])
     }
 
-    @Test func `API credential refresh uses the configured CLI location`() throws {
+    @Test func `should refresh API credentials with the chosen CLI`() throws {
         let definition = try ProviderFactory.builtIn("gemini").runningCLI("/opt/tools/gemini")
         guard case .refreshing(_, .cli(let refresh)) = definition.dataSource("api")?.credential else {
             Issue.record("Expected a CLI credential refresh")
@@ -37,7 +37,7 @@ struct CLILocationTests {
         #expect(refresh.environment.unset.contains("GEMINI_API_KEY"))
     }
 
-    @Test func `choosing a CLI location preserves the terminal input delay`() throws {
+    @Test func `should preserve terminal input timing when the CLI location changes`() throws {
         let definition = try ProviderFactory.builtIn("kimi")
         guard case .cli(let before) = definition.dataSource("cli")?.fetch,
               case .cli(let after) = try definition.runningCLI("/opt/tools/kimi").dataSource("cli")?.fetch else {
@@ -49,7 +49,7 @@ struct CLILocationTests {
     }
 
     @Test
-    func `browser sign in finds the CLI bundled with ChatGPT`() async throws {
+    func `should sign in with the CLI bundled with ChatGPT`() async throws {
         let definition = try ProviderFactory.builtIn("codex")
         let call = try #require(definition.accounts?.signIn)
         let path = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
@@ -69,7 +69,7 @@ struct CLILocationTests {
     }
 
     @Test
-    func `every login's cli data sources run the chosen location`() throws {
+    func `should run the CLI from the chosen location for every login`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let codex = try stub.makeProvider("codex", accounts: [login("work")], isExecutable: { _ in true })
@@ -86,7 +86,7 @@ struct CLILocationTests {
     }
 
     @Test
-    func `clearing the location goes back to finding the cli as usual`() throws {
+    func `should go back to finding the CLI as usual when the location is cleared`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let codex = try stub.makeProvider("codex", isExecutable: { _ in true })
@@ -100,7 +100,7 @@ struct CLILocationTests {
     }
 
     @Test
-    func `a location that isn't a program is refused, and nothing changes`() throws {
+    func `should refuse a location that is not a program and change nothing`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let codex = try stub.makeProvider("codex", isExecutable: { _ in false })
@@ -112,7 +112,7 @@ struct CLILocationTests {
     }
 
     @Test
-    func `a saved location is used after a relaunch`() throws {
+    func `should use the saved CLI location after a relaunch`() throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         try stub.makeProvider("codex", isExecutable: { _ in true }).configuration.setCLIPath(Self.path)
@@ -123,7 +123,7 @@ struct CLILocationTests {
     }
 
     @Test
-    func `adding an account signs in with the chosen location`() async throws {
+    func `should sign in a new account with the CLI at the chosen location`() async throws {
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
         let codex = try stub.makeProvider("codex", isExecutable: { _ in true })

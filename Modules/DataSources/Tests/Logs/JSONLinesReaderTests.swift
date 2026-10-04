@@ -48,7 +48,7 @@ struct JSONLinesReaderTests {
 
     // MARK: - A line
 
-    @Test func `reads a matching line's fields`() {
+    @Test func `should count a usage line's model, tokens, identity and time`() {
         let line = #"{"kind":"reply","request":"q_1","reply":{"id":"r_1","model":"m-large","usage":{"in":100,"out":50,"cacheIn":200,"cacheHit":30}},"at":"2026-03-11T10:30:45.123Z"}"#
         let records = reader().read(content: line)
         #expect(records.count == 1)
@@ -59,7 +59,7 @@ struct JSONLinesReaderTests {
         #expect(records[0].at == ISO8601Instant.parse("2026-03-11T10:30:45.123Z"))
     }
 
-    @Test func `skips lines that don't match`() {
+    @Test func `should count only the lines the log's rule picks out`() {
         let content = """
         {"kind":"ask","reply":{"content":"hello"},"at":"2026-03-11T10:00:00.000Z"}
         \(Self.line("m-large"))
@@ -68,14 +68,14 @@ struct JSONLinesReaderTests {
         #expect(reader().read(content: content).map(\.model) == ["m-large"])
     }
 
-    @Test func `the hour-long part of the cache writes is read beside their total`() {
+    @Test func `should count the hour-long cache writes beside all cache writes`() {
         let line = #"{"kind":"reply","reply":{"model":"m-large","usage":{"cacheIn":200,"split":{"hour":150}}},"at":"2026-03-11T10:00:00.000Z"}"#
         let record = reader().read(content: line).first
         #expect(record?.cacheWrite == 200)
         #expect(record?.cacheWrite1h == 150)
     }
 
-    @Test func `an input that includes the cache reads counts only the rest`() {
+    @Test func `should count only the uncached input when the log's input includes the cache reads`() {
         let shape = RecordShape(UsageLog.Records(
             files: "~/logs/*.jsonl", at: "$.at",
             tokens: UsageLog.Tokens(input: "$.in", output: "$.out", cacheRead: "$.cached", inputIncludesCacheRead: true)
@@ -87,34 +87,34 @@ struct JSONLinesReaderTests {
         #expect(record?.tokens == 35)
     }
 
-    @Test func `a missing token kind counts zero`() {
+    @Test func `should count zero for a kind of token a line doesn't mention`() {
         let records = reader().read(content: Self.line("m-large"))
         #expect(records[0].cacheWrite == 0)
         #expect(records[0].cacheRead == 0)
     }
 
-    @Test func `a record that says nothing about usage is skipped`() {
+    @Test func `should not count a line that says nothing about usage`() {
         let bare = #"{"kind":"reply","reply":{"model":"m-large"},"at":"2026-03-11T10:00:00.000Z"}"#
         #expect(reader().read(content: bare).isEmpty)
     }
 
-    @Test func `a record without a time or a declared model is skipped`() {
+    @Test func `should not count a line without a time or the model the log's rule asks for`() {
         let noTime = #"{"kind":"reply","reply":{"model":"m-large","usage":{"in":1}}}"#
         let noModel = #"{"kind":"reply","reply":{"usage":{"in":1}},"at":"2026-03-11T10:00:00.000Z"}"#
         #expect(reader().read(content: noTime + "\n" + noModel).isEmpty)
     }
 
-    @Test func `malformed lines are skipped`() {
+    @Test func `should count the good lines and pass over broken ones`() {
         let content = "not json at all\n\(Self.line("m-large"))\n{\"incomplete\": true"
         #expect(reader().read(content: content).count == 1)
     }
 
-    @Test func `a record missing an identity part has no identity`() {
+    @Test func `should give a line no identity when part of it is missing`() {
         let line = #"{"kind":"reply","reply":{"model":"m-large","usage":{"in":10}},"at":"2026-03-11T10:00:00.000Z"}"#
         #expect(reader().read(content: line).first?.id == nil)
     }
 
-    @Test func `the filter's text inside a quoted string never matches`() {
+    @Test func `should not pick out a line whose text merely quotes the rule's value`() {
         let content = #"""
         {"kind":"ask","reply":{"content":"the \"reply\" kind"},"at":"2026-03-11T10:00:00.000Z"}
         """#
@@ -123,7 +123,7 @@ struct JSONLinesReaderTests {
 
     // MARK: - A file, from an offset
 
-    @Test func `reads from a byte offset up to the last complete line`() throws {
+    @Test func `should count the lines after where it stopped, holding back a half-written last line`() throws {
         let first = Self.line("m-small")
         let second = Self.line("m-large")
         let unterminated = Self.line("m-tiny")
@@ -138,7 +138,7 @@ struct JSONLinesReaderTests {
         #expect(chunk.tail.map(\.model) == ["m-tiny"])
     }
 
-    @Test func `reads a line longer than one read`() throws {
+    @Test func `should count a very long line and the lines after it`() throws {
         let padding = String(repeating: "x", count: 3 * 1024 * 1024)
         let long = #"{"kind":"reply","reply":{"model":"m-large","content":"\#(padding)","usage":{"in":1,"out":1}},"at":"2026-03-11T10:00:00.000Z"}"#
         let short = Self.line("m-small")
@@ -153,7 +153,7 @@ struct JSONLinesReaderTests {
 
     // MARK: - Between scans
 
-    @Test func `reuses an unchanged file without reading it again`() async throws {
+    @Test func `should count an unchanged log again without rereading it`() async throws {
         let url = try makeFile(Self.line("m-large") + "\n")
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let reader = reader()
@@ -165,7 +165,7 @@ struct JSONLinesReaderTests {
         #expect(await reader.lastScan == JSONLinesReader.ScanSummary(reused: 1, extended: 0, reparsed: 0))
     }
 
-    @Test func `reads only the lines appended since the last scan`() async throws {
+    @Test func `should read only the lines added to a log since it last looked`() async throws {
         let url = try makeFile(Self.line("m-large") + "\n")
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let reader = reader()
@@ -178,7 +178,7 @@ struct JSONLinesReaderTests {
         #expect(await reader.lastScan == JSONLinesReader.ScanSummary(reused: 0, extended: 1, reparsed: 0))
     }
 
-    @Test func `finishes a line that was half written at the last scan`() async throws {
+    @Test func `should count a line once it is finished that was half written when it last looked`() async throws {
         let small = Self.line("m-small")
         let splitAt = small.index(small.startIndex, offsetBy: 40)
         let url = try makeFile(Self.line("m-large") + "\n" + String(small[..<splitAt]))
@@ -193,7 +193,7 @@ struct JSONLinesReaderTests {
         #expect(after.map(\.model) == ["m-large", "m-small"])
     }
 
-    @Test func `counts a complete unterminated last line once after more is appended`() async throws {
+    @Test func `should count an unended last line once when more is added after it`() async throws {
         // Records without an identity are never deduplicated later, so a tail
         // line counted twice would inflate the totals.
         let bare = #"{"kind":"reply","reply":{"model":"m-small","usage":{"in":10,"out":5}},"at":"2026-03-11T10:00:00.000Z"}"#
@@ -209,7 +209,7 @@ struct JSONLinesReaderTests {
         #expect(after.map(\.model) == ["m-large", "m-small", "m-tiny"])
     }
 
-    @Test func `reads again a file rewritten in place`() async throws {
+    @Test func `should reread a log rewritten in place`() async throws {
         let url = try makeFile(Self.line("m-large") + "\n")
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let reader = reader()
@@ -222,7 +222,7 @@ struct JSONLinesReaderTests {
         #expect(await reader.lastScan == JSONLinesReader.ScanSummary(reused: 0, extended: 0, reparsed: 1))
     }
 
-    @Test func `reads again a file that shrank`() async throws {
+    @Test func `should reread a log that shrank`() async throws {
         let url = try makeFile(Self.line("m-large") + "\n" + Self.line("m-small") + "\n")
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let reader = reader()
@@ -233,7 +233,7 @@ struct JSONLinesReaderTests {
         #expect(await reader.records(in: [url]).map(\.model) == ["m-tiny"])
     }
 
-    @Test func `reads again a file replaced by a new one`() async throws {
+    @Test func `should reread a log replaced by a new file`() async throws {
         let url = try makeFile(Self.line("m-large") + "\n")
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let reader = reader()
@@ -247,7 +247,7 @@ struct JSONLinesReaderTests {
         #expect(await reader.lastScan == JSONLinesReader.ScanSummary(reused: 0, extended: 0, reparsed: 1))
     }
 
-    @Test func `forgets files that leave the scan`() async throws {
+    @Test func `should forget a log once it is no longer looked at`() async throws {
         let kept = try makeFile(Self.line("m-large") + "\n")
         let dropped = try makeFile(Self.line("m-small") + "\n")
         defer {

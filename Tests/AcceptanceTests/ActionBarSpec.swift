@@ -39,19 +39,19 @@ struct ActionBarSpec {
         }
 
         @Test
-        func `Claude dashboard URL is its usage settings`() throws {
+        func `should open Claude's usage settings from Dashboard (#24)`() throws {
             let claude = try ProviderFactory.builtIn("claude")
             #expect(claude.profile.links.dashboard?.absoluteString == "https://claude.ai/new#settings/usage")
         }
 
         @Test
-        func `Codex dashboard URL is OpenAI usage`() throws {
+        func `should open OpenAI's usage page from Codex's Dashboard (#24)`() throws {
             let codex = try ProviderFactory.builtIn("codex")
             #expect(codex.profile.links.dashboard?.absoluteString == "https://platform.openai.com/usage")
         }
 
         @Test
-        func `Copilot dashboard URL is GitHub features page`() throws {
+        func `should open GitHub's Copilot features page from Copilot's Dashboard (#24)`() throws {
             let suiteName = "com.claudebar.test.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suiteName)!
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
@@ -60,14 +60,14 @@ struct ActionBarSpec {
         }
 
         @Test
-        func `Antigravity has no dashboard URL`() throws {
+        func `should offer no Dashboard for Antigravity (#24)`() throws {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             let antigravity = try ProviderFactory.make("antigravity", settings: settings)
             #expect(antigravity.dashboardURL(of: antigravity.defaultAccount) == nil)
         }
 
         @Test
-        func `Bedrock dashboard URL is AWS console`() throws {
+        func `should open the AWS Bedrock console from Bedrock's Dashboard (#24)`() throws {
             let suiteName = "com.claudebar.test.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suiteName)!
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
@@ -76,7 +76,7 @@ struct ActionBarSpec {
         }
 
         @Test
-        func `Zai dashboard URL is Z.ai subscribe`() throws {
+        func `should open Z.ai's subscription page from Z.ai's Dashboard (#24)`() throws {
             let suiteName = "com.claudebar.test.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suiteName)!
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
@@ -96,7 +96,7 @@ struct ActionBarSpec {
         }
 
         @Test
-        func `Claude offers guest passes only when it has a pass probe`() throws {
+        func `should offer Claude guest passes only when ClaudeBar can read them (#25)`() throws {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             let withoutPasses = try ProviderFactory.make("claude", settings: settings).defaultAccount
             let withPasses = try ProviderFactory.make("claude", settings: settings, guestPasses: GuestPasses(source: MockGuestPassSource())).defaultAccount
@@ -106,14 +106,14 @@ struct ActionBarSpec {
         }
 
         @Test
-        func `Max account sees the Share button`() {
+        func `should show the Share button to a Max account (#25)`() {
             let passes = GuestPasses(source: MockGuestPassSource())
 
             #expect(passes.isOffered(for: Self.usage(.claudeMax)))
         }
 
         @Test
-        func `Pro account does not see the Share button`() {
+        func `should not show the Share button to a Pro account (#243)`() {
             // Issue #243: Anthropic issues invitation links to Max plans only.
             let passes = GuestPasses(source: MockGuestPassSource())
 
@@ -121,7 +121,7 @@ struct ActionBarSpec {
         }
 
         @Test
-        func `failed pass fetch is reported instead of failing silently`() async {
+        func `should report a failure, not stay silent, when guest passes cannot be fetched (#25)`() async {
             let passSource = MockGuestPassSource()
             given(passSource).fetch().willThrow(UsageError.parseFailed("Could not find referral URL"))
             let passes = GuestPasses(source: passSource)

@@ -29,7 +29,7 @@ struct ClaudeCLIDefinitionTests {
     // MARK: - The commands
 
     @Test
-    func `the cli data source runs usage and the cost data source runs cost`() throws {
+    func `should ask the Claude CLI for /usage and for /cost, each within 20 seconds`() throws {
         #expect(try call("cli").cli == "claude")
         #expect(try call("cli").args == ["/usage", "--allowed-tools", ""])
         #expect(try call("cliCost").cli == "claude")
@@ -39,7 +39,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `both commands answer the CLI's start-up prompts`() throws {
+    func `should answer the Claude CLI's start-up prompts for both screens`() throws {
         let expected = [
             "Esc to cancel": "\r",
             "Ready to code here?": "\r",
@@ -52,7 +52,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `both screens are drawn by the terminal emulator before reading`() throws {
+    func `should read both screens as the terminal draws them`() throws {
         #expect(try call("cli").screen == .rendered)
         #expect(try call("cliCost").screen == .rendered)
     }
@@ -60,7 +60,7 @@ struct ClaudeCLIDefinitionTests {
     // MARK: - Probe session marking (issue #222)
 
     @Test
-    func `probe marks its claude sessions with the probe environment marker`() throws {
+    func `should mark the Claude sessions ClaudeBar starts as its own (#222)`() throws {
         #expect(try call("cli").environment.set["CLAUDEBAR_PROBE"] == "1")
         #expect(try call("cliCost").environment.set["CLAUDEBAR_PROBE"] == "1")
     }
@@ -68,7 +68,7 @@ struct ClaudeCLIDefinitionTests {
     // MARK: - Setup Token Environment Exclusion
 
     @Test
-    func `the probe strips CLAUDE_CODE_OAUTH_TOKEN and nothing else`() throws {
+    func `should run the Claude CLI without the setup token and keep everything else`() throws {
         // The setup-token has only `user:inference` scope; without it `claude /usage`
         // falls back to the stored login, which can read quota.
         #expect(try call("cli").environment.unset == ["CLAUDE_CODE_OAUTH_TOKEN"])
@@ -78,7 +78,7 @@ struct ClaudeCLIDefinitionTests {
     // MARK: - Completion Rule Pairing (issue #317)
 
     @Test
-    func `usage waits for the usage screen`() throws {
+    func `should wait for the usage screen before reading it (#317)`() throws {
         #expect(try call("cli").readyWhen == [
             CLICall.ReadyMarker("Current session", endsRow: true),
             CLICall.ReadyMarker("% used"),
@@ -90,7 +90,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `the cost fallback runs with no completion rule so it ends on idle`() throws {
+    func `should let the cost screen end when the CLI goes idle, not wait for quota bars (#317)`() throws {
         // The regression #317 introduced: `/cost` shared the `/usage` rule, whose
         // markers are quota-bar markers. An API-billed account never paints a
         // quota bar, so every `/cost` capture burned the full 20s timeout instead
@@ -103,7 +103,7 @@ struct ClaudeCLIDefinitionTests {
     // MARK: - Working directory
 
     @Test
-    func `both commands run in the probe directory`() throws {
+    func `should run both commands in ClaudeBar's dedicated folder`() throws {
         #expect(try call("cli").workingDirectory == .dedicated)
         #expect(try call("cliCost").workingDirectory == .dedicated)
     }
@@ -111,7 +111,7 @@ struct ClaudeCLIDefinitionTests {
     // MARK: - One shared probe session (issue #132)
 
     @Test
-    func `both commands run inside a named probe session`() throws {
+    func `should run both commands in one named ClaudeBar session (#132)`() throws {
         let usage = try call("cli").session
         let cost = try call("cliCost").session
 
@@ -130,7 +130,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `the probe directory is created under ClaudeBar's application support`() {
+    func `should create the dedicated folder under ClaudeBar's application support`() {
         let url = CLIWorkingDirectory.resolve()
 
         #expect(url.path.contains("ClaudeBar/Probe"))
@@ -140,7 +140,7 @@ struct ClaudeCLIDefinitionTests {
     // MARK: - Availability
 
     @Test
-    func `claude is available when the CLI is found`() async throws {
+    func `should be available when the Claude CLI is found`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         given(claude.cli).locate(.any).willReturn("/usr/local/bin/claude")
@@ -150,7 +150,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `claude is unavailable without the CLI or an API login`() async throws {
+    func `should be unavailable without the Claude CLI or an API login`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         given(claude.cli).locate(.any).willReturn(nil)
@@ -162,7 +162,7 @@ struct ClaudeCLIDefinitionTests {
     // MARK: - What a probe run gives
 
     @Test
-    func `probe extracts account type from usage output`() throws {
+    func `should show the Max plan, both windows and the weekly reset from the usage screen`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
 
@@ -184,7 +184,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `probe extracts Pro account with Extra usage`() throws {
+    func `should show the Pro plan with its extra usage, $5.41 of $20, from the usage screen`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
 
@@ -212,7 +212,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `probe resolves account info from config file`() throws {
+    func `should show the email and organization from Claude's config when the usage screen has none`() throws {
         // new tabbed CLI output (no account info in the /usage tab)
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
@@ -268,7 +268,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `probe falls back to cost when usage renders the API billing panel`() async throws {
+    func `should show the cost when the usage screen shows API billing for a pay-as-you-go account (#271)`() async throws {
         // issue #271: the Usage tab paints a cost panel with no quota bars. A
         // genuine pay-as-you-go account — nothing in the config claims a
         // subscription — so the cost panel is the truth and /cost answers it.
@@ -290,7 +290,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `probe fails instead of costing out a subscription the CLI could not see`() async throws {
+    func `should fail rather than show a cost when the CLI misses a subscription the config claims (#271)`() async throws {
         // issue #271: a Max plan billed through Apple renders the same cost
         // panel, but the config still says it is a subscription. /cost would
         // answer $0.00 with no quota, and its success would stop the usage API
@@ -308,7 +308,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `a subscription the CLI could not see is read by the usage API instead`() async throws {
+    func `should show the usage API's quotas when the CLI misses the subscription`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(email: "user@example.com", billingType: "apple_subscription")
@@ -358,7 +358,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `a trust prompt marks the probe directory trusted and reads again`() async throws {
+    func `should trust ClaudeBar's folder, keep the rest of the config and show the usage when the CLI asks`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(email: "user@example.com", extra: ["numStartups": 3])
@@ -375,7 +375,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `a trust prompt keeps the other projects in the config`() async throws {
+    func `should keep the other trusted projects when ClaudeBar's folder is trusted`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(extra: ["projects": ["/Users/test/project": ["hasTrustDialogAccepted": true]]])
@@ -389,7 +389,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `a trust prompt without a config file is reported, and no file is created`() async throws {
+    func `should report folder trust as needed, creating no config, when Claude has no config file`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         answerTrustPromptOnce(claude)
@@ -401,7 +401,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `a trust prompt for a directory already trusted is reported, not retried forever`() async throws {
+    func `should report folder trust as needed, not retry forever, when the folder is already trusted`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(extra: ["projects": [CLIWorkingDirectory.resolve().path: ["hasTrustDialogAccepted": true]]])
@@ -414,7 +414,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `a config whose projects is not an object is left alone`() async throws {
+    func `should leave a config alone and report folder trust as needed when its projects are not an object`() async throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(extra: ["projects": "unexpected"])
@@ -429,7 +429,7 @@ struct ClaudeCLIDefinitionTests {
     // MARK: - A user-configured CLI binary (#210)
 
     @Test
-    func `a configured binary runs in every claude command, with everything else untouched`() throws {
+    func `should run every Claude command from the CLI location the person chose, with everything else untouched (#210)`() throws {
         let definition = try ProviderFactory.builtIn("claude").runningCLI("/opt/tools/bin/claude-work")
 
         #expect(try call("cli", in: definition).cli == "/opt/tools/bin/claude-work")
@@ -444,7 +444,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `the api data source never runs the binary`() throws {
+    func `should keep asking the usage API, never the chosen CLI, for the API data source`() throws {
         let definition = try ProviderFactory.builtIn("claude").runningCLI("/opt/tools/bin/claude-work")
         guard case .http(let request)? = definition.dataSource("api")?.fetch else {
             Issue.record("api is not an HTTP data source")
@@ -454,7 +454,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `codex's rpc, terminal and sign-in all run the configured binary`() throws {
+    func `should run Codex's RPC, terminal and sign-in from the chosen CLI location`() throws {
         let definition = try ProviderFactory.builtIn("codex").runningCLI("/opt/tools/bin/codex-work")
 
         guard case .jsonRpc(let rpc)? = definition.dataSource("rpc")?.fetch,
@@ -469,14 +469,14 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `claude's sign-in runs the configured binary`() throws {
+    func `should sign in to Claude with the CLI at the chosen location`() throws {
         let definition = try ProviderFactory.builtIn("claude").runningCLI("/opt/tools/bin/claude-work")
 
         #expect(definition.accounts?.signIn?.cli == "/opt/tools/bin/claude-work")
     }
 
     @Test
-    func `an empty, blank or unchanged name is a no-op`() throws {
+    func `should change nothing when the chosen location is empty, blank or the usual name`() throws {
         let claude = try ProviderFactory.builtIn("claude")
         #expect(try claude.runningCLI("") == claude)
         #expect(try claude.runningCLI("   \n ") == claude)
@@ -484,7 +484,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `a definition without a cli has nothing to re-point`() throws {
+    func `should change nothing for a provider without a CLI`() throws {
         let definition = try ProviderDefinition.parse(Data("""
         {
           "profile": { "id": "gemini", "name": "Gemini" },
@@ -503,7 +503,7 @@ struct ClaudeCLIDefinitionTests {
     }
 
     @Test
-    func `an rpc data source runs the configured binary too`() throws {
+    func `should run an RPC data source from the chosen CLI location too`() throws {
         let definition = try ProviderDefinition.parse(Data("""
         {
           "profile": { "id": "codex", "name": "Codex" },

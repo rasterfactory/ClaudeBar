@@ -3,7 +3,7 @@ import Testing
 
 @Suite @MainActor
 struct CodexAccountIconTests {
-    @Test func `account instances keep the Codex icon`() {
+    @Test func `should show the Codex icon for every added Codex account`() {
         #expect(ProviderVisualIdentityLookup.iconAssetName(for: "codex.account-a") == "CodexIcon")
         #expect(ProviderVisualIdentityLookup.symbolIcon(for: "codex.account-b") ==
                 ProviderVisualIdentityLookup.symbolIcon(for: "codex"))

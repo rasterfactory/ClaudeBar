@@ -43,14 +43,14 @@ struct BedrockDefinitionTests {
         })
     }
 
-    @Test func `definition keeps Bedrock's identity, off until turned on`() throws {
+    @Test func `should keep Bedrock's name and dashboard, off until the person turns it on`() throws {
         let provider = try make()
         #expect(provider.name == "AWS Bedrock")
         #expect(!provider.plainIsInLineup)
         #expect(provider.plainDashboardURL?.absoluteString == "https://console.aws.amazon.com/bedrock/home")
     }
 
-    @Test func `today's spend is one cost with a line per model, largest first, exact`() async throws {
+    @Test func `should show today's spend as one exact cost with a line per model, largest first`() async throws {
         let usage = try await make().refreshPlain()
         let cost = try #require(usage.costUsage)
         // 1M × $3 + 0.2M × $15 = $6; 0.5M × $0.80 = $0.40.
@@ -63,7 +63,7 @@ struct BedrockDefinitionTests {
         #expect(usage.quotas.isEmpty)
     }
 
-    @Test func `the daily budget judges the cost, never as a quota`() async throws {
+    @Test func `should judge the cost against the daily budget, never as a quota`() async throws {
         let usage = try await make(budget: "10").refreshPlain()
         let cost = try #require(usage.costUsage)
         #expect(cost.budget == 10)
@@ -71,28 +71,28 @@ struct BedrockDefinitionTests {
         #expect(usage.quotas.isEmpty)
     }
 
-    @Test func `every region named is asked, with the person's profile`() async throws {
+    @Test func `should ask every region the person named, with their profile`() async throws {
         let seen = Seen()
         _ = try await make(regions: "us-east-1, eu-west-1", profile: "work", seen: seen).refreshPlain()
         #expect(seen.regions == ["us-east-1", "eu-west-1"])
         #expect(seen.profiles == ["work", "work"])
     }
 
-    @Test func `no profile is the default credentials, us-east-1 the default region`() async throws {
+    @Test func `should use the default credentials in us-east-1 when the person names no profile or region`() async throws {
         let seen = Seen()
         _ = try await make(seen: seen).refreshPlain()
         #expect(seen.regions == ["us-east-1"])
         #expect(seen.profiles == [nil])
     }
 
-    @Test func `a model with no known price is a line of nothing, said so`() async throws {
+    @Test func `should show a model with no known price as a line of nothing, and say so`() async throws {
         let usage = try await make(sums: ["us-east-1": ["acme.mystery": ["InputTokenCount": 10, "Invocations": 1]]]).refreshPlain()
         let line = try #require(usage.costUsage?.lines.first)
         #expect(line.amount == 0)
         #expect(line.detail == "10 tokens · 1 calls · no price known")
     }
 
-    @Test func `nothing used today is $0, not missing`() async throws {
+    @Test func `should show $0 when nothing was used today, not a missing cost`() async throws {
         let usage = try await make(sums: [:]).refreshPlain()
         #expect(usage.costUsage?.totalCost == 0)
         #expect(usage.costUsage?.lines.isEmpty == true)

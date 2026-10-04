@@ -16,7 +16,7 @@ import Domain
 struct StatusItemStatusIconTests {
 
     @Test
-    func `CLI theme shows the outline terminal when no session is running`() {
+    func `should show the CLI theme's outline terminal when no session is running`() {
         let symbol = StatusItemLabelDriver.statusIconSymbol(
             theme: CLITheme(), status: .healthy, besideSessionGlyph: false
         )
@@ -24,7 +24,7 @@ struct StatusItemStatusIconTests {
     }
 
     @Test
-    func `the session glyph stands in for the CLI outline terminal`() {
+    func `should show one terminal, not two, while a session runs in the CLI theme`() {
         let symbol = StatusItemLabelDriver.statusIconSymbol(
             theme: CLITheme(), status: .healthy, besideSessionGlyph: true
         )
@@ -32,7 +32,7 @@ struct StatusItemStatusIconTests {
     }
 
     @Test
-    func `a theme icon unrelated to the session glyph is kept beside it`() {
+    func `should keep a theme's own icon beside the session glyph`() {
         let symbol = StatusItemLabelDriver.statusIconSymbol(
             theme: ChristmasTheme(), status: .healthy, besideSessionGlyph: true
         )
@@ -40,7 +40,7 @@ struct StatusItemStatusIconTests {
     }
 
     @Test
-    func `a theme without its own icon keeps the status shape beside the glyph`() {
+    func `should keep the status shape beside the session glyph when the theme has no icon of its own`() {
         let symbol = StatusItemLabelDriver.statusIconSymbol(
             theme: DarkTheme(), status: .critical, besideSessionGlyph: true
         )
@@ -50,7 +50,7 @@ struct StatusItemStatusIconTests {
     // MARK: - Session glyph colour
 
     @Test
-    func `the CLI terminal fills in with the quota status colour while Claude works`() {
+    func `should fill the CLI terminal in the quota's status colour while Claude works`() {
         let theme = CLITheme()
         let color = StatusItemLabelDriver.sessionGlyphColor(
             phase: .active, theme: theme, status: .critical, showsUsageText: false, darkMenuBar: true
@@ -59,7 +59,7 @@ struct StatusItemStatusIconTests {
     }
 
     @Test
-    func `the CLI terminal keeps the quota status colour while subagents work`() {
+    func `should keep the CLI terminal in the quota's status colour while subagents work`() {
         let theme = CLITheme()
         let color = StatusItemLabelDriver.sessionGlyphColor(
             phase: .subagentsWorking, theme: theme, status: .warning, showsUsageText: false, darkMenuBar: true
@@ -68,7 +68,7 @@ struct StatusItemStatusIconTests {
     }
 
     @Test
-    func `the glyph in front of usage text keeps the session colour in the CLI theme`() {
+    func `should show the session colour on the glyph in front of usage text in the CLI theme`() {
         let color = StatusItemLabelDriver.sessionGlyphColor(
             phase: .subagentsWorking, theme: CLITheme(), status: .critical, showsUsageText: true, darkMenuBar: true
         )
@@ -76,7 +76,7 @@ struct StatusItemStatusIconTests {
     }
 
     @Test
-    func `the glyph beside an unrelated theme icon keeps the session colour`() {
+    func `should show the session colour on the glyph beside a theme's own icon`() {
         let color = StatusItemLabelDriver.sessionGlyphColor(
             phase: .active, theme: ChristmasTheme(), status: .critical, showsUsageText: false, darkMenuBar: true
         )
@@ -84,7 +84,7 @@ struct StatusItemStatusIconTests {
     }
 
     @Test
-    func `the glyph beside a status shape keeps the session colour`() {
+    func `should show the session colour on the glyph beside a status shape`() {
         let color = StatusItemLabelDriver.sessionGlyphColor(
             phase: .active, theme: DarkTheme(), status: .critical, showsUsageText: false, darkMenuBar: true
         )

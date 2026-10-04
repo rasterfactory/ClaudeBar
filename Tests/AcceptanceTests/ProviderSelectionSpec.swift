@@ -41,7 +41,7 @@ struct ProviderSelectionSpec {
         }
 
         @Test
-        func `selecting Codex switches view and triggers refresh`() async {
+        func `should select Codex and show its 40% left when the person picks the Codex pill and it refreshes`() async {
             // Given — Claude and Codex are both enabled
             let settings = Self.makeSettings()
 
@@ -102,7 +102,7 @@ struct ProviderSelectionSpec {
         }
 
         @Test
-        func `disabled providers are hidden from the pill list`() {
+        func `should show no pill for a turned-off provider`() {
             // Given — Claude enabled, Codex disabled
             let settings = Self.makeSettings()
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -122,7 +122,7 @@ struct ProviderSelectionSpec {
         }
 
         @Test
-        func `all enabled providers appear in the pill list`() {
+        func `should show a pill for every provider that is on`() {
             // Given — both enabled
             let settings = Self.makeSettings()
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -158,7 +158,7 @@ struct ProviderSelectionSpec {
         }
 
         @Test
-        func `disabling Claude auto-switches selection to Codex`() {
+        func `should select Codex when the person turns off the selected Claude`() {
             // Given — Claude is selected
             let settings = Self.makeSettings()
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -180,7 +180,7 @@ struct ProviderSelectionSpec {
         }
 
         @Test
-        func `Claude disabled at startup selects first enabled provider`() {
+        func `should select the first provider that is on when Claude is off at launch`() {
             // Given — Claude disabled before init
             let settings = Self.makeSettings()
             let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
@@ -211,7 +211,7 @@ struct ProviderSelectionSpec {
         }
 
         @Test
-        func `selecting disabled Codex keeps Claude selected`() {
+        func `should keep Claude selected when the person tries to pick a turned-off Codex`() {
             // Given — Codex is disabled
             let settings = MockProviderSettingsRepository()
             given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)

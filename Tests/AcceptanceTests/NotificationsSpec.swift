@@ -42,7 +42,7 @@ struct NotificationsSpec {
         }
 
         @Test
-        func `quota drops from healthy to critical triggers alert`() async {
+        func `should alert the person that Claude went from healthy to critical when its quota drops to 15%`() async {
             // Given — Claude was previously healthy (no snapshot = healthy default)
             let settings = MockProviderSettingsRepository()
             given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
@@ -92,7 +92,7 @@ struct NotificationsSpec {
         }
 
         @Test
-        func `repeated healthy refreshes do not trigger alert`() async {
+        func `should not alert the person when the quota stays healthy`() async {
             // Given
             let settings = MockProviderSettingsRepository()
             given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
@@ -143,7 +143,7 @@ struct NotificationsSpec {
         }
 
         @Test
-        func `one provider failure does not block others from refreshing`() async {
+        func `should still show Claude's quotas when Codex times out`() async {
             // Given
             let settings = MockProviderSettingsRepository()
             given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)

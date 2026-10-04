@@ -9,14 +9,14 @@ import Testing
 @MainActor
 @Suite
 struct MenuBarStatusColorTests {
-    @Test func `on a dark menu bar Pop keeps its candy colours`() {
+    @Test func `should keep Pop's candy status colours on a dark menu bar`() {
         let pop = PopTheme()
         for status in [QuotaStatus.healthy, .warning, .critical, .depleted] {
             #expect(pop.menuBarStatusColor(for: status, darkMenuBar: true) == pop.statusColor(for: status))
         }
     }
 
-    @Test func `on a light menu bar Pop uses deep colours that read`() {
+    @Test func `should show Pop's status in deeper colours that read on a light menu bar`() {
         let pop = PopTheme()
         #expect(pop.menuBarStatusColor(for: .healthy, darkMenuBar: false) == PopTheme.mintDeep)
         #expect(pop.menuBarStatusColor(for: .warning, darkMenuBar: false) == PopTheme.amber)
@@ -25,14 +25,14 @@ struct MenuBarStatusColorTests {
     }
 
     @Test(arguments: ["light", "dark", "cli", "christmas"])
-    func `other themes use their status colours in the menu bar`(id: String) throws {
+    func `should show every other theme's own status colours in the menu bar`(id: String) throws {
         let theme = try #require(ThemeRegistry.shared.theme(for: id))
         for dark in [true, false] {
             #expect(theme.menuBarStatusColor(for: .healthy, darkMenuBar: dark) == theme.statusColor(for: .healthy))
         }
     }
 
-    @Test func `a status colour the person chose wins over Pop's menu bar colour`() {
+    @Test func `should show the status colour the person chose over Pop's menu bar colour`() {
         var overrides = StatusColorOverrides.none
         overrides[.healthy] = RGBColorValue(red: 0, green: 0, blue: 1)
         let theme = ThemeRegistry.shared.resolveTheme(for: "pop", systemColorScheme: .light,
@@ -47,7 +47,7 @@ struct MenuBarStatusColorTests {
 @MainActor
 @Suite
 struct MenuBarChipTests {
-    @Test func `a chip wraps its label and fits the menu bar`() {
+    @Test func `should wrap Pop's quota in a chip that fits the 22 pt menu bar`() {
         let text = StatusBarPercentageImageRenderer.image(text: "5h 82% · 3:07", color: PopTheme().textOnStatus)
         let chip = StatusBarChipRenderer.chip(text, fill: PopTheme().statusHealthy, ink: PopTheme().glassBorder, shadow: true)
         #expect(chip.size.width > text.size.width + 10)

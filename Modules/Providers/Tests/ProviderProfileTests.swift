@@ -7,7 +7,7 @@ import Testing
 @Suite
 struct ProviderProfileTests {
     @Test
-    func `claude's profile is its name, links and face`() throws {
+    func `should show Claude with its name, status page, symbol, icon and colours`() throws {
         let profile = try ProviderFactory.builtIn("claude").profile
 
         #expect(profile.id == "claude")
@@ -21,7 +21,7 @@ struct ProviderProfileTests {
     }
 
     @Test
-    func `codex's profile is its name, links and face`() throws {
+    func `should show Codex with its name, symbol, icon and colours`() throws {
         let profile = try ProviderFactory.builtIn("codex").profile
 
         #expect(profile.name == "Codex")
@@ -32,14 +32,14 @@ struct ProviderProfileTests {
     }
 
     @Test
-    func `an added login's id finds its product's definition`() {
+    func `should find a login's provider from the login's lineup id, and none for an unknown provider`() {
         #expect(ProviderFactory.builtInDefinition(forLineupId: "codex.4f2a")?.id == "codex")
         #expect(ProviderFactory.builtInDefinition(forLineupId: "claude")?.id == "claude")
         #expect(ProviderFactory.builtInDefinition(forLineupId: "acme-not-built-in") == nil)
     }
 
     @Test
-    func `the origin is where the file came from, never what it says`() throws {
+    func `should mark a provider as custom when its file is the person's own, whatever the file says`() throws {
         let data = try ProviderFactory.builtInData("codex")
 
         #expect(try ProviderDefinition.parse(data, origin: .custom).profile.origin == .custom)

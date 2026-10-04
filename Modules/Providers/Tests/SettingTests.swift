@@ -138,6 +138,18 @@ struct FakePaths: PathChecking {
         let account = try #require(owner.accounts.first { $0.accountId == "work" })
         #expect(account.values["home"] == "/Users/me/work")
     }
+    @Test func `should restore a signed-in folder as the absolute path its CLI needs`() throws {
+        let owner = try provider("codex", accounts: [ProviderAccountConfig(
+            accountId: "work", label: "Work", probeConfig: ["codexHome": "~/work", "chatgptAccountId": "work-id"], madeBy: .folder)])
+        let account = try #require(owner.accounts.first { $0.accountId == "work" })
+        #expect(account.values["codexHome"] == "/Users/me/work")
+        let rpc = try #require(owner.dataSources(for: account).first { $0.kind == "rpc" })
+        guard case .jsonRpc(let call) = rpc.definition.fetch else {
+            Issue.record("Expected an RPC fetch")
+            return
+        }
+        #expect(call.environment.set["CODEX_HOME"] == "/Users/me/work")
+    }
     @Test func `should validate a blank path default after expansion`() throws {
         let owner = try provider("kimi")
         try owner.configuration.set("home", to: "/Users/me/other")

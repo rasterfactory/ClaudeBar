@@ -241,6 +241,9 @@ public final class Accounts {
             return nil
         }
         var values = config.probeConfig
+        if let field = definition.accounts?.folder?.savedAs, let value = values[field], !value.isEmpty {
+            values[field] = configuration.paths.canonical(value)
+        }
         for setting in definition.accountSettings {
             if case .path = setting.kind, let value = values[setting.id], !value.isEmpty {
                 values[setting.id] = configuration.paths.canonical(value)

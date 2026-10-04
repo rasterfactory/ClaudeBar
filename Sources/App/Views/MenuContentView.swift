@@ -12,6 +12,7 @@ struct MenuContentView: View {
     let monitor: QuotaMonitor
     let sessionMonitor: SessionMonitor
     let quotaAlerter: QuotaAlerter
+    let leaderboard: Leaderboard
     /// Closes the popover (Escape). The presentation binding lives on the App.
     var onClose: (() -> Void)?
     var onHookSettingsChanged: ((Bool) -> Void)?
@@ -32,6 +33,8 @@ struct MenuContentView: View {
     @State private var pillsViewportWidth: CGFloat = 0
     /// Logins hidden by the account chips — the page's filter, never a pause.
     @State private var hiddenAccountIds: Set<String> = []
+    /// The Leaderboard tab is open in place of a provider.
+    @State private var showsLeaderboard = false
 
     /// The currently selected provider ID (from monitor, which is @Observable)
     private var selectedProviderId: String {
@@ -430,16 +433,19 @@ struct MenuContentView: View {
                     ProviderPill(
                         providerId: tab.id,
                         providerName: settings.shown(tab.name),
-                        isSelected: tab.contains(selectedProviderId),
+                        isSelected: !showsLeaderboard && tab.contains(selectedProviderId),
                         hasData: tab.accounts.contains { $0.snapshot != nil }
                     ) {
                         // Avoid withAnimation to prevent constraint update loops in MenuBarExtra
+                        showsLeaderboard = false
                         if !tab.contains(selectedProviderId), let first = tab.accounts.first {
                             selectedProviderId = first.id
                         }
                     }
                     .help(index < 9 ? "\(settings.shown(tab.name)) (⌘\(index + 1))" : settings.shown(tab.name))
                 }
+                LeaderboardPill(isSelected: showsLeaderboard) { showsLeaderboard = true }
+                    .help("Leaderboard")
             }
             // A scroll view clips at its edges: leave room for an outlined
             // theme's thick outline and hard shadow.
@@ -496,7 +502,9 @@ struct MenuContentView: View {
 
     @ViewBuilder
     private var metricsContent: some View {
-        if settings.overviewModeEnabled {
+        if showsLeaderboard && !settings.overviewModeEnabled {
+            LeaderboardPopoverView(leaderboard: leaderboard, monitor: monitor)
+        } else if settings.overviewModeEnabled {
             let providers = monitor.enabledProviders
             if providers.isEmpty {
                 emptyState
@@ -861,9 +869,13 @@ struct MenuContentView: View {
             if settings.showDailyUsageCards,
                let report = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory?.report ?? snapshot.dailyUsageReport {
                 let baseDelay = Double(snapshot.quotas.count + 1) * 0.08
+                // Logs that can't be priced show no cost rather than a made-up $0.
+                let knowsCost = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory?.knowsCost ?? true
                 HStack(spacing: 10) {
-                    DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
-                        .frame(maxWidth: .infinity)
+                    if knowsCost {
+                        DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
+                            .frame(maxWidth: .infinity)
+                    }
                     DailyUsageCardView(metric: .tokens, report: report, delay: baseDelay + 0.08)
                         .frame(maxWidth: .infinity)
                 }
@@ -874,9 +886,10 @@ struct MenuContentView: View {
 
             // The same login's last thirty days, as a chart.
             if settings.showDailyUsageCards,
-               let days = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory?.lastThirtyDays,
-               !days.isEmpty {
-                UsageHistoryChartView(days: days, delay: Double(snapshot.quotas.count + 4) * 0.08)
+               let history = (monitor.provider(for: snapshot.providerId) as? Account)?.usageHistory,
+               !history.lastThirtyDays.isEmpty {
+                UsageHistoryChartView(days: history.lastThirtyDays, delay: Double(snapshot.quotas.count + 4) * 0.08,
+                                      measure: history.knowsCost ? .cost : .tokens, showsCost: history.knowsCost)
             }
 
             // Show extension metrics cards (from extension probes)
@@ -1140,6 +1153,8 @@ struct ProviderPill: View {
     let providerName: String
     let isSelected: Bool
     let hasData: Bool
+    /// A symbol of its own, for a tab that isn't a provider.
+    var symbol: String? = nil
     let action: () -> Void
 
     @Environment(\.appTheme) private var theme
@@ -1148,7 +1163,7 @@ struct ProviderPill: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: providerIcon)
+                Image(systemName: symbol ?? providerIcon)
                     .font(.system(size: 10, weight: .semibold))
 
                 Text(providerName)
@@ -1190,6 +1205,17 @@ struct ProviderPill: View {
 
     private var providerIcon: String {
         ProviderVisualIdentityLookup.symbolIcon(for: providerId)
+    }
+}
+
+/// The pill that opens the Leaderboard tab, styled as a provider's.
+struct LeaderboardPill: View {
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        ProviderPill(providerId: "leaderboard", providerName: "Leaderboard", isSelected: isSelected, hasData: true,
+                     symbol: "trophy.fill", action: action)
     }
 }
 

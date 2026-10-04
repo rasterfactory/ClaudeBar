@@ -19,6 +19,9 @@ Implement features using architecture-first design, TDD, rich domain models, and
 ┌─────────────────────────────────────────────────────────────┐
 │  1. ARCHITECTURE DESIGN (Required - User Approval Needed)  │
 ├─────────────────────────────────────────────────────────────┤
+│  • Read the design docs — they are the source of truth     │
+│  • Place the feature: owner, capability, extension point    │
+│  • Write the design change into the docs first              │
 │  • Analyze requirements                                     │
 │  • Create component diagram                                 │
 │  • Show data flow and interactions                          │
@@ -38,7 +41,27 @@ Implement features using architecture-first design, TDD, rich domain models, and
 
 ## Phase 0: Architecture Design (MANDATORY)
 
-Before writing any code, create an architecture diagram and get user approval.
+Before writing any code, design it **in the docs** and get user approval.
+The design docs are the source of truth ([AGENTS.md → Design docs are the
+source of truth](../../../AGENTS.md#design-docs-are-the-source-of-truth)).
+
+### Step 0: Read the design docs, and place the feature in them
+
+Read [CANONICAL_MODEL.md](../../../docs/architecture/CANONICAL_MODEL.md) (the tree, the words, each law
+and its owner, *owned* vs *offered*), [TARGET_ARCHITECTURE.md](../../../docs/architecture/TARGET_ARCHITECTURE.md) (the
+pieces and their one job, the flows) and any `docs/features/<x>/design.md` it touches. Then answer:
+
+| Question | If yes |
+|---|---|
+| Does it answer *another question* than the product's lifecycle? | it is a **capability** (CANONICAL §2.1): declared in the definition, its own types, reached through a handle that is `nil` when not declared — never a flag on `Provider`, never chosen by a provider's name |
+| Does it react to a refresh, a selection, a setting? | it observes an **extension point** (e.g. `QuotaMonitor.onRefreshed`) — the Monitor is not edited for it |
+| Does it notify? | its own port in Alerting — not a new method on an existing alerter |
+| Is a law missing, or owned twice? | add it to CANONICAL §5 with **one** owner |
+
+When the docs don't cover it, write the change into them first (tree lines,
+laws with owners, a pieces table, a TARGET section) — that doc change is the
+architecture you present in Step 4. Code that disagrees with the docs is
+behind; don't bend the design to it.
 
 ### Step 1: Analyze Requirements
 
@@ -98,7 +121,9 @@ Example:
 
 ### Step 4: Present for User Approval
 
-**IMPORTANT**: Always ask user to review the architecture before implementing.
+**IMPORTANT**: Always ask user to confirm the design is correct before implementing —
+the doc change (tree, laws and owners, pieces), the diagram, and for UI a mockup in
+`design-concept/<feature>/` on mock data.
 
 Use AskUserQuestion tool with options:
 - "Approve - proceed with implementation"
@@ -135,20 +160,19 @@ Views consume domain models directly from `QuotaMonitor`:
 
 ```swift
 // QuotaMonitor is the single source of truth
-public actor QuotaMonitor {
-    private let providers: AIProviders  // Hidden - use delegation methods
+@MainActor @Observable
+public final class QuotaMonitor {
+    // The providers you keep: add, delete, order, the derived lineup
+    public let providers: Providers
 
-    // Delegation methods (nonisolated for UI access)
-    public nonisolated var allProviders: [any AIProvider]
-    public nonisolated var enabledProviders: [any AIProvider]
-    public nonisolated func provider(for id: String) -> (any AIProvider)?
-    public nonisolated func addProvider(_ provider: any AIProvider)
-    public nonisolated func removeProvider(id: String)
+    public var logins: [Account]   // every login
+    public var lineup: [Account]   // the lineup
+    public func login(id: String) -> Account?
 
     // Selection state
-    public nonisolated var selectedProviderId: String
-    public nonisolated var selectedProvider: (any AIProvider)?
-    public nonisolated var selectedProviderStatus: QuotaStatus
+    public var selectedProviderId: String
+    public var selectedLogin: Account?
+    public var selectedProviderStatus: QuotaStatus
 }
 
 // Views consume domain directly - NO AppState layer
@@ -157,8 +181,8 @@ struct MenuContentView: View {
 
     var body: some View {
         // Use delegation methods, not monitor.providers.enabled
-        ForEach(monitor.enabledProviders, id: \.id) { provider in
-            ProviderPill(provider: provider)
+        ForEach(monitor.lineup, id: \.id) { login in
+            ProviderPill(provider: login)
         }
     }
 }
@@ -199,13 +223,15 @@ A bug in a migrated provider is fixed in its JSON, or generically in
 `DataSources`, never with vendor-named Swift. Modules never `import Domain`.
 
 **Key patterns:**
-- **Modules by context** — the domain at a module's root, its implementation in `Internal/`, one factory enum per module (`DataSources.make`, `Providers.make`)
+- **Modules by context** — the domain at a module's root, its implementation in `Internal/`, one factory enum per module (`DataSources.make`, `ProviderFactory.make`)
 - **Providers are data** — a feature a provider needs becomes a generic rule or worker, then a line of JSON
 - **Protocol-based DI** — `@Mockable` ports; Chicago-school tests assert on state
 - **No ViewModel layer** — views read `QuotaMonitor` and `Provider` directly
 - **Settings** — generic per-provider values (`dataSourceKind`, `isOn`) before a new sub-protocol
 
 ## TDD Workflow (Chicago School)
+
+Name each test `should <outcome> [when <situation>]`, in the person's words, never a method, type or mechanism verb → [Naming tests](references/tdd-patterns.md#naming-tests).
 
 We follow **Chicago school TDD** (state-based testing):
 - Test **state changes** and **return values**, not interactions
@@ -220,7 +246,7 @@ Test state and computed properties:
 ```swift
 @Suite
 struct FeatureModelTests {
-    @Test func `model computes status from state`() {
+    @Test func `should be normal when half is left`() {
         // Given - set up initial state
         let model = FeatureModel(value: 50)
 
@@ -228,7 +254,7 @@ struct FeatureModelTests {
         #expect(model.status == .normal)
     }
 
-    @Test func `model state changes correctly`() {
+    @Test func `should have 70 left and stay healthy after using 30 of 100`() {
         // Given
         var model = FeatureModel(value: 100)
 
@@ -249,7 +275,7 @@ Stub dependencies to return data, assert on resulting state:
 ```swift
 @Suite
 struct FeatureServiceTests {
-    @Test func `service returns parsed data on success`() async throws {
+    @Test func `should load three items when the service answers`() async throws {
         // Given - stub dependency to return data (not verify calls)
         let mockClient = MockNetworkClient()
         given(mockClient).fetch(any()).willReturn(validResponseData)
@@ -290,6 +316,9 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 ## Checklist
 
 ### Architecture Design (Phase 0)
+- [ ] Read CANONICAL_MODEL, TARGET_ARCHITECTURE and the feature's design.md
+- [ ] Place it: owner, capability (handle `nil` when not declared), extension point
+- [ ] Write the design change into the docs first
 - [ ] Analyze requirements and identify components
 - [ ] Create ASCII architecture diagram with component interactions
 - [ ] Document component table (purpose, inputs, outputs, dependencies)
@@ -305,4 +334,7 @@ xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar-Workspace \
 - [ ] Stub mocks to return data, assert on resulting state
 - [ ] Implement ports in the module's `Internal/`
 - [ ] Create views consuming domain models directly
+- [ ] Views render and tell only — no comparing, counting or reading quotas to decide
+- [ ] Docs updated in the same change (status, build truth, laws)
+- [ ] Real UI screenshots on mock data (`scripts/demo-screenshots.sh`) for UI changes
 - [ ] Run `tuist test` to verify all tests pass

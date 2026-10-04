@@ -20,6 +20,7 @@ public final class LeaderboardUploader {
     @ObservationIgnored private let now: () -> Date
 
     static let window = 30
+    static let interval: TimeInterval = 60 * 60
 
     public init(membership: LeaderboardMembership, logs: any TokenLogs, api: any LeaderboardAPI,
                 calendar: Calendar = .current, now: @escaping () -> Date = Date.init) {
@@ -30,7 +31,16 @@ public final class LeaderboardUploader {
         self.now = now
     }
 
+    /// Uploads when an hour has passed since the last good upload, by the
+    /// wall clock: callers may ask as often as they like, and a Mac that slept
+    /// through the hour uploads on the first ask after it wakes.
     public func uploadDue() async {
+        if let lastUpload = membership.lastUpload, now().timeIntervalSince(lastUpload) < Self.interval { return }
+        await uploadNow()
+    }
+
+    /// Uploads at once, hour or not: an upload the person asked for.
+    public func uploadNow() async {
         guard let credentials = membership.credentials, !isUploading else { return }
         isUploading = true
         defer { isUploading = false }

@@ -180,7 +180,7 @@ struct AddProviderSheet: View {
     }
 
     private var copyableDefinitions: [ProviderDefinition] {
-        (Array(Providers.builtInDefinitions.values) + ProviderCatalog().custom())
+        (Array(ProviderFactory.builtInDefinitions.values) + ProviderCatalog().custom())
             .sorted { $0.profile.name < $1.profile.name }
     }
 
@@ -300,7 +300,7 @@ struct AddProviderSheet: View {
             do {
                 let source = DataSources.make(
                     try draft.connection(), providerId: "draft",
-                    scripts: Providers.builtInScripts, secrets: TypedKey(value: apiKey)
+                    scripts: ProviderFactory.builtInScripts, secrets: TypedKey(value: apiKey)
                 )
                 let answer = try await source.fetchResponse()
                 response = answer
@@ -515,14 +515,10 @@ struct AddProviderSheet: View {
         do {
             let catalog = ProviderCatalog()
             let definition = try draft.definition(id: catalog.mintId(for: draft.name))
-            try catalog.add(definition)
-            let vault = ProviderVault()
+            let provider = try monitor.providers.add(definition)
             if !apiKey.isEmpty, draft.key == .apiKey || needsKeyForCopy {
-                vault.save(apiKey, "apiKey", provider: definition.id)
+                ProviderVault().save(apiKey, "apiKey", provider: provider.id)
             }
-            Providers.register(custom: definition)
-            let provider = Providers.make(definition, settings: JSONSettingsRepository.shared, secrets: vault)
-            monitor.addProvider(provider.defaultAccount)
             Task { await monitor.refresh(providerId: provider.defaultAccount.id) }
             onDone()
         } catch {

@@ -22,6 +22,25 @@ struct MenuBarProviderLogoTests {
         #expect(!StatusItemLabelDriver.showsPrimaryLogo(showsQuota: false, hasOtherReadouts: true, hasAccountName: true, logoAlways: true))
     }
 
+    @Test func `a logo waiting for its first reading shows alone, not beside a chart icon`() {
+        #expect(!StatusItemLabelDriver.showsStatusIcon(hasLabel: false, showsLogo: true))
+        #expect(StatusItemLabelDriver.showsStatusIcon(hasLabel: false, showsLogo: false))
+        #expect(!StatusItemLabelDriver.showsStatusIcon(hasLabel: true, showsLogo: false))
+    }
+
+    @Test func `at launch the logo alone is narrower than logo and chart icon`() {
+        var content = StatusItemLabelDriver.LabelContent(label: nil, fallbackStatus: .healthy, sessionPhase: nil, themeModeId: "dark")
+        content.primaryProviderId = "claude"
+        content.primaryProviderName = "Claude"
+        let logoOnly = StatusItemLabelDriver.compose(content, theme: DarkTheme())
+        content.primaryProviderId = nil
+        content.primaryProviderName = nil
+        let chartOnly = StatusItemLabelDriver.compose(content, theme: DarkTheme())
+        // Two images joined with spacing would be wider than either alone.
+        #expect(logoOnly.size.width < chartOnly.size.width + 12)
+        #expect(logoOnly.size.width > 0)
+    }
+
     @Test func `with the logo the label starts with it`() {
         var content = StatusItemLabelDriver.LabelContent(
             label: MenuBarLabel(text: "5h 81%", status: .healthy, segments: [.init(text: "5h 81%", status: .healthy)]),

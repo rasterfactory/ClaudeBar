@@ -33,12 +33,10 @@ struct RefreshReport: Equatable {
         failure = error.map { Failure(headline: step.map(Self.headline(for:)), detail: $0.localizedDescription) }
     }
 
-    /// A provider that is data reports its refreshes; a legacy provider has
-    /// no data sources to name, so it has none.
+    /// What a login's last refreshes say.
     @MainActor
-    static func of(_ provider: any AIProvider) -> RefreshReport? {
-        guard let account = provider as? Account else { return nil }
-        return RefreshReport(
+    static func of(_ account: Account) -> RefreshReport {
+        RefreshReport(
             age: account.snapshot?.ageDescription,
             source: account.answeredByLabel,
             error: account.lastError,

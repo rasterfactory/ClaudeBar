@@ -7,6 +7,8 @@ struct DailyUsageCardView: View {
     let metric: DailyUsageMetric
     let report: DailyUsageReport
     let delay: Double
+    /// The app it counts, when it isn't the login's own tool — *Claude Desktop*.
+    var title: String? = nil
 
     @Environment(\.appTheme) private var theme
     @State private var isHovering = false
@@ -21,7 +23,7 @@ struct DailyUsageCardView: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(metric.color)
 
-                    Text(metric.label.uppercased())
+                    Text((title.map { "\($0) · \(metric.label)" } ?? metric.label).uppercased())
                         .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
                         .foregroundStyle(theme.textSecondary)
                         .tracking(0.3)
@@ -105,6 +107,8 @@ struct DailyUsageCardView: View {
     }
 
     private var subtitleText: String? {
+        // A day not begun reads as one, not as a count of zero.
+        if report.today.isEmpty { return "Not used yet today" }
         switch metric {
         case .cost:
             // Highlight cache savings as a discount line under the cost

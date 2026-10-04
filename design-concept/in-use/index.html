@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In Use — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--lav:#EDE6FF;--mint:#9FE3B8;--pink:#FFB3C7;--sun:#FFD84D;--sky:#A9D8FF;--violet:#7C5CFF;--peach:#FFC9A8;--red:#FF8A8A;--line:3px solid var(--ink);--shadow:4px 4px 0 var(--ink)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+.wrap{max-width:1320px;margin:0 auto;padding:36px 16px 64px;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:end}
+h1{margin:0;font-size:clamp(30px,5vw,44px);font-weight:800;letter-spacing:-.02em;line-height:1}
+h2{margin:0;font-size:18px;font-weight:800}
+.sub{margin:6px 0 0;color:var(--muted);max-width:760px}
+.tag{border:var(--line);border-radius:999px;padding:3px 12px;font-weight:800;font-size:13px;background:var(--sun);box-shadow:2px 2px 0 var(--ink)}
+.section-title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.row{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:12px;flex:1 1 380px;min-width:0;max-width:440px}
+.col.wide{max-width:none;flex:1 1 520px}
+.card{background:var(--card);border:var(--line);border-radius:18px;box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:10px}
+.label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.hint{font-size:12px;color:var(--muted)}
+.mono{font-family:"JetBrains Mono",monospace}
+
+/* Controls for the demo itself */
+.demo{display:flex;flex-wrap:wrap;gap:18px;align-items:center;background:var(--lav)}
+.demo label{display:flex;gap:10px;align-items:center;font-weight:700;font-size:13px}
+.demo input[type=range]{accent-color:var(--violet);width:180px}
+
+/* Menu bar */
+.menubar{display:flex;justify-content:flex-end;align-items:center;gap:16px;height:34px;padding:0 14px;border:var(--line);border-radius:12px;background:#2a2640;color:#fff;font:600 13px system-ui,sans-serif}
+.menubar .item{display:flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.12)}
+.menubar .dot{width:8px;height:8px;border-radius:50%}
+
+/* Popover */
+.pop{background:var(--paper);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:14px 14px;border:var(--line);border-radius:22px;box-shadow:5px 5px 0 var(--ink);padding:14px;display:flex;flex-direction:column;gap:10px;position:relative}
+.pop-head{display:flex;align-items:center;gap:10px}
+.logo{width:38px;height:38px;border-radius:50%;border:var(--line);background:var(--peach);display:grid;place-items:center;font-weight:800}
+.pop-head b{font-size:18px;line-height:1}
+.status{margin-left:auto;border:var(--line);border-radius:999px;padding:3px 10px;font-weight:800;font-size:12px;background:var(--mint)}
+.status.low{background:var(--red)}
+.tabs{display:flex;gap:6px}
+.tab{border:2px solid var(--ink);border-radius:999px;padding:3px 10px;font-weight:800;font-size:12px;background:#fff}
+.tab.on{background:var(--violet);color:#fff}
+.accounts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.acct{position:relative;display:inline-flex;align-items:center;gap:6px;border:2px solid var(--ink);border-radius:999px;padding:3px 6px 3px 10px;background:#fff;font-weight:800;font-size:12px;cursor:pointer;min-height:32px}
+.acct[aria-current="true"]{background:var(--ink);color:var(--paper)}
+.acct .pct{font-family:"JetBrains Mono",monospace;font-size:11px;opacity:.8}
+.acct .inuse{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:1px 6px;background:var(--sun);color:var(--ink)}
+.acct .more{border:0;background:transparent;color:inherit;font:800 14px "Bricolage Grotesque";cursor:pointer;padding:0 4px;line-height:1}
+.menu{position:absolute;top:calc(100% + 6px);left:0;z-index:4;min-width:230px;background:#fff;border:var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px;display:none;flex-direction:column;color:var(--ink)}
+.menu.open{display:flex}
+.menu button{border:0;background:transparent;text-align:left;font:700 13px "Bricolage Grotesque";padding:7px 10px;border-radius:8px;cursor:pointer;color:var(--ink)}
+.menu button:hover{background:var(--lav)}
+.menu button:disabled{color:var(--muted);cursor:default;background:transparent}
+.menu hr{border:0;border-top:2px solid #EEE7DA;margin:4px 0}
+.quota{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.q{background:#fff;border:var(--line);border-radius:14px;box-shadow:3px 3px 0 var(--ink);padding:10px}
+.q .big{font-size:28px;font-weight:800;line-height:1}
+.bar{height:10px;border:2px solid var(--ink);border-radius:999px;background:#F3EEE4;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--mint)}
+.bar i.low{background:var(--red)}
+.banner{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border:var(--line);border-radius:14px;background:var(--sun);padding:8px 10px;box-shadow:3px 3px 0 var(--ink);font-weight:700;font-size:13px}
+.whereline{font-size:12px;color:var(--muted)}
+.banner[hidden]{display:none}
+.whereline b{color:var(--ink)}
+
+.btn{border:var(--line);border-radius:999px;background:var(--violet);color:#fff;font:800 12px "Bricolage Grotesque",sans-serif;padding:6px 12px;box-shadow:2px 2px 0 var(--ink);cursor:pointer;min-height:34px}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn.small{min-height:28px;padding:3px 10px}
+
+/* Sheet */
+.scrim{position:absolute;inset:0;background:rgba(30,27,46,.35);border-radius:19px;display:none;align-items:center;justify-content:center;padding:12px;z-index:6}
+.scrim.open{display:flex}
+.sheet{background:var(--paper);border:var(--line);border-radius:18px;box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:10px;max-width:100%}
+.code{background:#1E1B2E;color:#EDE6FF;border-radius:12px;padding:10px 12px;font:500 11.5px/1.5 "JetBrains Mono",monospace;white-space:pre-wrap;word-break:break-all}
+.code .c{color:#9C95B8}
+.seg{display:flex;border:2px solid var(--ink);border-radius:999px;overflow:hidden;background:#fff;align-self:flex-start}
+.seg button{border:0;background:transparent;font:800 12px "Bricolage Grotesque";padding:4px 12px;cursor:pointer}
+.seg button+button{border-left:2px solid var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+/* Settings */
+.settings .acc-row{display:flex;align-items:center;gap:10px;border:2px solid var(--ink);border-radius:12px;padding:8px 10px;background:#fff}
+.settings .acc-row .who{display:flex;flex-direction:column;line-height:1.2}
+.settings .acc-row .who small{color:var(--muted);font-family:"JetBrains Mono",monospace;font-size:11px}
+.settings .acc-row .right{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px;font-weight:700;white-space:nowrap}
+input[type=radio],input[type=checkbox]{accent-color:var(--violet);width:16px;height:16px}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:700}
+.sw{width:44px;height:26px;border:var(--line);border-radius:999px;background:#fff;position:relative;cursor:pointer;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--ink);transition:left .15s}
+.sw[aria-checked="true"]{background:var(--mint)}
+.sw[aria-checked="true"]::after{left:20px}
+.threshold{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700}
+.threshold select{border:2px solid var(--ink);border-radius:8px;font:700 13px "Bricolage Grotesque";padding:3px 6px;background:#fff}
+.dim{opacity:.45;pointer-events:none}
+
+/* Notification */
+.notif{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.92);border:2px solid #d7d0c2;border-radius:16px;padding:10px 12px;box-shadow:0 8px 24px rgba(30,27,46,.15);font:13px/1.35 system-ui,sans-serif}
+.notif .icon{width:32px;height:32px;border-radius:8px;background:var(--peach);border:2px solid var(--ink);display:grid;place-items:center;font:800 13px "Bricolage Grotesque";flex:none}
+.notif b{display:block}
+.notif .acts{display:flex;gap:6px;margin-top:6px}
+.notif .acts button{border:1px solid #c9c2b4;background:#f5f2ec;border-radius:7px;padding:3px 10px;font:600 12px system-ui;cursor:pointer}
+.empty{font-size:13px;color:var(--muted);font-style:italic}
+
+/* Terminal */
+.term{background:#14121f;color:#d9d3f0;border:var(--line);border-radius:14px;box-shadow:var(--shadow);font:500 12.5px/1.6 "JetBrains Mono",monospace;padding:12px 14px;min-height:170px;white-space:pre-wrap}
+.term .p{color:var(--mint)}
+.term .dim{color:#8a83a8;opacity:1}
+.term-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.rules .card h3{margin:0;font-size:15px}
+.rules .card p{margin:0;font-size:13.5px;color:#3a3550}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>In use</h1>
+      <p class="sub">Choose which login new <span class="mono">claude</span> / <span class="mono">codex</span> sessions start with, from ClaudeBar. Running sessions keep theirs. Nothing moves but a folder path: no tokens are copied, nothing goes through ClaudeBar.</p>
+    </div>
+    <span class="tag">Mockup · sample accounts</span>
+  </header>
+
+  <div class="card demo">
+    <span class="label">Try it</span>
+    <label>personal has <input id="drain" type="range" min="0" max="100" value="62"> <span id="drainVal" class="mono">62%</span> left</label>
+    <button class="btn ghost small" id="reset">Reset</button>
+  </div>
+
+  <div class="row">
+    <!-- Popover -->
+    <div class="col">
+      <p class="section-title">1 · The popover — switch here</p>
+      <div class="menubar"><span>Wi-Fi</span><span class="item"><span class="dot" id="mbDot"></span><span id="mbText">personal 62%</span></span><span>Sun 9:41</span></div>
+      <div class="pop" id="pop">
+        <div class="pop-head">
+          <div class="logo">AI</div>
+          <div><b>ClaudeBar</b><div class="hint">AI Usage Monitor</div></div>
+          <span class="status" id="status">HEALTHY</span>
+        </div>
+        <div class="tabs"><span class="tab on">Claude</span><span class="tab">Codex</span><span class="tab">Gemini</span></div>
+        <div class="accounts" id="chips"></div>
+        <div class="banner" id="banner" hidden>
+          <span id="bannerText"></span>
+          <button class="btn small" id="bannerBtn"></button>
+        </div>
+        <div class="quota" id="quota"></div>
+        <div class="whereline">⌨︎ New terminal sessions use <b id="whereName">personal</b> · Desktop & IDE keep their own login</div>
+
+        <div class="scrim" id="scrim">
+          <div class="sheet" role="dialog" aria-labelledby="sheetTitle">
+            <h2 id="sheetTitle">Let ClaudeBar choose the login?</h2>
+            <p class="hint" style="margin:0">One time. ClaudeBar adds these lines to your shell. Each time you run <span class="mono">claude</span> or <span class="mono">codex</span>, they read the login you chose here. Delete them to turn this off.</p>
+            <div class="seg" id="shellSeg"><button aria-pressed="true" data-shell="zsh">zsh</button><button aria-pressed="false" data-shell="bash">bash</button><button aria-pressed="false" data-shell="fish">fish</button></div>
+            <div class="code" id="snippet"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn" id="sheetAdd">Add to ~/.zshrc</button>
+              <button class="btn ghost" id="sheetCopy">Copy — I'll add it</button>
+              <button class="btn ghost" id="sheetCancel">Cancel</button>
+            </div>
+            <p class="hint" style="margin:0">Open terminals pick it up on the next <span class="mono">claude</span> after <span class="mono">source ~/.zshrc</span> or a new tab.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="col">
+      <p class="section-title">2 · Settings → Providers → Claude → Accounts</p>
+      <div class="card settings">
+        <span class="label">Accounts</span>
+        <div id="settingsRows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <hr style="border:0;border-top:2px solid #EEE7DA;margin:2px 0">
+        <div class="toggle"><span>Switch when low</span><span class="sw" role="switch" aria-checked="false" tabindex="0" id="autoSw"></span></div>
+        <div id="autoBox" class="dim" style="display:flex;flex-direction:column;gap:8px">
+          <div class="threshold">When the login in use drops below
+            <select id="threshold"><option>5%</option><option selected>10%</option><option>20%</option></select>
+          </div>
+          <div class="hint">…new sessions use the ticked login with the most left. Running sessions are never touched.</div>
+          <div id="pickRows" style="display:flex;flex-direction:column;gap:4px"></div>
+        </div>
+        <div class="hint" id="shellState">Shell: not set up — ClaudeBar asks the first time you switch.</div>
+      </div>
+
+      <p class="section-title" style="margin-top:8px">3 · Notifications</p>
+      <div id="notifs" style="display:flex;flex-direction:column;gap:8px"><p class="empty">Drag the slider below 20% to see the suggestion.</p></div>
+    </div>
+
+    <!-- Terminal -->
+    <div class="col">
+      <p class="section-title">4 · What your terminal does</p>
+      <div class="term" id="term"></div>
+      <div class="term-actions">
+        <button class="btn ghost small" id="runClaude">$ claude</button>
+        <button class="btn ghost small" id="runOld">a session already running</button>
+        <button class="btn ghost small" id="catFile">$ cat ~/.claudebar/in-use/claude</button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="section-title">The rules</p>
+    <div class="rules">
+      <div class="card"><h3>New sessions only</h3><p>Switching writes one file. A session that is already running keeps its login, and is never interrupted.</p></div>
+      <div class="card"><h3>No secrets move</h3><p>The file holds a folder path. Each login keeps its own Keychain item and refresh token, so nothing gets logged out.</p></div>
+      <div class="card"><h3>Asked once, easy to undo</h3><p>The shell lines are shown before they're written. Deleting them, or choosing the plain login, gives you the CLI's own behaviour back.</p></div>
+      <div class="card"><h3>Terminal only</h3><p>Claude Desktop and IDE extensions don't run your shell, so they keep their own login. The popover says so.</p></div>
+      <div class="card"><h3>Switch when low is opt-in</h3><p>Off by default. It only picks among logins you tick, and tells you every time it switches.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SAMPLE = {
+  personal: { name: "personal", email: "personal@example.com", folder: "~/.claude", plain: true },
+  work: { name: "work", email: "work@example.com", folder: "~/.claude-work", plain: false },
+};
+const state = { left: { personal: 62, work: 81 }, inUse: "personal", shell: null, shellKind: "zsh",
+  auto: false, threshold: 10, pick: { personal: true, work: true }, menu: null, pending: null, notes: [], log: [], dismissed: false };
+
+const $ = (id) => document.getElementById(id);
+const h = (tag, props = {}, ...kids) => { const n = document.createElement(tag); for (const [k, v] of Object.entries(props)) { if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else if (v !== false && v != null) n.setAttribute(k, v); } n.append(...kids); return n; };
+const color = (p) => p < 20 ? "#FF8A8A" : p < 50 ? "#FFD84D" : "#9FE3B8";
+const other = (id) => id === "personal" ? "work" : "personal";
+
+function say(text, kind = "") { state.log.push([text, kind]); }
+
+function useFor(id, how = "you") {
+  if (state.inUse === id) return;
+  if (!state.shell) { state.pending = id; render(); return; }
+  state.inUse = id; state.dismissed = false;
+  state.notes = state.notes.filter((n) => !n.low);
+  say(`ClaudeBar → ~/.claudebar/in-use/claude = ${SAMPLE[id].plain ? "(empty: the plain login)" : SAMPLE[id].folder}`, "dim");
+  if (how === "auto") state.notes.unshift({ title: `New Claude sessions now use ${id}`, body: `${other(id)} dropped below ${state.threshold}%. Running sessions keep their login.`, acts: [["Undo", () => useFor(other(id))]] });
+  render();
+}
+
+function checkLow() {
+  const cur = state.inUse, left = state.left[cur];
+  if (state.auto && left < state.threshold) {
+    const candidates = Object.keys(SAMPLE).filter((k) => k !== cur && state.pick[k] && state.left[k] > left);
+    candidates.sort((a, b) => state.left[b] - state.left[a]);
+    if (candidates[0] && state.shell) { useFor(candidates[0], "auto"); return; }
+  }
+  if (!state.auto && left < 20 && !state.notes.some((n) => n.low === cur) && !state.dismissed) {
+    const to = other(cur);
+    state.notes.unshift({ low: cur, title: `${cur} is at ${left}%`, body: `${to} has ${state.left[to]}% left. Start new sessions on ${to}?`, acts: [[`Use ${to}`, () => useFor(to)], ["Not now", () => { state.dismissed = true; state.notes = state.notes.filter((n) => n.low !== cur); render(); }]] });
+  }
+}
+
+function snippet(kind) {
+  const c = (t) => h("span", { class: "c" }, t + "\n");
+  if (kind === "fish") return [c("# ClaudeBar: start claude/codex on the login chosen in ClaudeBar (delete to turn off)"),
+    "function claude\n  set -l d (cat ~/.claudebar/in-use/claude 2>/dev/null)\n  if test -n \"$d\"; CLAUDE_CONFIG_DIR=$d command claude $argv; else; command claude $argv; end\nend\n"];
+  return [c("# ClaudeBar: start claude/codex on the login chosen in ClaudeBar (delete to turn off)"),
+    "claude() { local d; d=$(cat ~/.claudebar/in-use/claude 2>/dev/null)\n  if [ -n \"$d\" ]; then CLAUDE_CONFIG_DIR=\"$d\" command claude \"$@\"; else command claude \"$@\"; fi; }\n",
+    "codex()  { local d; d=$(cat ~/.claudebar/in-use/codex 2>/dev/null)\n  if [ -n \"$d\" ]; then CODEX_HOME=\"$d\" command codex \"$@\"; else command codex \"$@\"; fi; }"];
+}
+
+function render() {
+  const cur = state.inUse, left = state.left[cur];
+  // Menu bar: the login in use, by name.
+  $("mbText").textContent = `${cur} ${left}%`;
+  $("mbDot").style.background = color(left);
+  const st = $("status"); st.textContent = left < 20 ? "LOW" : "HEALTHY"; st.classList.toggle("low", left < 20);
+
+  // Chips
+  const chips = $("chips"); chips.replaceChildren();
+  for (const id of Object.keys(SAMPLE)) {
+    const menu = h("div", { class: "menu" + (state.menu === id ? " open" : "") },
+      h("button", { onclick: (e) => { e.stopPropagation(); state.menu = null; useFor(id); }, disabled: state.inUse === id ? "" : false },
+        state.inUse === id ? "✓ In use for new sessions" : "Use for new sessions"),
+      h("hr"), h("button", {}, "Rename…"), h("button", {}, "Pause"), id === "personal" ? h("button", { disabled: "" }, "Remove (the plain login)") : h("button", {}, "Remove"));
+    chips.append(h("span", { class: "acct", "aria-current": String(id === "personal"), onclick: () => {} },
+      id === cur ? h("span", { class: "inuse" }, "in use") : "", id, h("span", { class: "pct" }, `${state.left[id]}%`),
+      h("button", { class: "more", "aria-label": `${id} actions`, onclick: (e) => { e.stopPropagation(); state.menu = state.menu === id ? null : id; render(); } }, "⋯"), menu));
+  }
+
+  // Low banner: a one-click switch, only while the in-use login is low.
+  const to = other(cur), banner = $("banner");
+  const showBanner = left < 20 && state.left[to] > left;
+  banner.hidden = !showBanner;
+  if (showBanner) { $("bannerText").textContent = `${cur} is low — ${to} has ${state.left[to]}% left`; $("bannerBtn").textContent = `Use ${to} for new sessions`; $("bannerBtn").onclick = () => useFor(to); }
+
+  // Quotas of the selected chip (personal shown)
+  const q = $("quota"); q.replaceChildren();
+  for (const [label, p] of [["Session", state.left.personal], ["Weekly", Math.min(100, state.left.personal + 20)]]) {
+    q.append(h("div", { class: "q" }, h("div", { class: "label" }, `${label} · personal`), h("div", { class: "big" }, `${p}%`),
+      h("div", { class: "bar" }, h("i", { class: p < 20 ? "low" : "", style: `width:${p}%` }))));
+  }
+  $("whereName").textContent = cur;
+
+  // Setup sheet
+  $("scrim").classList.toggle("open", !!state.pending);
+  $("snippet").replaceChildren(...snippet(state.shellKind));
+  $("sheetAdd").textContent = state.shellKind === "fish" ? "Add to config.fish" : `Add to ~/.${state.shellKind}rc`;
+  for (const b of $("shellSeg").children) b.setAttribute("aria-pressed", String(b.dataset.shell === state.shellKind));
+
+  // Settings
+  const rows = $("settingsRows"); rows.replaceChildren();
+  for (const id of Object.keys(SAMPLE)) {
+    const s = SAMPLE[id];
+    rows.append(h("label", { class: "acc-row" },
+      h("input", { type: "radio", name: "inuse", checked: id === cur ? "" : false, onchange: () => useFor(id) }),
+      h("span", { class: "who" }, h("b", {}, id + (s.plain ? " · plain login" : "")), h("small", {}, `${s.email} · ${s.folder}`)),
+      h("span", { class: "right" }, `${state.left[id]}% left`, id === cur ? h("span", { class: "tag", style: "font-size:10px;padding:1px 8px;white-space:nowrap" }, "IN USE") : "")));
+  }
+  $("autoSw").setAttribute("aria-checked", String(state.auto));
+  $("autoBox").classList.toggle("dim", !state.auto);
+  const pick = $("pickRows"); pick.replaceChildren(h("span", { class: "label" }, "May switch to"));
+  for (const id of Object.keys(SAMPLE)) pick.append(h("label", { style: "display:flex;gap:8px;align-items:center;font-weight:700;font-size:13px" },
+    h("input", { type: "checkbox", checked: state.pick[id] ? "" : false, onchange: (e) => { state.pick[id] = e.target.checked; render(); } }), id));
+  $("shellState").textContent = state.shell ? `Shell: set up in ${state.shell}. ` : "Shell: not set up — ClaudeBar asks the first time you switch.";
+  if (state.shell) $("shellState").append(h("a", { href: "#", onclick: (e) => { e.preventDefault(); state.shell = null; state.inUse = "personal"; say("Shell lines removed: claude uses its own login again.", "dim"); render(); } }, "Remove"));
+
+  // Notifications
+  const n = $("notifs"); n.replaceChildren();
+  if (!state.notes.length) n.append(h("p", { class: "empty" }, "Drag the slider below 20% to see the suggestion."));
+  for (const note of state.notes.slice(0, 3)) n.append(h("div", { class: "notif" }, h("div", { class: "icon" }, "AI"),
+    h("div", {}, h("b", {}, note.title), note.body, h("div", { class: "acts" }, ...note.acts.map(([t, f]) => h("button", { onclick: () => { state.notes = state.notes.filter((x) => x !== note); f(); render(); } }, t))))));
+
+  // Terminal
+  const term = $("term"); term.replaceChildren();
+  if (!state.log.length) term.append(h("span", { class: "dim" }, "Run a command below.\n"));
+  for (const [t, k] of state.log.slice(-9)) term.append(k === "cmd" ? h("span", {}, h("span", { class: "p" }, "$ "), t + "\n") : h("span", { class: k }, t + "\n"));
+}
+
+$("drain").addEventListener("input", (e) => { state.left.personal = +e.target.value; $("drainVal").textContent = e.target.value + "%"; checkLow(); render(); });
+$("reset").onclick = () => { Object.assign(state, { left: { personal: 62, work: 81 }, inUse: "personal", shell: null, auto: false, pending: null, notes: [], log: [], menu: null, dismissed: false }); $("drain").value = 62; $("drainVal").textContent = "62%"; render(); };
+$("autoSw").onclick = () => { state.auto = !state.auto; checkLow(); render(); };
+$("autoSw").onkeydown = (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); $("autoSw").click(); } };
+$("threshold").onchange = (e) => { state.threshold = parseInt(e.target.value); checkLow(); render(); };
+$("shellSeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { state.shellKind = b.dataset.shell; render(); } };
+$("sheetAdd").onclick = () => { state.shell = state.shellKind === "fish" ? "config.fish" : `~/.${state.shellKind}rc`; const id = state.pending; state.pending = null; say(`ClaudeBar added 2 functions to ${state.shell}`, "dim"); useFor(id); };
+$("sheetCopy").onclick = () => { state.shell = "your shell (copied)"; const id = state.pending; state.pending = null; useFor(id); };
+$("sheetCancel").onclick = () => { state.pending = null; render(); };
+$("runClaude").onclick = () => { const s = SAMPLE[state.inUse]; say("claude", "cmd"); say(state.shell ? `Claude Code · logged in as ${s.email}` : `Claude Code · logged in as ${SAMPLE.personal.email}   (no shell lines: the CLI's own login)`); render(); };
+$("runOld").onclick = () => { say("(the session you started earlier keeps its login until you exit it)", "dim"); render(); };
+$("catFile").onclick = () => { say("cat ~/.claudebar/in-use/claude", "cmd"); say(!state.shell ? "No such file" : SAMPLE[state.inUse].plain ? "(empty — the plain login)" : SAMPLE[state.inUse].folder.replace("~", "/Users/you")); render(); };
+document.addEventListener("click", () => { if (state.menu) { state.menu = null; render(); } });
+const qs = new URLSearchParams(location.search);
+if (qs.has("low")) { state.left.personal = 8; $("drain").value = 8; $("drainVal").textContent = "8%"; checkLow(); }
+if (qs.has("sheet")) state.pending = "work";
+if (qs.has("switched")) { state.shell = "~/.zshrc"; useFor("work"); $("runClaude").click(); }
+render();
+</script>
+</body>
+</html>

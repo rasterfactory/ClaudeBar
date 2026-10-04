@@ -1,0 +1,11 @@
+# Every page: its own scripts and styles, Google Fonts, contributors' GitHub
+# avatars, and the leaderboard API. Nothing else may load or frame it.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://avatars.githubusercontent.com; connect-src 'self' https://claudebar-api.tddworks.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Cache-Control: public, max-age=300
+
+/leaderboard/globe.js
+  ! Cache-Control
+  Cache-Control: public, max-age=86400

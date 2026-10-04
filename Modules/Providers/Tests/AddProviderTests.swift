@@ -73,7 +73,7 @@ struct AddProviderTests {
                              environment: { _ in nil }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
         })
 
-        let usage = try await provider.defaultAccount.refresh()
+        let usage = try await provider.refreshPlain()
 
         let quota = try #require(usage.quotas.first)
         #expect(quota.left == .money(Money(Decimal(string: "12.4")!, currency: "USD"), of: Money(50, currency: "USD")))
@@ -173,7 +173,7 @@ struct AddProviderTests {
 
     @Test
     func `a copy runs the same data sources under a new id and name, as custom`() throws {
-        let codex = try Providers.builtIn("codex")
+        let codex = try ProviderFactory.builtIn("codex")
         var draft = ProviderDraft(start: .copy(codex))
         draft.name = "Codex (work)"
 
@@ -234,7 +234,7 @@ struct AddProviderTests {
 
         #expect(first.hasPrefix("custom-codex-"))
         #expect(first != second)
-        #expect(Providers.builtInDefinitions[first] == nil)
+        #expect(ProviderFactory.builtInDefinitions[first] == nil)
     }
 
     @Test
@@ -272,13 +272,13 @@ struct CustomRegistryTests {
         draft.name = "Local Tool"
         let definition = try draft.definition(id: "custom-local-tool-abc123")
 
-        Providers.register(custom: definition)
-        let found = Providers.definition(forLineupId: "custom-local-tool-abc123")
-        Providers.unregister(custom: definition.id)
+        ProviderFactory.register(custom: definition)
+        let found = ProviderFactory.definition(forLineupId: "custom-local-tool-abc123")
+        ProviderFactory.unregister(custom: definition.id)
 
         #expect(found?.profile.name == "Local Tool")
-        #expect(Providers.definition(forLineupId: "custom-local-tool-abc123") == nil)
-        #expect(Providers.definition(forLineupId: "codex.work")?.id == "codex")
+        #expect(ProviderFactory.definition(forLineupId: "custom-local-tool-abc123") == nil)
+        #expect(ProviderFactory.definition(forLineupId: "codex.work")?.id == "codex")
     }
 }
 

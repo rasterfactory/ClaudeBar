@@ -32,6 +32,7 @@ struct LeaderboardMembershipTests {
         #expect(membership.isVisible)
         #expect(try SigningKey(rawRepresentation: #require(keys.stored)).publicKey.count == 43)
         #expect(settings.record == LeaderboardRecord(username: "tokenwhale", sharing: ["claude", "codex"], visible: true, lastUpload: nil))
+        #expect(!membership.sharesCountry)
     }
 
     @Test func `a taken name leaves you outside, with no key kept`() async throws {
@@ -139,7 +140,7 @@ struct LeaderboardMembershipTests {
     @Test func `a refused change changes nothing here`() async throws {
         let membership = try await joined()
         api.reset([.given])
-        given(api).update(username: .any, visible: .any, as: .any).willThrow(LeaderboardError.unreachable)
+        given(api).update(.any, as: .any).willThrow(LeaderboardError.unreachable)
 
         await #expect(throws: LeaderboardError.unreachable) { try await membership.setVisible(false) }
         #expect(membership.isVisible)
@@ -148,7 +149,7 @@ struct LeaderboardMembershipTests {
     @Test func `a taken new name keeps the old one`() async throws {
         let membership = try await joined()
         api.reset([.given])
-        given(api).update(username: .any, visible: .any, as: .any).willThrow(LeaderboardError.usernameTaken)
+        given(api).update(.any, as: .any).willThrow(LeaderboardError.usernameTaken)
 
         await #expect(throws: LeaderboardError.usernameTaken) { try await membership.rename(to: #require(Username("whale2"))) }
         #expect(membership.username?.value == "tokenwhale")
@@ -161,6 +162,108 @@ struct LeaderboardMembershipTests {
 
         #expect(membership.username?.value == "whale2")
         #expect(settings.record?.username == "whale2")
+    }
+
+    // MARK: - The globe
+
+    @Test func `the country is shared only once the server agrees`() async throws {
+        let membership = try await joined()
+
+        try await membership.setSharesCountry(true)
+
+        #expect(membership.sharesCountry)
+        #expect(settings.record?.sharesCountry == true)
+    }
+
+    @Test func `a refused opt-in leaves the country unshared`() async throws {
+        let membership = try await joined()
+        api.reset([.given])
+        given(api).update(.any, as: .any).willThrow(LeaderboardError.unreachable)
+
+        await #expect(throws: LeaderboardError.unreachable) { try await membership.setSharesCountry(true) }
+        #expect(!membership.sharesCountry)
+    }
+
+    @Test func `joining can opt in to the globe at once`() async throws {
+        let membership = membership()
+
+        try await membership.join(as: #require(Username("tokenwhale")), sharing: ["claude"], sharesCountry: true)
+
+        #expect(membership.sharesCountry)
+    }
+
+    @Test func `the globe hint shows to members who haven't opted in, until dismissed`() async throws {
+        let membership = try await joined()
+        #expect(membership.showsGlobeHint)
+
+        membership.dismissGlobeHint()
+
+        #expect(!membership.showsGlobeHint)
+        #expect(settings.record?.globeHintDismissed == true)
+    }
+
+    @Test func `opting in retires the globe hint`() async throws {
+        let membership = try await joined()
+
+        try await membership.setSharesCountry(true)
+
+        #expect(!membership.showsGlobeHint)
+    }
+
+    @Test func `the globe hint survives a restart dismissed`() async throws {
+        let first = try await joined()
+        first.dismissGlobeHint()
+
+        #expect(!membership().showsGlobeHint)
+    }
+
+    // MARK: - Profile link
+
+    @Test func `a link is kept once the server agrees`() async throws {
+        let membership = try await joined()
+        let link = try #require(ProfileLink(platform: .github, handle: "octocat"))
+
+        try await membership.setLink(link)
+
+        #expect(membership.link == link)
+        #expect(settings.record?.link == link)
+    }
+
+    @Test func `removing the link forgets it here too`() async throws {
+        let membership = try await joined()
+        try await membership.setLink(#require(ProfileLink(platform: .x, handle: "jack")))
+
+        try await membership.setLink(nil)
+
+        #expect(membership.link == nil)
+        #expect(settings.record?.link == nil)
+    }
+
+    @Test func `a refused link changes nothing here`() async throws {
+        let membership = try await joined()
+        api.reset([.given])
+        given(api).update(.any, as: .any).willThrow(LeaderboardError.rejected("That isn't a github handle."))
+
+        await #expect(throws: LeaderboardError.rejected("That isn't a github handle.")) {
+            try await membership.setLink(#require(ProfileLink(platform: .github, handle: "octocat")))
+        }
+        #expect(membership.link == nil)
+    }
+
+    @Test func `joining can add a link at once`() async throws {
+        let membership = membership()
+        let link = try #require(ProfileLink(platform: .instagram, handle: "boxcee.codes"))
+
+        try await membership.join(as: #require(Username("tokenwhale")), sharing: ["claude"], link: link)
+
+        #expect(membership.link == link)
+    }
+
+    @Test func `a link survives a restart`() async throws {
+        let first = try await joined()
+        try await first.setLink(#require(ProfileLink(platform: .github, handle: "octocat")))
+
+        #expect(membership().link?.handle == "octocat")
     }
 
     // MARK: - Leaving

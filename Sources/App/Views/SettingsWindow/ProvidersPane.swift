@@ -18,9 +18,9 @@ struct ProvidersPane: View {
     @State private var listOrder: [String] = []
 
     var body: some View {
-        if let providerId = selectedProviderId,
-           let provider = monitor.provider(for: providerId) {
-            ProviderDetailView(monitor: monitor, provider: provider) {
+        if let productId = selectedProviderId,
+           let tab = monitor.productTabs.first(where: { $0.id == productId }) {
+            ProviderDetailView(monitor: monitor, tab: tab, provider: tab.page) {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     selectedProviderId = nil
                 }
@@ -36,16 +36,16 @@ struct ProvidersPane: View {
             subtitle: "Enable the assistants you use and order them — the menu bar follows this order (⌘1–⌘9 included). Click a provider to configure it."
         ) {
             VStack(spacing: 8) {
-                ForEach(Array(listedProviders.enumerated()), id: \.element.id) { index, provider in
+                ForEach(Array(listedProducts.enumerated()), id: \.element.id) { index, tab in
                     ProviderListRow(
                         monitor: monitor,
-                        provider: provider,
+                        tab: tab,
                         canMoveUp: index > 0,
-                        canMoveDown: index < listedProviders.count - 1,
-                        onMove: { listOrder = monitor.allProviders.map(\.id) }
+                        canMoveDown: index < listedProducts.count - 1,
+                        onMove: { listOrder = monitor.productTabs.map(\.id) }
                     ) {
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedProviderId = provider.id
+                            selectedProviderId = tab.id
                         }
                     }
                 }
@@ -64,7 +64,7 @@ struct ProvidersPane: View {
             }
         }
         .onAppear {
-            listOrder = ProviderListOrder.listed(monitor.allProviders.map { ($0.id, $0.isEnabled) })
+            listOrder = ProviderListOrder.listed(monitor.productTabs.map { ($0.id, $0.isEnabled) })
         }
         .sheet(isPresented: $addingProvider) {
             AddProviderSheet(monitor: monitor) { addingProvider = false }.themedSheet()
@@ -74,9 +74,9 @@ struct ProvidersPane: View {
         }
     }
 
-    /// Every provider, in the order the list took when it appeared.
-    private var listedProviders: [any AIProvider] {
-        let all = monitor.allProviders
+    /// Every product, in the order the list took when it appeared.
+    private var listedProducts: [ProductTab] {
+        let all = monitor.productTabs
         let order = ProviderListOrder.keeping(listOrder, current: all.map(\.id))
         return order.compactMap { id in all.first { $0.id == id } }
     }
@@ -102,7 +102,8 @@ struct ProvidersPane: View {
 
 private struct ProviderListRow: View {
     let monitor: QuotaMonitor
-    let provider: any AIProvider
+    /// The product — one row, however many logins it has (TARGET §12, slice 1).
+    let tab: ProductTab
     let canMoveUp: Bool
     let canMoveDown: Bool
     /// Runs after a move persists, so the pane's frozen list order picks the
@@ -113,26 +114,22 @@ private struct ProviderListRow: View {
     @Environment(\.appTheme) private var theme
     @State private var isHovering = false
 
-    private var lowestQuota: UsageQuota? {
-        monitor.usage(of: provider)?.lowestQuota
-    }
-
     private var statusText: String {
-        guard provider.isEnabled else { return "Disabled" }
-        guard let snapshot = provider.snapshot else { return "No data yet" }
+        guard tab.isEnabled else { return "Disabled" }
+        let updated = tab.accounts.compactMap { $0.snapshot?.capturedAt }.max()
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
-        let relative = formatter.localizedString(for: snapshot.capturedAt, relativeTo: Date())
-        return "Updated \(relative)"
+        let when = updated.map { "Updated \(formatter.localizedString(for: $0, relativeTo: Date()))" } ?? "No data yet"
+        return tab.accounts.count > 1 ? "\(tab.accounts.count) accounts · \(when)" : when
     }
 
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
-                ProviderIconView(providerId: provider.id, size: 26)
+                ProviderIconView(providerId: tab.id, size: 26)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(provider.name)
+                    Text(AppSettings.shared.shown(tab.name))
                         .font(.system(size: 13, weight: .semibold, design: theme.fontDesign))
                         .foregroundStyle(theme.textPrimary)
 
@@ -143,25 +140,13 @@ private struct ProviderListRow: View {
 
                 Spacer()
 
-                if provider.isEnabled, let quota = lowestQuota {
+                if tab.isEnabled {
+                    // Each login's usage, one meter per login (by name when there are several).
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text(quota.percentLeft.map { "\(Int($0))%" } ?? quota.formattedDollarRemaining ?? "—")
-                            .font(.system(size: 12, weight: .bold, design: theme.fontDesign))
-                            .foregroundStyle(theme.statusColor(for: quota.status(under: AppSettings.shared.statusPolicy)))
-                            .monospacedDigit()
-
-                        if let percent = quota.percentLeft {
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    Capsule()
-                                        .fill(theme.progressTrack)
-
-                                    Capsule()
-                                        .fill(theme.statusColor(for: quota.status(under: AppSettings.shared.statusPolicy)))
-                                        .frame(width: geo.size.width * max(0, min(100, percent)) / 100)
-                                }
+                        ForEach(tab.accounts, id: \.id) { login in
+                            if let quota = monitor.usage(of: login)?.lowestQuota {
+                                LoginMeter(name: tab.loginName(login).map(AppSettings.shared.shown), quota: quota)
                             }
-                            .frame(width: 80, height: 4)
                         }
                     }
                 }
@@ -169,10 +154,10 @@ private struct ProviderListRow: View {
                 reorderControls
 
                 SettingsSwitch(isOn: Binding(
-                    get: { provider.isEnabled },
+                    get: { tab.isEnabled },
                     set: { newValue in
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            monitor.setProviderEnabled(provider.id, enabled: newValue)
+                            monitor.setProductEnabled(tab, enabled: newValue)
                         }
                     }
                 ))
@@ -195,7 +180,7 @@ private struct ProviderListRow: View {
                             .fill(isHovering ? theme.hoverOverlay : Color.clear)
                     )
             )
-            .opacity(provider.isEnabled ? 1 : 0.55)
+            .opacity(tab.isEnabled ? 1 : 0.55)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
@@ -207,15 +192,15 @@ private struct ProviderListRow: View {
     /// QuotaMonitor, so this is the single place users shape it.
     private var reorderControls: some View {
         VStack(spacing: 0) {
-            moveButton(symbol: "chevron.up", offset: -1, enabled: canMoveUp, label: "Move \(provider.name) up")
-            moveButton(symbol: "chevron.down", offset: 1, enabled: canMoveDown, label: "Move \(provider.name) down")
+            moveButton(symbol: "chevron.up", offset: -1, enabled: canMoveUp, label: "Move \(tab.name) up")
+            moveButton(symbol: "chevron.down", offset: 1, enabled: canMoveDown, label: "Move \(tab.name) down")
         }
     }
 
     private func moveButton(symbol: String, offset: Int, enabled: Bool, label: String) -> some View {
         Button {
             withAnimation(.easeInOut(duration: 0.2)) {
-                monitor.moveProvider(id: provider.id, by: offset)
+                monitor.providers.move(tab.id, by: offset)
                 onMove()
             }
         } label: {
@@ -237,7 +222,10 @@ private struct ProviderListRow: View {
 /// from the popover settings, plus the custom web card URL field.
 private struct ProviderDetailView: View {
     let monitor: QuotaMonitor
-    let provider: any AIProvider
+    /// The product: its name and its switch head the page.
+    let tab: ProductTab
+    /// What the page configures — the product's plain login (`tab.page`).
+    let provider: Account
     let onBack: () -> Void
 
     @Environment(\.appTheme) private var theme
@@ -251,29 +239,29 @@ private struct ProviderDetailView: View {
                     ProviderIconView(providerId: provider.id, size: 40)
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(provider.name)
+                        Text(AppSettings.shared.shown(tab.name))
                             .font(.system(size: 21, weight: .bold, design: theme.fontDesign))
                             .foregroundStyle(theme.textPrimary)
 
-                        Text(provider.isEnabled ? "Enabled" : "Disabled")
+                        Text(tab.isEnabled ? "Enabled" : "Disabled")
                             .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(provider.isEnabled ? theme.statusHealthy : theme.textTertiary)
+                            .foregroundStyle(tab.isEnabled ? theme.statusHealthy : theme.textTertiary)
                     }
 
                     Spacer()
 
                     SettingsSwitch(isOn: Binding(
-                        get: { provider.isEnabled },
+                        get: { tab.isEnabled },
                         set: { newValue in
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                monitor.setProviderEnabled(provider.id, enabled: newValue)
+                                monitor.setProductEnabled(tab, enabled: newValue)
                             }
                         }
                     ))
                 }
                 .padding(.bottom, 6)
 
-                if provider.isEnabled {
+                if tab.isEnabled {
                     configCard
 
                     QuotaVisibilityCard(provider: provider, monitor: monitor)
@@ -285,7 +273,7 @@ private struct ProviderDetailView: View {
                         CustomCardURLField(providerId: provider.id)
                     }
                 } else {
-                    Text("Enable \(provider.name) to configure it.")
+                    Text("Enable \(tab.name) to configure it.")
                         .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
                         .foregroundStyle(theme.textTertiary)
                 }
@@ -320,29 +308,21 @@ private struct ProviderDetailView: View {
 
     /// A provider made from a definition gets the same sections as every
     /// other: its data source, its settings form and its accounts. A provider
-    /// still on its own card keeps that card until it moves to JSON.
+    /// still on its own card keeps that card beside them until it moves to JSON.
     @ViewBuilder
     private var configCard: some View {
-        if let product = (provider as? Account)?.provider {
-            let legacy = legacyCard(for: product.id)
-            DataSourceSection(provider: product, monitor: monitor)
-            if legacy == nil, !product.definition.defaultLoginSettings.isEmpty {
-                ProviderSettingsSection(provider: product)
-            }
-            if product.definition.accounts != nil {
-                ProviderAccountsCard(provider: product, monitor: monitor)
-            }
-            if let legacy { legacy }
-            if product.definition.profile.origin == .custom {
-                CustomProviderCard(provider: product, monitor: monitor, onDeleted: onBack)
-            }
-        } else if let legacy = legacyCard(for: provider.id) {
-            legacy
-        } else if let extProvider = provider as? ExtensionProvider, extProvider.manifest.hasConfig {
-            ExtensionConfigCard(
-                provider: extProvider,
-                configRepository: AppSettings.shared.extensionConfig
-            )
+        let product = tab.provider
+        let legacy = legacyCard(for: product.id)
+        DataSourceSection(provider: product, monitor: monitor)
+        if legacy == nil, !product.definition.defaultLoginSettings.isEmpty {
+            ProviderSettingsSection(provider: product)
+        }
+        if product.definition.accounts != nil {
+            ProviderAccountsCard(provider: product, monitor: monitor)
+        }
+        if let legacy { legacy }
+        if product.definition.profile.origin == .custom {
+            CustomProviderCard(provider: product, monitor: monitor, onDeleted: onBack)
         }
     }
 
@@ -364,7 +344,7 @@ private struct ProviderDetailView: View {
 /// quota is never shown and never sets a status or an alert, anywhere: the
 /// monitor leaves it out of the usage every surface reads.
 private struct QuotaVisibilityCard: View {
-    let provider: any AIProvider
+    let provider: Account
     let monitor: QuotaMonitor
 
     @Environment(\.appTheme) private var theme
@@ -384,12 +364,12 @@ private struct QuotaVisibilityCard: View {
                         toggleRow(quota)
                     }
                 }
-                Text(refused ?? "Turn off a quota you don't use: it disappears everywhere and no longer sets \(provider.name)'s status or alerts.")
+                Text(refused ?? "Turn off a quota you don't use: it disappears everywhere and no longer sets \(monitor.lineupName(of: provider))'s status or alerts.")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(refused == nil ? theme.textTertiary : theme.statusWarning)
                     .padding(.top, 8)
             } else {
-                Text("No quotas to choose from yet. Refresh \(provider.name) once, then pick the ones you watch.")
+                Text("No quotas to choose from yet. Refresh \(monitor.lineupName(of: provider)) once, then pick the ones you watch.")
                     .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }
@@ -403,7 +383,7 @@ private struct QuotaVisibilityCard: View {
                 get: { !monitor.hiddenQuotaKeys(for: provider).contains(key) },
                 set: { watched in
                     refused = monitor.setQuota(key, hidden: !watched, for: provider)
-                        ? nil : "Keep at least one quota: \(provider.name) needs something to watch."
+                        ? nil : "Keep at least one quota: \(monitor.lineupName(of: provider)) needs something to watch."
                 }
             ))
         }
@@ -414,4 +394,38 @@ private struct QuotaVisibilityCard: View {
 struct IdentifiedReview: Identifiable {
     let id = UUID()
     let value: ImportReview
+}
+
+/// One login's usage on a product's row: its name when the product has
+/// several, the tightest quota's share or money left, and a meter.
+private struct LoginMeter: View {
+    let name: String?
+    let quota: UsageQuota
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        let color = theme.statusColor(for: quota.status(under: AppSettings.shared.statusPolicy))
+        HStack(spacing: 6) {
+            if let name {
+                Text(name)
+                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+                    .lineLimit(1)
+            }
+            if let percent = quota.percentLeft {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(theme.progressTrack)
+                        Capsule().fill(color).frame(width: geo.size.width * max(0, min(100, percent)) / 100)
+                    }
+                }
+                .frame(width: 70, height: 4)
+            }
+            Text(quota.percentLeft.map { "\(Int($0))%" } ?? quota.formattedDollarRemaining ?? "—")
+                .font(.system(size: 11, weight: .bold, design: theme.fontDesign))
+                .foregroundStyle(color)
+                .monospacedDigit()
+                .frame(minWidth: 30, alignment: .trailing)
+        }
+    }
 }

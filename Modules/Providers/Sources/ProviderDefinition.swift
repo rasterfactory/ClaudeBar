@@ -81,6 +81,11 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
     public let enabledByDefault: Bool
     public let dataSources: [DataSourceDefinition]
     public let defaultDataSource: String
+    /// `"together": true` — every data source answers on each refresh, the
+    /// usage is their union in this order, a failed one is left out, and the
+    /// refresh fails only when all do: an extension's sections. Otherwise one
+    /// data source answers, with its fallback.
+    public let together: Bool
     /// Logins added beside the default one, and how they differ.
     public let accounts: Accounts?
     /// What it needs from the person — the provider's `SettingsForm`. The
@@ -89,6 +94,40 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
     /// *TODAY'S USAGE* — how to extract a login's usage history from its
     /// tool's own logs; `nil` when the provider offers none.
     public let usageHistory: UsageLog.Definition?
+    /// What it takes to see this provider's limits, said where an error
+    /// would otherwise be — `nil` when the error says enough.
+    public let setup: Setup?
+
+    /// *SET UP* — a title, what it takes, and where to start.
+    public struct Setup: Sendable, Equatable, Codable {
+        public let title: String
+        public let text: String
+        public let url: URL?
+        /// The button that opens `url`, named for what it sets up.
+        public let button: String
+
+        public init(title: String, text: String, url: URL? = nil, button: String = "Set up") {
+            self.title = title
+            self.text = text
+            self.url = url
+            self.button = button
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(title: try container.decode(String.self, forKey: .title),
+                      text: try container.decode(String.self, forKey: .text),
+                      url: try container.decodeIfPresent(URL.self, forKey: .url),
+                      button: try container.decodeIfPresent(String.self, forKey: .button) ?? "Set up")
+        }
+
+        private enum CodingKeys: String, CodingKey { case title, text, url, button }
+
+        /// For a definition with no `setup`: *Set up <name>*, and what failed.
+        public static func fallback(for name: String, error: Error?) -> Setup {
+            Setup(title: "Set up \(name)", text: error?.localizedDescription ?? "")
+        }
+    }
 
     /// What *Add Account*'s form asks for: the account-scope settings.
     public var accountSettings: [Setting] { settings.filter { $0.scope == .account } }
@@ -251,11 +290,15 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         enabledByDefault: Bool = true,
         dataSources: [DataSourceDefinition],
         defaultDataSource: String,
+        together: Bool = false,
         accounts: Accounts? = nil,
         settings: [Setting] = [],
-        usageHistory: UsageLog.Definition? = nil
+        usageHistory: UsageLog.Definition? = nil,
+        setup: Setup? = nil
     ) {
+        self.together = together
         self.usageHistory = usageHistory
+        self.setup = setup
         self.profile = profile
         self.cli = cli
         self.enabledByDefault = enabledByDefault
@@ -288,9 +331,11 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             enabledByDefault: try container.decodeIfPresent(Bool.self, forKey: .enabledByDefault) ?? true,
             dataSources: try container.decode([DataSourceDefinition].self, forKey: .dataSources),
             defaultDataSource: try container.decode(String.self, forKey: .defaultDataSource),
+            together: try container.decodeIfPresent(Bool.self, forKey: .together) ?? false,
             accounts: accounts,
             settings: settings,
-            usageHistory: try container.decodeIfPresent(UsageLog.Definition.self, forKey: .usageHistory)
+            usageHistory: try container.decodeIfPresent(UsageLog.Definition.self, forKey: .usageHistory),
+            setup: try container.decodeIfPresent(Setup.self, forKey: .setup)
         )
         try validateSettings()
     }
@@ -302,13 +347,15 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
         try container.encode(enabledByDefault, forKey: .enabledByDefault)
         try container.encode(dataSources, forKey: .dataSources)
         try container.encode(defaultDataSource, forKey: .defaultDataSource)
+        if together { try container.encode(together, forKey: .together) }
         try container.encodeIfPresent(accounts, forKey: .accounts)
         if !settings.isEmpty { try container.encode(settings, forKey: .settings) }
         try container.encodeIfPresent(usageHistory, forKey: .usageHistory)
+        try container.encodeIfPresent(setup, forKey: .setup)
     }
 
     enum CodingKeys: String, CodingKey {
-        case profile, cli, enabledByDefault, dataSources, defaultDataSource, accounts, settings, usageHistory
+        case profile, cli, enabledByDefault, dataSources, defaultDataSource, together, accounts, settings, usageHistory, setup
     }
 
     /// Each setting's id is used once.
@@ -422,6 +469,7 @@ public struct ProviderDefinition: Sendable, Equatable, Codable {
             enabledByDefault: enabledByDefault,
             dataSources: sources,
             defaultDataSource: defaultDataSource,
+            together: together,
             accounts: accounts,
             settings: settings,
             usageHistory: usageHistory
@@ -444,6 +492,7 @@ public enum DefinitionError: Error, Sendable, Equatable, LocalizedError {
     case missingAccountValue(String, String)
     case duplicateProvider(String)
     case duplicateSetting(String, String)
+    case notDeletable(String)
 
     public var errorDescription: String? {
         switch self {
@@ -454,6 +503,7 @@ public enum DefinitionError: Error, Sendable, Equatable, LocalizedError {
         case .missingAccountValue(let id, let name): "A '\(id)' account has no saved '\(name)'"
         case .duplicateProvider(let id): "A provider named '\(id)' already exists"
         case .duplicateSetting(let id, let setting): "Provider '\(id)' lists setting '\(setting)' twice"
+        case .notDeletable(let id): "Provider '\(id)' isn't one you made; turn it off instead"
         }
     }
 }

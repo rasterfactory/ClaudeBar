@@ -10,6 +10,8 @@ struct LeaderboardBoardCard: View {
     /// Your own standing in the view, when ranked.
     let mine: Standing?
     let myUsername: String?
+    /// Your own row shows `@i•••` when your name is hidden in the popover.
+    var hidesMyName = false
     let error: String?
     @Binding var period: BoardPeriod
     @Binding var provider: String?
@@ -152,11 +154,14 @@ struct LeaderboardBoardCard: View {
         return HStack(spacing: 8) {
             OutlinedNumber(text: "\(standing.rank)", size: 15, color: standing.rank <= 3 ? theme.statusWarning : nil)
                 .frame(width: 22)
-            Text("@" + standing.username)
+            Text(isMe ? leaderboardName(standing.username, hidden: hidesMyName) : "@" + standing.username)
                 .font(.system(size: 12, weight: .bold, design: theme.fontDesign))
                 .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.tail)
+            if let link = standing.link {
+                ProfileLinkIcon(link: link, username: standing.username)
+            }
             if isMe {
                 Text("YOU")
                     .font(.system(size: 9, weight: .heavy, design: theme.fontDesign))

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Troubleshooting
+    url: https://github.com/tddworks/ClaudeBar/blob/main/docs/troubleshooting.md
+    about: Common errors, what they mean, and where the log is.
+  - name: Documentation
+    url: https://github.com/tddworks/ClaudeBar/tree/main/docs
+    about: How each provider and feature works.

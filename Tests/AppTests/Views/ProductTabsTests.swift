@@ -22,18 +22,19 @@ struct ProductTabsTests {
                               probeConfig: ["codexHome": "/tmp/\(id)", "chatgptAccountId": id])
     }
 
-    private func lineup() throws -> (claude: Provider, codex: Provider, all: [any AIProvider]) {
+    private func lineup() throws -> (claude: Provider, codex: Provider, all: [Account], providers: Providers) {
         let settings = settings()
-        let claude = try Providers.make("claude", settings: settings)
-        let codex = try Providers.make("codex", settings: settings, accounts: [login("work"), login("side")])
-        return (claude, codex, claude.accounts + codex.accounts)
+        let claude = try ProviderFactory.make("claude", settings: settings)
+        let codex = try ProviderFactory.make("codex", settings: settings, accounts: [login("work"), login("side")])
+        let providers = Providers([claude, codex], make: { _ in fatalError("no providers added") })
+        return (claude, codex, Array(claude.accounts) + Array(codex.accounts), providers)
     }
 
     @Test
     func `a provider's logins share one tab`() throws {
-        let (_, codex, all) = try lineup()
+        let (_, codex, all, providers) = try lineup()
 
-        let tabs = ProductTab.tabs(of: all)
+        let tabs = ProductTab.tabs(of: all, in: providers)
 
         #expect(tabs.map(\.id) == ["claude", "codex"])
         #expect(tabs[1].accounts.map(\.id) == codex.accounts.map(\.id))
@@ -42,21 +43,21 @@ struct ProductTabsTests {
 
     @Test
     func `a tab keeps the person's order and leaves out paused logins`() throws {
-        let (_, codex, _) = try lineup()
-        codex.move(codex.accounts[2], to: 0)
+        let (_, codex, _, providers) = try lineup()
+        codex.accounts.move(codex.accounts[2], to: 0)
         codex.accounts[1].isEnabled = false
-        let shown = (codex.accounts.filter(\.isEnabled) as [any AIProvider])
+        let shown = (codex.accounts.filter(\.isEnabled) as [Account])
 
-        let tab = try #require(ProductTab.tabs(of: shown).first)
+        let tab = try #require(ProductTab.tabs(of: shown, in: providers).first)
 
         #expect(tab.accounts.map(\.id) == ["codex.side", "codex.work"])
     }
 
     @Test
     func `a tab knows every login it holds`() throws {
-        let (_, _, all) = try lineup()
+        let (_, _, all, providers) = try lineup()
 
-        let codex = try #require(ProductTab.tabs(of: all).last)
+        let codex = try #require(ProductTab.tabs(of: all, in: providers).last)
 
         #expect(codex.contains("codex.work"))
         #expect(codex.contains("codex"))
@@ -65,8 +66,9 @@ struct ProductTabsTests {
 
     @Test
     func `the monitor selects by tab position and knows the selected tab`() throws {
-        let (_, codex, all) = try lineup()
-        let monitor = QuotaMonitor(providers: AIProviders(providers: all), clock: SystemClock())
+        let (claude, codex, _, _) = try lineup()
+        let monitor = QuotaMonitor(providers: Providers([claude, codex], make: { _ in fatalError("no providers added") }),
+                                   clock: SystemClock())
 
         monitor.selectProvider(atPosition: 2)
 
@@ -74,5 +76,6 @@ struct ProductTabsTests {
         #expect(monitor.selectedProviderId == codex.accounts[0].id)
         monitor.selectedProviderId = "codex.side"
         #expect(monitor.selectedTab?.id == "codex")
+        #expect(monitor.selectedLogins.map(\.id) == codex.accounts.map(\.id))
     }
 }

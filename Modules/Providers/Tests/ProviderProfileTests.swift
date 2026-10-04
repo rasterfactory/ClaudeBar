@@ -8,7 +8,7 @@ import Testing
 struct ProviderProfileTests {
     @Test
     func `claude's profile is its name, links and face`() throws {
-        let profile = try Providers.builtIn("claude").profile
+        let profile = try ProviderFactory.builtIn("claude").profile
 
         #expect(profile.id == "claude")
         #expect(profile.name == "Claude")
@@ -22,7 +22,7 @@ struct ProviderProfileTests {
 
     @Test
     func `codex's profile is its name, links and face`() throws {
-        let profile = try Providers.builtIn("codex").profile
+        let profile = try ProviderFactory.builtIn("codex").profile
 
         #expect(profile.name == "Codex")
         #expect(profile.look.symbol == "chevron.left.forwardslash.chevron.right")
@@ -33,14 +33,14 @@ struct ProviderProfileTests {
 
     @Test
     func `an added login's id finds its product's definition`() {
-        #expect(Providers.builtInDefinition(forLineupId: "codex.4f2a")?.id == "codex")
-        #expect(Providers.builtInDefinition(forLineupId: "claude")?.id == "claude")
-        #expect(Providers.builtInDefinition(forLineupId: "acme-not-built-in") == nil)
+        #expect(ProviderFactory.builtInDefinition(forLineupId: "codex.4f2a")?.id == "codex")
+        #expect(ProviderFactory.builtInDefinition(forLineupId: "claude")?.id == "claude")
+        #expect(ProviderFactory.builtInDefinition(forLineupId: "acme-not-built-in") == nil)
     }
 
     @Test
     func `the origin is where the file came from, never what it says`() throws {
-        let data = try Providers.builtInData("codex")
+        let data = try ProviderFactory.builtInData("codex")
 
         #expect(try ProviderDefinition.parse(data, origin: .custom).profile.origin == .custom)
     }

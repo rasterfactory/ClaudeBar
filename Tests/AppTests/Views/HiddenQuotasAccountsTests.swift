@@ -15,10 +15,10 @@ struct HiddenQuotasAccountsTests {
         let settings = JSONSettingsRepository(store: JSONSettingsStore(
             fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("hidden-\(UUID().uuidString).json")))
         settings.setHiddenQuotaKeys(["model:codex-spark"], forProvider: "codex")
-        let codex = try Providers.make("codex", settings: settings, accounts: [
+        let codex = try ProviderFactory.make("codex", settings: settings, accounts: [
             ProviderAccountConfig(accountId: "work", label: "", probeConfig: ["codexHome": "/tmp/w", "chatgptAccountId": "w"]),
         ])
-        let monitor = QuotaMonitor(providers: AIProviders(providers: codex.accounts), clock: SystemClock(), settingsRepository: settings)
+        let monitor = QuotaMonitor(providers: Providers([codex], make: { _ in fatalError("no providers added") }), clock: SystemClock(), settingsRepository: settings)
 
         #expect(monitor.hiddenQuotaKeys(for: codex.accounts[0]) == ["model:codex-spark"])
         #expect(monitor.hiddenQuotaKeys(for: codex.accounts[1]) == ["model:codex-spark"])

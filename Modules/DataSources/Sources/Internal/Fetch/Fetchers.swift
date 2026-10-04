@@ -268,6 +268,50 @@ struct CommandFetcher: Fetching {
     static let system: MakeExecutor = { environment in PipeCLIExecutor(environment: environment) }
 }
 
+/// `script` — the person's own script, run with `/bin/sh` from its folder,
+/// its environment the definition's values and the secrets it names, read
+/// from the login's vault. Answers with what it printed; a non-zero exit is
+/// a fact, as for `command`.
+struct ScriptFetcher: Fetching {
+    let call: ScriptCall
+    let providerId: String
+    let secrets: (any SecretStore)?
+    let makeExecutor: CommandFetcher.MakeExecutor
+
+    func isReady() -> Bool {
+        FileManager.default.fileExists(atPath: call.path)
+    }
+
+    func fetch(with credential: Credential?) async throws -> Response {
+        // A setting the person never set and that has no default still reads
+        // `{{setting.x}}`: it isn't passed, as extensions never passed one.
+        var set = call.environment.filter { !$0.value.contains("{{setting.") }
+        for (variable, setting) in call.secrets {
+            if let value = secrets?.secret(setting, provider: providerId) { set[variable] = value }
+        }
+        let executor = makeExecutor(ProcessEnvironment(set: set))
+        let name = (call.run as NSString).lastPathComponent
+        guard isReady() else { throw CLIMissingError(cli: name) }
+        let result: CLIResult
+        do {
+            result = try await executor.execute(
+                binary: "/bin/sh", args: ["-c", call.path], input: nil, timeout: call.timeout,
+                workingDirectory: URL(fileURLWithPath: call.folder, isDirectory: true), autoResponses: [:]
+            )
+        } catch let error as UsageError {
+            throw error
+        } catch {
+            AppLog.probes.error("\(name) could not start")
+            throw CLILaunchError(cli: name)
+        }
+        guard result.exitCode == 0 else {
+            AppLog.probes.error("\(name) exited with \(result.exitCode)")
+            throw CLIExitError(cli: name, exitCode: result.exitCode)
+        }
+        return Response(text: result.output)
+    }
+}
+
 /// `cli` — drives a CLI in a terminal and answers with what the screen
 /// showed, drawn by a terminal emulator first when the session asks for it.
 struct CLIFetcher: Fetching {
@@ -306,6 +350,9 @@ struct CLIFetcher: Fetching {
                     autoResponses: call.autoResponses
                 )
             }
+        } catch UsageError.cliNotFound {
+            // A fact, so the definition's `errors["cli.missing"]` words it.
+            throw CLIMissingError(cli: call.cli)
         } catch let error as UsageError {
             throw error
         } catch {

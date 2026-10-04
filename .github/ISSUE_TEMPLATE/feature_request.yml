@@ -1,0 +1,52 @@
+name: Feature request
+description: Something you're trying to do that ClaudeBar makes hard — start from the problem, not the fix.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. **Please describe the problem before any solution.**
+        A request for a solution ("add a load balancer") hides the real need ("my next session should start on the login that has room"), and the right fix is often different — the [XY problem](https://xyproblem.info). Tell us what you were doing and what got in the way; your idea comes last.
+
+  - type: textarea
+    id: moment
+    attributes:
+      label: What were you doing?
+      description: The moment it came up — what you were working on, which provider or screen.
+      placeholder: "I code all day in the terminal with two Claude logins, personal and work…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What got in the way?
+      description: The problem in your own words. What did you want to happen, and what happened instead? How often, and what does it cost you?
+      placeholder: "When personal hits its 5-hour limit, I have to log out and back in to keep going…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What do you do today instead?
+      description: Your workaround, if any — it shows us what actually matters.
+      placeholder: "I keep a second terminal with CLAUDE_CONFIG_DIR set by hand…"
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: An idea for how ClaudeBar could help (optional)
+      description: Welcome, but optional — we'll design from the problem above, and may land somewhere else.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you send
+      options:
+        - label: I described the problem and the moment, not only a solution.
+          required: true
+        - label: I searched the existing issues and the [docs](https://github.com/tddworks/ClaudeBar/tree/main/docs).
+          required: true
+        - label: Screenshots and text contain no tokens, keys, cookies or emails I don't want public.
+          required: true

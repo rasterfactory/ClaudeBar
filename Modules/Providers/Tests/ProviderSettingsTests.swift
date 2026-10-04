@@ -54,7 +54,7 @@ struct ProviderSettingsTests {
     @Test
     func `the default login runs with the setting's default`() async throws {
         let acme = try provider()
-        try acme.set("apiKey", to: "sk-default")
+        try acme.configuration.set("apiKey", to: "sk-default")
 
         _ = try await acme.refresh(acme.defaultAccount)
 
@@ -64,26 +64,26 @@ struct ProviderSettingsTests {
     @Test
     func `changing the region runs every login there from the next refresh`() async throws {
         let acme = try provider()
-        try acme.set("apiKey", to: "sk-default")
-        try acme.set("region", to: "international")
+        try acme.configuration.set("apiKey", to: "sk-default")
+        try acme.configuration.set("region", to: "international")
 
         _ = try await acme.refresh(acme.defaultAccount)
 
         #expect(sent.hosts == ["api.acme.com"])
         #expect(settings.value("region", forProvider: "acme") == "international")
-        #expect(acme.defaultAccount.dashboardURL == URL(string: "https://console.acme.com/usage"))
+        #expect(acme.plainDashboardURL == URL(string: "https://console.acme.com/usage"))
     }
 
     @Test
     func `an added login's own region wins over the provider's`() async throws {
         let acme = try provider()
-        let work = try acme.addAccount(filling: ["region": "international", "apiKey": "sk-work", "home": "/Users/me/.acme-work"])
+        let work = try acme.accounts.add(filling: ["region": "international", "apiKey": "sk-work", "home": "/Users/me/.acme-work"])
 
         _ = try await acme.refresh(work)
 
         #expect(sent.hosts == ["api.acme.com"])
         #expect(sent.authorizations == ["Bearer sk-work"])
-        #expect(work.dashboardURL == URL(string: "https://console.acme.com/usage"))
+        #expect(acme.dashboardURL(of: work) == URL(string: "https://console.acme.com/usage"))
         #expect(work.values["apiKey"] == nil)
     }
 
@@ -91,34 +91,34 @@ struct ProviderSettingsTests {
     func `Settings can tell a key is saved without ever showing it`() throws {
         let acme = try provider()
         let key = try #require(acme.definition.setting("apiKey"))
-        #expect(acme.hasSaved(key, for: acme.defaultAccount) == false)
+        #expect(acme.configuration.hasSaved(key, for: acme.defaultAccount) == false)
 
-        try acme.set("apiKey", to: "sk-default")
-        #expect(acme.hasSaved(key, for: acme.defaultAccount))
-        #expect(acme.value(of: key, for: acme.defaultAccount) == nil)
+        try acme.configuration.set("apiKey", to: "sk-default")
+        #expect(acme.configuration.hasSaved(key, for: acme.defaultAccount))
+        #expect(acme.configuration.value(of: key, for: acme.defaultAccount) == nil)
 
-        try acme.set("apiKey", to: nil)
-        #expect(acme.hasSaved(key, for: acme.defaultAccount) == false)
+        try acme.configuration.set("apiKey", to: nil)
+        #expect(acme.configuration.hasSaved(key, for: acme.defaultAccount) == false)
     }
 
     @Test
     func `a choice that isn't one of its options is refused`() throws {
         let acme = try provider()
         #expect(throws: UsageError.executionFailed("Choose a Region from the list.")) {
-            try acme.addAccount(filling: ["region": "mars", "apiKey": "sk", "home": "/Users/me/.acme-work"])
+            try acme.accounts.add(filling: ["region": "mars", "apiKey": "sk", "home": "/Users/me/.acme-work"])
         }
-        #expect(throws: UsageError.executionFailed("Choose a Region from the list.")) { try acme.set("region", to: "mars") }
+        #expect(throws: UsageError.executionFailed("Choose a Region from the list.")) { try acme.configuration.set("region", to: "mars") }
     }
 
     @Test
     func `two logins never share a folder — the default login's included`() throws {
         let acme = try provider()
         #expect(throws: UsageError.self) {
-            try acme.addAccount(filling: ["apiKey": "sk", "home": "/Users/me/.acme"])
+            try acme.accounts.add(filling: ["apiKey": "sk", "home": "/Users/me/.acme"])
         }
-        _ = try acme.addAccount(filling: ["apiKey": "sk", "home": "/Users/me/.acme-work"])
+        _ = try acme.accounts.add(filling: ["apiKey": "sk", "home": "/Users/me/.acme-work"])
         #expect(throws: UsageError.self) {
-            try acme.addAccount(filling: ["apiKey": "sk-2", "home": "/Users/me/.acme-work"])
+            try acme.accounts.add(filling: ["apiKey": "sk-2", "home": "/Users/me/.acme-work"])
         }
         #expect(acme.accounts.count == 2)
     }
@@ -127,7 +127,7 @@ struct ProviderSettingsTests {
     func `a key the vault does not keep leaves no account behind`() throws {
         let acme = try providerWith(vault: RefusingVault())
         #expect(throws: UsageError.executionFailed("ClaudeBar couldn't keep this key securely. The account wasn't added.")) {
-            try acme.addAccount(filling: ["apiKey": "sk", "home": "/Users/me/.acme-work"])
+            try acme.accounts.add(filling: ["apiKey": "sk", "home": "/Users/me/.acme-work"])
         }
         #expect(acme.accounts.count == 1)
     }
@@ -137,7 +137,7 @@ struct ProviderSettingsTests {
         let vault = ReplacementRefusingVault(["acme.apiKey": "sk-old"])
         let acme = try providerWith(vault: vault)
 
-        #expect(throws: UsageError.self) { try acme.set("apiKey", to: "sk-new") }
+        #expect(throws: UsageError.self) { try acme.configuration.set("apiKey", to: "sk-new") }
 
         #expect(vault.secret("apiKey", provider: "acme") == "sk-old")
     }
@@ -158,9 +158,9 @@ struct ProviderSettingsTests {
     @Test
     func `Settings is shown the definition as the default login runs it`() throws {
         let acme = try provider()
-        try acme.set("region", to: "international")
+        try acme.configuration.set("region", to: "international")
 
-        guard case .http(let request)? = acme.definitionAsRun.dataSource("api")?.fetch else {
+        guard case .http(let request)? = acme.configuration.definitionAsRun.dataSource("api")?.fetch else {
             Issue.record("Expected an http fetch")
             return
         }

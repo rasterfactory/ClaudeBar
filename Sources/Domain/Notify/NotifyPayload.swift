@@ -6,7 +6,7 @@ import Foundation
 /// One provider's quota window, paired with the provider's display name.
 ///
 /// The App layer reads these off `QuotaMonitor`; the payload builder needs the
-/// name for a metric label and must not reach into `AIProvider`, which is main
+/// name for a metric label and must not reach into `Account`, which is main
 /// actor isolated.
 public struct NotifyQuotaReading: Sendable, Equatable {
     public let providerId: String

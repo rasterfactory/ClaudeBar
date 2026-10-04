@@ -24,15 +24,16 @@ A stale-but-plausible countdown is worse than an obviously missing one: nothing 
 
 ## Behavior
 
-- A **0.5s tick** runs whenever a duration is shown (`menuBarDurationEnabled`). Every tick re-reads the label, so the countdown advances within half a second of the true minute boundary regardless of probe activity, hook traffic, or background-refresh setting.
-- When the countdown is in **H:MM** range, the `:` fades to **25% alpha** on alternate ticks and back — the cadence a digital clock blinks its separator at.
+- A **1s tick** runs whenever a duration is shown (`menuBarDurationEnabled`). Every tick re-reads the label, so the countdown lands within about a second of the true minute boundary regardless of probe activity, hook traffic, or background-refresh setting.
+- When the countdown is in **H:MM** range, the `:` fades to **25% alpha** on alternate seconds and back — a slow pulse that still reads as live.
+- Actual status-item writes are coalesced to **at most one per second** (with a trailing flush), so the pulse beats at 1 Hz. The tick rate matches the write gate on purpose: a 0.5s tick under a 1s gate would replace the bright phase with the dim one inside every window, leaving the colon permanently dimmed. The gate exists because rapid renders must not stream straight into the system's status-item service — on macOS 26 that service aborts under the load and the item disappears ([#281](https://github.com/tddworks/ClaudeBar/issues/281)).
 - Both menu bar layouts pulse: the single-line label and each line of the stacked dual-window label (both share one phase, so the two colons pulse together rather than drifting).
 - No new setting. The pulse rides on the existing "Show duration" toggle.
 
 ```
-0.0s   0h 98% · 4:40 | Fable 22% · 2d
-0.5s   0h 98% · 4 40 | Fable 22% · 2d     ← colon at 25% alpha (still drawn)
-1.0s   0h 98% · 4:40 | Fable 22% · 2d
+0.0s   0h 98% · 4:40 | Fable 22% · 2d     ← written (colon full alpha)
+1.0s   0h 98% · 4 40 | Fable 22% · 2d     ← written, colon at 25% alpha (still drawn)
+2.0s   0h 98% · 4:40 | Fable 22% · 2d     ← written, colon back to full
 ```
 
 ## Architecture
@@ -56,7 +57,7 @@ A stale-but-plausible countdown is worse than an obviously missing one: nothing 
 │     watches menuBarDurationEnabled ──▶ start/stop blinkTimer              │
 │                       │                                                   │
 │                       ▼                                                   │
-│   blinkTimer (0.5s, RunLoop .common mode)                                 │
+│   blinkTimer (1s, RunLoop .common mode)                                   │
 │     every tick: blinkPhase.toggle() ──▶ labelSync.refreshNow()            │
 │                       │                                                   │
 │                       ▼                                                   │
@@ -71,6 +72,9 @@ A stale-but-plausible countdown is worse than an obviously missing one: nothing 
 │                       ▼                                                   │
 │   CountdownColonStyle.apply(colonVisible:to:baseColor:)                   │
 │     dims the colon ranges inside the NSAttributedString                   │
+│                       ▼                                                   │
+│   StatusItemWriteGate  (issue #281)                                       │
+│     coalesces renders: ≤1 button write/second + trailing flush            │
 │                       ▼                                                   │
 │              statusItem.button.image                                      │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -94,6 +98,12 @@ Each `ObservationRenderSync.sync()` arms a **new** `withObservationTracking` reg
 
 For a `2d` or `45m` label the flag stays constant, so `LabelContent` compares equal across ticks and `render()` early-outs before touching the image. Those labels get the freshness fix (they still recompute, so `45m` → `44m` lands on time) at the cost of one struct comparison per tick, with no repaint until the text genuinely changes.
 
+### Writes coalesce to at most one per second
+
+The blink originally painted straight through: every changed `LabelContent` composed an image and re-set the button's tooltip and accessibility label, twice a second for an H:MM countdown. That is a stream of updates into the Control Center status-items XPC service, and on macOS 26.6 that service can abort inside its own serializer under exactly such a stream — the app dies four times a day and the menu bar item vanishes ([#281](https://github.com/tddworks/ClaudeBar/issues/281)).
+
+`StatusItemWriteGate` sits between `render()` and the button: the first write goes out immediately, renders landing inside the one-second window only replace the pending content, and a single trailing flush publishes the latest content when the window closes. The tick rate matches the gate (1s), so each blink phase lands on a window boundary and the phases keep alternating; a 0.5s tick under this gate would replace the bright phase with the dim one inside every window and leave the colon permanently dimmed. Tooltip and accessibility text are skipped entirely when unchanged, which removes the remaining per-tick string writes. The Apple-side abort itself cannot be reproduced in a unit test; the tests pin the update-rate reduction.
+
 ## Scope
 
 The colon only exists in the **1h–24h** range — that is the shape `compactResetTime` emits. Below an hour (`45m`), above a day (`2d`), and the sub-minute `soon` have no separator to pulse. Those labels get the self-driven tick but no animation. Widening the animation would mean changing the compact time format itself, which is a separate decision.
@@ -105,10 +115,12 @@ The colon only exists in the **1h–24h** range — that is the shape `compactRe
 | `Sources/Domain/Provider/CountdownColon.swift` | New — locates countdown colons |
 | `Sources/Domain/Monitor/ObservationRenderSync.swift` | New `refreshNow()` |
 | `Sources/App/StatusItemLabelDriver.swift` | Blink timer + lifecycle, `LabelContent.colonVisible`, `CountdownColonStyle`, both renderers |
+| `Sources/App/StatusItemWriteGate.swift` | Coalescer gating all status-item writes (#281) |
 
 ## Tests
 
-Logic lives in Domain because the project has no App test target (`DomainTests`, `InfrastructureTests`, `AcceptanceTests` only); the App layer keeps only the drawing.
+Logic lives in Domain where it can; the write gate is an App-layer concern (it schedules a main-runloop timer and drives `NSStatusItem`'s button), so it is tested in the App target.
 
 - `Tests/DomainTests/Provider/CountdownColonTests.swift` — 12 tests: H:MM detection, dual-window labels, `45m`/`2d`/empty labels, colons that are not countdowns (`acct:main`, `4:4m`, `4: 40`), single-character ranges, and `NSRange` conversion against multi-byte text (`·`).
 - `Tests/DomainTests/Monitor/ObservationRenderSyncTests.swift` — 5 added tests for `refreshNow()`, including that it leaves observation armed so later state changes still render.
+- `Tests/AppTests/StatusItem/StatusItemWriteGateTests.swift` — 8 tests for the gate: first write immediate, deferral inside the window, latest-content trailing flush, one write per second under a 0.5s render cadence, alternation surviving a tick that lands just inside the window, and no-op flushes.

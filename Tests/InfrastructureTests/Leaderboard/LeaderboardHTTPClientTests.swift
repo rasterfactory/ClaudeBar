@@ -117,14 +117,64 @@ struct LeaderboardHTTPClientTests {
 
     @Test func `hiding and renaming are one signed patch`() async throws {
         var sent: URLRequest?
-        try await client(sent: { sent = $0 }).update(username: "whale2", visible: false, as: member)
+        try await client(sent: { sent = $0 }).update(MemberChange(username: "whale2", visible: false), as: member)
 
         let request = try #require(sent)
         let body = try JSONSerialization.jsonObject(with: #require(request.httpBody)) as? [String: Any]
         #expect(request.httpMethod == "PATCH")
         #expect(body?["username"] as? String == "whale2")
         #expect(body?["visible"] as? Bool == false)
+        #expect(body?["shareCountry"] == nil)
         #expect(try isSigned(request, by: key))
+    }
+
+    @Test func `opting in to the globe sends only that change`() async throws {
+        var sent: URLRequest?
+        try await client(sent: { sent = $0 }).update(MemberChange(sharesCountry: true), as: member)
+
+        let body = try JSONSerialization.jsonObject(with: #require(sent?.httpBody)) as? [String: Any]
+        #expect(body?.keys.sorted() == ["shareCountry"])
+        #expect(body?["shareCountry"] as? Bool == true)
+    }
+
+    @Test func `a link is sent as a platform and a handle; removing it as null`() async throws {
+        var sent: URLRequest?
+        let link = try #require(ProfileLink(platform: .github, handle: "octocat"))
+        try await client(sent: { sent = $0 }).update(MemberChange(link: .set(link)), as: member)
+        var body = try JSONSerialization.jsonObject(with: #require(sent?.httpBody)) as? [String: Any]
+        #expect(body?["link"] as? [String: String] == ["platform": "github", "handle": "octocat"])
+
+        try await client(sent: { sent = $0 }).update(MemberChange(link: .remove), as: member)
+        body = try JSONSerialization.jsonObject(with: #require(sent?.httpBody)) as? [String: Any]
+        #expect(body?.keys.sorted() == ["link"])
+        #expect(body?["link"] is NSNull)
+    }
+
+    @Test func `the board carries each member's link, and drops one that breaks its platform's rules`() async throws {
+        let body = #"{"standings":[{"rank":1,"username":"a","total":5,"link":{"platform":"x","handle":"jack"}},{"rank":2,"username":"b","total":3,"link":{"platform":"x","handle":"https://evil.example"}},{"rank":3,"username":"c","total":1}]}"#
+
+        let standings = try await client(body: body).board(in: BoardView(period: .sevenDays))
+
+        #expect(standings.map(\.link?.handle) == ["jack", nil, nil])
+    }
+
+    @Test func `the globe is read without signing, countries and the hidden count`() async throws {
+        var sent: URLRequest?
+        let body = #"{"period":"30d","provider":null,"countries":[{"country":"NL","members":3,"tokens":300}],"hiddenCountries":2}"#
+
+        let globe = try await client(body: body, sent: { sent = $0 }).globe(in: BoardView(period: .thirtyDays))
+
+        #expect(sent?.url?.path == "/globe")
+        #expect(sent?.url?.query == "period=30d")
+        #expect(sent?.value(forHTTPHeaderField: "X-Signature") == nil)
+        #expect(globe == GlobeSummary(countries: [.init(country: "NL", members: 3, tokens: 300)], hiddenCountries: 2))
+    }
+
+    @Test func `your own data says whether your country is on the globe`() async throws {
+        let body = #"{"username":"tokenwhale","visible":true,"shareCountry":true,"country":"NL","standing":null,"days":[]}"#
+        let summary = try await client(body: body).me(in: BoardView(period: .sevenDays), as: member)
+        #expect(summary.sharesCountry)
+        #expect(summary.country == "NL")
     }
 
     @Test func `leaving is a signed delete`() async throws {

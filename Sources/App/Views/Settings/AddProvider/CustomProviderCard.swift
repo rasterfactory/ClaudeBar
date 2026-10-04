@@ -57,16 +57,11 @@ struct CustomProviderCard: View {
 
     private func delete() {
         do {
-            try ProviderCatalog().remove(provider.id)
+            try monitor.providers.remove(provider.id)
         } catch {
             self.error = error.localizedDescription
             return
         }
-        ProviderVault().delete("apiKey", provider: provider.id)
-        for account in provider.accounts {
-            monitor.removeProvider(id: account.id)
-        }
-        Providers.unregister(custom: provider.id)
         onDeleted()
     }
 }

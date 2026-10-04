@@ -66,6 +66,7 @@ These are the messages a provider card shows. The cause depends on the provider,
 | Message | Meaning |
 |---|---|
 | `CLI not found: <name>` | The provider's CLI isn't on the PATH ClaudeBar sees. Install it or check its location |
+| **NOT SET UP**, or a card with a *Set up* button | Nothing to read your limits with yet: the CLI isn't installed, or you never signed in. The card says what it takes; any daily usage ClaudeBar can already read, such as Claude Desktop's tokens, still shows below it, and then the header shows no badge |
 | `Authentication required. Please log in.` | Not signed in, or the stored token was rejected. Sign in to the CLI or app again |
 | `Session expired. …` | The sign-in or cookie expired. The rest of the message says how to renew it |
 | `Please trust this folder in Claude CLI` | Claude Code is waiting on its folder-trust prompt |

@@ -186,4 +186,12 @@ struct DailyUsageReportTests {
         let report = makeCacheReport(todayHitRate: 0.5, prevHitRate: 0.5, todayCacheTokens: 37_000_000, prevCacheTokens: 20_000_000)
         #expect(report.formattedCacheTokenDelta == "+17.0M")
     }
+
+    @Test
+    func `working time is worth a card when either day has some`() {
+        let empty = DailyUsageStat(date: Date(), totalCost: 0, totalTokens: 10, workingTime: 0, sessionCount: 1)
+        let worked = DailyUsageStat(date: Date(), totalCost: 0, totalTokens: 10, workingTime: 600, sessionCount: 1)
+        #expect(!DailyUsageReport(today: empty, previous: empty).hasWorkingTime)
+        #expect(DailyUsageReport(today: empty, previous: worked).hasWorkingTime)
+    }
 }

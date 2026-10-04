@@ -9,6 +9,7 @@ on:
       - '**.md'
       - 'scripts/check-docs.py'
       - 'scripts/gen-docs.py'
+      - 'scripts/*changelog*'
       - 'Sources/Domain/Provider/**'
       - '.github/workflows/docs.yml'
   push:
@@ -17,6 +18,7 @@ on:
       - '**.md'
       - 'scripts/check-docs.py'
       - 'scripts/gen-docs.py'
+      - 'scripts/*changelog*'
       - 'Sources/Domain/Provider/**'
 
 permissions:
@@ -29,3 +31,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check docs
         run: python3 scripts/check-docs.py --strict
+      # A release must keep [Unreleased] + the current minor, and lose nothing.
+      - name: Changelog release scripts
+        run: scripts/test-changelog-release.sh

@@ -1,6 +1,7 @@
 name: Deploy Pages
 
-# Publishes docs/ (the landing page) to GitHub Pages whenever it changes on main.
+# Publishes docs/ to GitHub Pages whenever it changes on main: Sparkle's appcast,
+# and an index that points to the site at claudebar.tddworks.com (website/).
 #
 # Previously the site only deployed as a step inside release.yml, so any landing
 # page edit sat unpublished until the next release.

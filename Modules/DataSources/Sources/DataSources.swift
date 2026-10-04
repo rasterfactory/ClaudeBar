@@ -131,12 +131,15 @@ public enum DataSources {
             CloudWatchFetcher(call: call, client: cloudWatch, catalog: priceCatalog, now: now)
         case .directory(let call):
             DirectoryFetcher(call: call, homeDirectory: homeDirectory, environment: environment)
+        case .script(let call):
+            ScriptFetcher(call: call, providerId: providerId, secrets: secrets, makeExecutor: makeCommandExecutor)
         }
 
         let mapper: any Reading = switch definition.mapping {
         case .json(let mapping): JSONMapper(mapping: mapping, now: now)
         case .text(let mapping): TextMapper(mapping: mapping, now: now)
         case .script(let mapping): ScriptMapper(file: mapping.file, source: scripts(mapping.file), values: mapping.values, now: now)
+        case .usage: UsageMapper(now: now)
         }
 
         var refresher: (any CredentialRefreshing)?

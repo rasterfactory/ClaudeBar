@@ -13,6 +13,12 @@ public final class LeaderboardMembership {
     public private(set) var sharing: Set<String> = []
     public private(set) var isVisible = true
     public private(set) var lastUpload: Date?
+    /// Your country is on the globe: kept by the server from where your
+    /// requests come from, never sent by this Mac. Off until you opt in.
+    public private(set) var sharesCountry = false
+    private var globeHintDismissed = false
+    /// Where people on the board can find you, when you added it. Not verified.
+    public private(set) var link: ProfileLink?
     private var key: SigningKey?
 
     @ObservationIgnored private let api: any LeaderboardAPI
@@ -43,7 +49,8 @@ public final class LeaderboardMembership {
 
     // MARK: - Joining and leaving
 
-    public func join(as username: Username, sharing providers: Set<String>) async throws {
+    public func join(as username: Username, sharing providers: Set<String>, sharesCountry: Bool = false,
+                     link: ProfileLink? = nil) async throws {
         guard !providers.isEmpty else { throw LeaderboardError.nothingShared }
         try requireShareable(providers)
         let key = SigningKey.generate()
@@ -54,7 +61,12 @@ public final class LeaderboardMembership {
         sharing = providers
         isVisible = true
         lastUpload = nil
+        self.sharesCountry = false
+        globeHintDismissed = false
+        self.link = nil
         save()
+        if sharesCountry { try? await setSharesCountry(true) }
+        if let link { try? await setLink(link) }
     }
 
     /// Deletes the member and every row on the server first; the key is
@@ -80,6 +92,9 @@ public final class LeaderboardMembership {
         sharing = []
         isVisible = true
         lastUpload = nil
+        sharesCountry = false
+        globeHintDismissed = false
+        link = nil
         settings.saveLeaderboardRecord(nil)
     }
 
@@ -112,15 +127,44 @@ public final class LeaderboardMembership {
 
     public func setVisible(_ visible: Bool) async throws {
         guard let credentials else { throw LeaderboardError.notJoined }
-        try await api.update(username: nil, visible: visible, as: credentials)
+        try await api.update(MemberChange(visible: visible), as: credentials)
         isVisible = visible
         save()
     }
 
     public func rename(to newName: Username) async throws {
         guard let credentials else { throw LeaderboardError.notJoined }
-        try await api.update(username: newName.value, visible: nil, as: credentials)
+        try await api.update(MemberChange(username: newName.value), as: credentials)
         username = newName
+        save()
+    }
+
+    // MARK: - Profile link
+
+    /// Adds, replaces or — with `nil` — removes your profile link on the board.
+    public func setLink(_ newLink: ProfileLink?) async throws {
+        guard let credentials else { throw LeaderboardError.notJoined }
+        try await api.update(MemberChange(link: newLink.map { .set($0) } ?? .remove), as: credentials)
+        link = newLink
+        save()
+    }
+
+    // MARK: - The globe
+
+    /// Puts your country on the globe, or takes it off: the server forgets it
+    /// at once when you turn this off.
+    public func setSharesCountry(_ shares: Bool) async throws {
+        guard let credentials else { throw LeaderboardError.notJoined }
+        try await api.update(MemberChange(sharesCountry: shares), as: credentials)
+        sharesCountry = shares
+        save()
+    }
+
+    /// The one-time *NEW* card that offers the globe, until you opt in or dismiss it.
+    public var showsGlobeHint: Bool { isJoined && !sharesCountry && !globeHintDismissed }
+
+    public func dismissGlobeHint() {
+        globeHintDismissed = true
         save()
     }
 
@@ -147,11 +191,16 @@ public final class LeaderboardMembership {
         sharing = Set(record.sharing)
         isVisible = record.visible
         lastUpload = record.lastUpload
+        sharesCountry = record.sharesCountry
+        globeHintDismissed = record.globeHintDismissed
+        link = record.link
     }
 
     private func save() {
         guard let username else { return }
         settings.saveLeaderboardRecord(LeaderboardRecord(username: username.value, sharing: Array(sharing),
-                                                         visible: isVisible, lastUpload: lastUpload))
+                                                         visible: isVisible, lastUpload: lastUpload,
+                                                         sharesCountry: sharesCountry, globeHintDismissed: globeHintDismissed,
+                                                         link: link))
     }
 }

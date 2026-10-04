@@ -15,6 +15,7 @@ Only this, for each provider you tick and each day:
 - your **username**
 - **input**, **output**, **cache-write** and **cache-read** token counts (a log that keeps only a total is shared as that total)
 - your Mac's **date**, so your "Today" is your own day
+- only if you turn on **Show my country on the globe**: your **country**, which the server takes from where your requests come from. Your Mac sends no location. Never your city or IP
 
 Never prompts, file names, projects, costs, model names or your account email. Every upload is signed by a key made on your Mac when you join; the private half never leaves it.
 
@@ -37,7 +38,7 @@ Quota-only providers (Gemini, Copilot, Cursor and the rest) report percentages, 
 3. Tick the providers to share, and open **Exactly what gets uploaded** if you want to check.
 4. Press **Join leaderboard**. Your last 30 days are uploaded straight away.
 
-The tab then shows your rank and your provider mix, the board (up to the top 100, scrolling inside its card), and when the last upload went. Switch between **Today**, **7 days** and **30 days**, or one provider. **Full board** opens the public page at [claudebar.tddworks.com/leaderboard](https://claudebar.tddworks.com/leaderboard).
+The tab then shows your rank (the eye next to your name shows it as `@i•••` for screen shares) and your provider mix, the board (up to the top 100, scrolling inside its card), and when the last upload went. Switch between **Today**, **7 days** and **30 days**, or one provider. **Full board** opens the public page at [claudebar.tddworks.com/leaderboard](https://claudebar.tddworks.com/leaderboard).
 
 ## Settings → Leaderboard
 
@@ -45,11 +46,23 @@ The tab then shows your rank and your provider mix, the board (up to the top 100
 |---|---|
 | **Username → Rename** | Takes a new name if it's free |
 | **Show me on the web board** | Off keeps you ranked only in your own ClaudeBar |
+| **Profile link** | One handle on X, Instagram or GitHub, shown as an icon after your name on the board. Not verified. **Remove** takes it off |
+| **Show my country on the globe** | Puts your country on the web board's globe, counted with others. A country appears once three members there opt in. Off forgets it at once |
 | **Shared providers** | Stops or starts uploads per provider. Days already uploaded stay until you leave |
 | **Export my data** | Saves everything the server holds about you as JSON |
 | **Leave and delete my data** | Deletes your username and every uploaded day from the server, then this Mac's key |
 
+## Profile link
+
+Add one place people on the board can find you: an **X**, **Instagram** or **GitHub** handle, when you join or in **Settings → Leaderboard → Profile link**. It shows as that platform's icon after your name, in the app and on the web board; clicking it opens the profile. You type only the handle; the link is always built from the platform's own address. Links aren't verified, and the board says so.
+
+## The globe
+
+The web board's globe shows where ClaudeBar is used, by country, from members who opted in. Turn it on when you join, from the **New** card in the Leaderboard tab, or in **Settings → Leaderboard**. The tab's **🌍 Members in N countries** line opens it. Once you're on it, that line names your country; the **eye** next to it shows it as `🌍 ••` for screen shares, like the eye that masks account emails, and **Turn off** takes you off the globe.
+
 ## Gotchas
+
+- **On a VPN?** The globe counts the country your VPN connects from.
 
 - **"That username is taken."** Names are unique ignoring case, and names that would read as official (`admin`, `claudebar`, `anthropic`…) are reserved.
 - **"This Mac's clock is more than five minutes off."** Uploads are signed with the time. Fix the clock in System Settings → General → Date & Time.

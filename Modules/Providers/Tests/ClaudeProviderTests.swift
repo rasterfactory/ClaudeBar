@@ -52,14 +52,14 @@ struct ClaudeProviderTests {
         let provider = try claude.provider()
 
         #expect(provider.id == "claude")
-        #expect(provider.name == "Claude")
-        #expect(provider.cliCommand == "claude")
-        #expect(provider.dashboardURL == URL(string: "https://claude.ai/new#settings/usage"))
-        #expect(provider.statusPageURL == URL(string: "https://status.anthropic.com"))
+        #expect(provider.lineupName(of: provider.defaultAccount) == "Claude")
+        #expect(provider.defaultAccount.cliCommand == "claude")
+        #expect(provider.plainDashboardURL == URL(string: "https://claude.ai/new#settings/usage"))
+        #expect(provider.defaultAccount.statusPageURL == URL(string: "https://status.anthropic.com"))
         #expect(provider.isEnabled)
-        #expect(provider.provider.activeKind == "cli")
-        #expect(provider.snapshot == nil)
-        #expect(provider.lastError == nil)
+        #expect(provider.configuration.activeKind == "cli")
+        #expect(provider.defaultAccount.snapshot == nil)
+        #expect(provider.defaultAccount.lastError == nil)
     }
 
     // MARK: - CLI mode
@@ -71,11 +71,11 @@ struct ClaudeProviderTests {
         answerCLI(claude, Self.usageScreen)
         let provider = try claude.provider()
 
-        let usage = try await provider.refresh()
+        let usage = try await provider.refreshPlain()
 
         #expect(usage.sessionQuota?.percentRemaining == 65)
-        #expect(provider.answeredBy == "cli")
-        #expect(provider.isSyncing == false)
+        #expect(provider.defaultAccount.answeredBy == "cli")
+        #expect(provider.defaultAccount.isSyncing == false)
     }
 
     @Test
@@ -86,11 +86,11 @@ struct ClaudeProviderTests {
         try answerAPI(claude)
         let provider = try claude.provider()
 
-        let usage = try await provider.refresh()
+        let usage = try await provider.refreshPlain()
 
         #expect(usage.sessionQuota?.percentRemaining == 55)
-        #expect(provider.answeredBy == "api")
-        #expect(provider.lastError == nil)
+        #expect(provider.defaultAccount.answeredBy == "api")
+        #expect(provider.defaultAccount.lastError == nil)
     }
 
     @Test
@@ -101,8 +101,8 @@ struct ClaudeProviderTests {
         try answerAPI(claude, "", status: 500)
         let provider = try claude.provider()
 
-        await #expect(throws: UsageError.executionFailed("claude is not running")) { try await provider.refresh() }
-        #expect(provider.lastError as? UsageError == .executionFailed("claude is not running"))
+        await #expect(throws: UsageError.executionFailed("claude is not running")) { try await provider.refreshPlain() }
+        #expect(provider.defaultAccount.lastError as? UsageError == .executionFailed("claude is not running"))
     }
 
     @Test
@@ -116,9 +116,9 @@ struct ClaudeProviderTests {
             .willReturn(CLIResult(output: "Total cost:            $1.23\nTotal duration (API):  1m 30s"))
         let provider = try claude.provider()
 
-        let usage = try await provider.refresh()
+        let usage = try await provider.refreshPlain()
 
-        #expect(provider.answeredBy == "cliCost")
+        #expect(provider.defaultAccount.answeredBy == "cliCost")
         #expect(usage.accountTier == .claudeApi)
         #expect(usage.costUsage?.totalCost == Decimal(string: "1.23"))
         #expect(usage.costUsage?.apiDuration == 90)
@@ -138,10 +138,10 @@ struct ClaudeProviderTests {
         let withFallback = try claude.provider(settings: allowed)
         let withoutFallback = try claude.provider(settings: refused)
 
-        #expect(await withFallback.isAvailable())
-        #expect(await withoutFallback.isAvailable() == false)
-        #expect(try await withFallback.refresh().sessionQuota?.percentRemaining == 65)
-        await #expect(throws: UsageError.authenticationRequired) { try await withoutFallback.refresh() }
+        #expect(await withFallback.isPlainAvailable())
+        #expect(await withoutFallback.isPlainAvailable() == false)
+        #expect(try await withFallback.refreshPlain().sessionQuota?.percentRemaining == 65)
+        await #expect(throws: UsageError.authenticationRequired) { try await withoutFallback.refreshPlain() }
     }
 
     @Test
@@ -152,13 +152,13 @@ struct ClaudeProviderTests {
         try answerAPI(claude, "", status: 429, headers: ["Retry-After": "120"])
         let provider = try claude.provider(settings: InMemoryProviderSettings(dataSourceKinds: ["claude": "api"]))
 
-        await #expect(throws: UsageError.self) { try await provider.refresh() }
+        await #expect(throws: UsageError.self) { try await provider.refreshPlain() }
 
-        guard case .rateLimited? = provider.lastError as? UsageError else {
-            Issue.record("expected rateLimited, got \(String(describing: provider.lastError))")
+        guard case .rateLimited? = provider.defaultAccount.lastError as? UsageError else {
+            Issue.record("expected rateLimited, got \(String(describing: provider.defaultAccount.lastError))")
             return
         }
-        #expect(provider.snapshot == nil)
+        #expect(provider.defaultAccount.snapshot == nil)
     }
 
     @Test
@@ -169,7 +169,7 @@ struct ClaudeProviderTests {
         try answerAPI(claude, "", status: 500)
         let provider = try claude.provider(settings: InMemoryProviderSettings(dataSourceKinds: ["claude": "api"]))
 
-        await #expect(throws: UsageError.executionFailed("HTTP error: 500")) { try await provider.refresh() }
+        await #expect(throws: UsageError.executionFailed("HTTP error: 500")) { try await provider.refreshPlain() }
     }
 
     @Test
@@ -218,13 +218,13 @@ struct ClaudeProviderTests {
         given(source).fetch().willThrow(UsageError.parseFailed("Could not find referral URL"))
         let passes = GuestPasses(source: source)
         let provider = try claude.provider(guestPasses: passes)
-        try await provider.refresh()
+        try await provider.refreshPlain()
 
         await #expect(throws: UsageError.self) { try await passes.fetch() }
 
         #expect(passes.error != nil)
-        #expect(provider.lastError == nil)
-        #expect(provider.guestPasses === passes)
+        #expect(provider.defaultAccount.lastError == nil)
+        #expect(provider.defaultAccount.guestPasses === passes)
         passes.clearError()
         #expect(passes.error == nil)
     }

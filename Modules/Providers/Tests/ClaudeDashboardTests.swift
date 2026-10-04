@@ -14,7 +14,7 @@ struct ClaudeDashboardTests {
     static let consoleBillingURL = URL(string: "https://console.anthropic.com/settings/billing")
 
     /// `screen` is what `/usage` shows; `/cost`, when `/usage` hands off to it, shows `cost`.
-    private func claude(afterReading screen: String, cost: String = "") async throws -> Account {
+    private func claude(afterReading screen: String, cost: String = "") async throws -> Provider {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
         given(claude.cli).locate(.any).willReturn("/usr/local/bin/claude")
@@ -23,22 +23,22 @@ struct ClaudeDashboardTests {
                 CLIResult(output: args.contains("/cost") ? cost : screen)
             }
         let provider = try claude.provider()
-        try await provider.refresh()
+        try await provider.refreshPlain()
         return provider
     }
 
     @Test
     func `dashboard opens claude.ai usage settings for a Max account`() async throws {
         let provider = try await claude(afterReading: "Opus 4.7 · Claude Max\nCurrent session\n████ 65% left")
-        #expect(provider.snapshot?.accountTier == .claudeMax)
-        #expect(provider.dashboardURL == Self.subscriptionUsageURL)
+        #expect(provider.defaultAccount.snapshot?.accountTier == .claudeMax)
+        #expect(provider.plainDashboardURL == Self.subscriptionUsageURL)
     }
 
     @Test
     func `dashboard opens claude.ai usage settings for a Pro account`() async throws {
         let provider = try await claude(afterReading: "Sonnet 4.6 · Claude Pro\nCurrent session\n████ 65% left")
-        #expect(provider.snapshot?.accountTier == .claudePro)
-        #expect(provider.dashboardURL == Self.subscriptionUsageURL)
+        #expect(provider.defaultAccount.snapshot?.accountTier == .claudePro)
+        #expect(provider.plainDashboardURL == Self.subscriptionUsageURL)
     }
 
     @Test
@@ -47,17 +47,17 @@ struct ClaudeDashboardTests {
             afterReading: "/usage is only available for subscription plans.",
             cost: "Total cost:            $1.23\nTotal duration (API):  1m 30s"
         )
-        #expect(provider.snapshot?.accountTier == .claudeApi)
-        #expect(provider.dashboardURL == Self.consoleBillingURL)
+        #expect(provider.defaultAccount.snapshot?.accountTier == .claudeApi)
+        #expect(provider.plainDashboardURL == Self.consoleBillingURL)
     }
 
     @Test
     func `dashboard opens claude.ai usage settings for other plans and before the first refresh`() throws {
         let claude = try ClaudeHarness()
         defer { claude.cleanUp() }
-        let definition = try Providers.builtIn("claude")
+        let definition = try ProviderFactory.builtIn("claude")
 
-        #expect(try claude.provider().dashboardURL == Self.subscriptionUsageURL)
+        #expect(try claude.provider().plainDashboardURL == Self.subscriptionUsageURL)
         #expect(definition.profile.links.dashboard(for: .custom("Enterprise")) == Self.subscriptionUsageURL)
         #expect(definition.profile.links.dashboard(for: nil) == Self.subscriptionUsageURL)
     }

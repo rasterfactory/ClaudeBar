@@ -52,6 +52,12 @@ A new report is a capability the `Provider` holds and a view reads, as
 > **Reference implementation:** See `references/daily-usage-pattern.md` for the complete
 > DailyUsage feature as a working example of this pattern.
 
+> **Check the design first** — the docs are the source of truth ([AGENTS.md](../../../AGENTS.md#design-docs-are-the-source-of-truth)).
+> Usage history is now data ([TARGET_ARCHITECTURE §10](../../../docs/architecture/TARGET_ARCHITECTURE.md#10--usage-history-as-data)):
+> a report is a range of `account.usageHistory.days(in:)` read by the page, not a
+> `XxxAnalyzer` or a field on the snapshot. Where this skill's steps below disagree with §10,
+> §10 wins; confirm the design with the user before coding.
+
 ## Workflow
 
 ```
@@ -121,6 +127,8 @@ Use `AskUserQuestion` to confirm the design before proceeding.
 ---
 
 ## Phase 1: Domain Models (TDD)
+
+Name each test `should <outcome> [when <situation>]`, in the person's words, never a method, type or mechanism verb → [Naming tests](../implement-feature/references/tdd-patterns.md#naming-tests).
 
 ### 1a. Create the Stat Model
 
@@ -220,7 +228,7 @@ import Testing
 
 @Suite
 struct {Name}StatTests {
-    @Test func `formats metric as expected`() {
+    @Test func `should print the metric in dollars`() {
         let stat = {Name}Stat(date: Date(), metricA: 14.26, ...)
         #expect(stat.formattedMetricA == "$14.26")
     }
@@ -345,7 +353,7 @@ if let report = (provider as? Account)?.{name}?.report {
 
 ### 3d. Register in ClaudeBarApp
 
-A capability the definition declares is built by `Providers.make` — as
+A capability the definition declares is built by `ProviderFactory.make` — as
 `usageHistory` is from a definition's `usageHistory` block — so the App
 passes nothing. Only a capability not yet expressible as data is handed in:
 

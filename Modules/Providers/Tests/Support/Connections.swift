@@ -17,6 +17,8 @@ struct StubbedProvider {
     let launches = Launches()
     /// The login folders adding and removing accounts makes and deletes.
     let folders = InMemoryLoginFolders()
+    /// Which login new terminal sessions start with — *In use*.
+    let loginsInUse = InMemoryLoginsInUse()
     let home: URL
     let settings: InMemoryProviderSettings
     var environment: [String: String] = [:]
@@ -48,7 +50,7 @@ struct StubbedProvider {
         let cli = self.cli
         let network = self.network
         let home = self.home
-        let definition = try Providers.builtIn(id)
+        let definition = try ProviderFactory.builtIn(id)
         return Provider(
             definition: definition,
             settings: settings,
@@ -69,15 +71,21 @@ struct StubbedProvider {
                 )
             },
             folders: folders,
+            loginsInUse: loginsInUse,
             isExecutable: isExecutable
         )
     }
 
-    /// The default login, or — with `account` — that added one.
-    func make(_ id: String, account: ProviderAccountConfig? = nil) throws -> Account {
-        let provider = try makeProvider(id, accounts: account.map { [$0] } ?? [])
-        guard let account else { return provider.defaultAccount }
-        return try #require(provider.accounts.first { $0.accountId == account.accountId })
+    /// The provider, with its plain login.
+    func make(_ id: String) throws -> Provider {
+        try makeProvider(id)
+    }
+
+    /// The provider with one saved login added, and that login — ask the
+    /// provider about it (a login never refers to its provider).
+    func makeAdded(_ id: String, account: ProviderAccountConfig) throws -> (provider: Provider, login: Account) {
+        let provider = try makeProvider(id, accounts: [account])
+        return (provider, try #require(provider.accounts.first { $0.accountId == account.accountId }))
     }
 
     func cleanUp() {

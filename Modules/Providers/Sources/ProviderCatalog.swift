@@ -34,7 +34,7 @@ public struct ProviderCatalog: Sendable {
 
     /// *Save*: writes the definition. A built-in's id is refused.
     public func add(_ definition: ProviderDefinition) throws {
-        guard Providers.builtInDefinitions[definition.id] == nil else {
+        guard ProviderFactory.builtInDefinitions[definition.id] == nil else {
             throw DefinitionError.duplicateProvider(definition.id)
         }
         try definition.validate()
@@ -64,7 +64,7 @@ public struct ProviderCatalog: Sendable {
             .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
         while true {
             let id = "custom-\(slug.isEmpty ? "provider" : slug)-\(UUID().uuidString.prefix(6).lowercased())"
-            if Providers.builtInDefinitions[id] == nil, !FileManager.default.fileExists(atPath: file(for: id).path) {
+            if ProviderFactory.builtInDefinitions[id] == nil, !FileManager.default.fileExists(atPath: file(for: id).path) {
                 return id
             }
         }

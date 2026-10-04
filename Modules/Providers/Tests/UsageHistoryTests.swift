@@ -102,14 +102,14 @@ struct UsageHistoryTests {
     @Test
     func `the default login has the provider's usage history`() throws {
         let history = history()
-        let provider = try Providers.make("grok", settings: InMemoryProviderSettings(), usageHistory: history)
+        let provider = try ProviderFactory.make("grok", settings: InMemoryProviderSettings(), usageHistory: history)
 
         #expect(provider.defaultAccount.usageHistory === history)
     }
 
     @Test
     func `an added login whose logs aren't read has none`() throws {
-        let provider = try Providers.make("grok", settings: InMemoryProviderSettings(), accounts: [login("work")],
+        let provider = try ProviderFactory.make("grok", settings: InMemoryProviderSettings(), accounts: [login("work")],
                                           usageHistory: history())
 
         #expect(provider.accounts.first { !$0.isDefault }?.usageHistory == nil)
@@ -117,8 +117,89 @@ struct UsageHistoryTests {
 
     @Test
     func `a provider that offers no usage history has none`() throws {
-        let provider = try Providers.make("grok", settings: InMemoryProviderSettings())
+        let provider = try ProviderFactory.make("grok", settings: InMemoryProviderSettings())
 
         #expect(provider.defaultAccount.usageHistory == nil)
     }
+
+    // MARK: - Other apps
+
+    private func desk(_ tokens: Int, daysAgo: Int = 0) throws {
+        let day = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
+        let dir = home.appendingPathComponent("Desk")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try #"{"at":\#(day.timeIntervalSince1970),"n":\#(tokens)}"#.write(to: dir.appendingPathComponent("today.json"), atomically: true, encoding: .utf8)
+    }
+
+    private var deskDefinition: UsageLog.Definition {
+        UsageLog.Definition(
+            records: UsageLog.Records(files: "~/.acme/*.jsonl", at: "$.at", tokens: UsageLog.Tokens(total: "$.tokens"), cost: "$.cost"),
+            otherApps: [UsageLog.OtherApp(label: "Desk", records: UsageLog.Records(
+                files: "~/Desk/today.json", format: .json, at: "$.at", tokens: UsageLog.Tokens(total: "$.n")))])
+    }
+
+    private func historyWithDesk(ledger: @escaping (String) -> DayLedger? = { _ in nil }) -> UsageHistory {
+        UsageHistory(deskDefinition, login: "acme",
+                     log: { DataSources.makeUsageLog($0, environment: { _ in nil }, homeDirectory: home) }, ledger: ledger)
+    }
+
+    @Test
+    func `reading reads each other app under its own name, apart from the login's days`() async throws {
+        try log([("14", 0)])
+        try desk(74_422)
+        let history = historyWithDesk()
+
+        await history.read()
+
+        let desk = try #require(history.otherApps.first)
+        #expect(desk.label == "Desk")
+        #expect(desk.report?.today.totalTokens == 74_422)
+        #expect(desk.knowsCost == false)
+        #expect(history.usedOtherApps.map(\.label) == ["Desk"])
+        #expect(history.hasUsage)
+        #expect(history.label == nil)
+        #expect(history.report?.today.totalTokens == 1000)
+    }
+
+    @Test
+    func `another app's usage alone is usage the login can show`() async throws {
+        try desk(74_422)
+        let history = historyWithDesk()
+
+        await history.read()
+
+        #expect(history.report == nil)
+        #expect(history.hasUsage)
+    }
+
+    @Test
+    func `an other app used neither today nor yesterday has no report`() async throws {
+        try desk(500, daysAgo: 3)
+        let history = historyWithDesk()
+
+        await history.read()
+
+        #expect(history.otherApps.first?.report == nil)
+        #expect(history.usedOtherApps.isEmpty)
+        #expect(!history.hasUsage)
+    }
+
+    @Test
+    func `each other app keeps its days apart from the login's`() async throws {
+        let store = InMemoryLedgerStore()
+        try desk(500, daysAgo: 2)
+        let history = historyWithDesk(ledger: { DayLedger(store: store, key: $0) })
+
+        await history.read()
+
+        #expect(store.keys.sorted() == ["acme", "acme/Desk"])
+    }
+}
+
+/// Kept days in memory, by key.
+private final class InMemoryLedgerStore: LedgerStore, @unchecked Sendable {
+    private var pages: [String: LedgerPage] = [:]
+    var keys: [String] { Array(pages.keys) }
+    func load(_ key: String) -> LedgerPage? { pages[key] }
+    func save(_ page: LedgerPage, for key: String) { pages[key] = page }
 }

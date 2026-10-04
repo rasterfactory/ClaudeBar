@@ -39,12 +39,13 @@ They don't care which probe class, RPC field or repository protocol changed. Tha
 
 | Rule | Why (reader's view) |
 |---|---|
-| Keep a Changelog headings; **`Removed` and `Changed` come before `Fixed` and `Added`** | Question 1 is answered first |
+| Keep a Changelog headings, **one of each kind per release: `Removed` → `Changed` → `Deprecated` → `Fixed` → `Security` → `Added`** | Question 1 is answered first, and "Fixed" is in one place |
 | Anything that changes existing behaviour starts with **`Breaking:`** and says what to do instead | Users can spot it in a dialog they read for five seconds |
 | Each bullet starts with **what the user sees**: a provider name, a Settings pane, the menu bar, the notch | They are scanning for *their* provider |
 | Say the **effect**, not the implementation: "Codex's menu bar countdown ticks down", not "`CodexRateLimitWindow` carries `resetsAt`" | They can check the effect but not the implementation |
 | One bullet per user-visible change, **≤300 chars** with URLs excluded; merge related fixes | Five bullets about one provider are one piece of news |
-| Every bullet ends with its issue or PR link as an **absolute URL** | Relative links break in Sparkle's dialog and on the release page |
+| Every bullet ends with its issue or PR link as an **absolute URL**; `Added` and `Changed` bullets also get `→ [docs](…)` | Two ways down: *how do I use it now* and *why did it change*. Relative links break in Sparkle's dialog and on the release page |
+| Only the current minor lives here; each past minor is in `docs/changelog/<minor>.md` | The file stays ~50–150 lines for readers and for agents adding an entry |
 | `## [Unreleased]` is always at the top, and the release workflow renames it | One edit per release, done by CI |
 
 ### Before → after (real entries)
@@ -64,7 +65,31 @@ This is about 420 characters. The second half explains the probe, and that belon
 
 The detail about the formatted text and the thrown-away reset time moves to `docs/providers/codex/design.md`, which becomes its one home.
 
-**Old entries** keep their wording and stay where they are.
+**Old entries** keep their wording; a past minor moves unchanged to `docs/changelog/<minor>.md`.
+
+### What the file looks like
+
+```markdown
+# Changelog
+Format: Keep a Changelog · Versioning: SemVer
+
+## [Unreleased]
+
+### Changed
+- Settings → Providers, one row per provider: … → [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/…) ([#469](https://github.com/tddworks/ClaudeBar/pull/469))
+
+### Fixed
+- …
+
+---
+
+## [0.5.3] - 2026-10-04
+…
+
+## Older releases
+
+[0.4](docs/changelog/0.4.md) · [0.3](docs/changelog/0.3.md) · [0.2](docs/changelog/0.2.md) · [0.1](docs/changelog/0.1.md)
+```
 
 ---
 

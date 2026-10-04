@@ -27,6 +27,12 @@ no Swift for a vendor**: no `XxxProvider`, no `XxxUsageProbe`, no
 > local server (`antigravity.json`), cloud metrics priced into money (`bedrock.json`).
 > Their tests are in `Modules/Providers/Tests/`.
 
+**The docs are the source of truth** ([AGENTS.md](../../../AGENTS.md#design-docs-are-the-source-of-truth)).
+A provider that fits the definition language needs no design change. One that needs the
+language to grow — a new case and worker, a new capability (CANONICAL §2.1), a new setting
+kind — is a design change: write it into TARGET_ARCHITECTURE / CANONICAL_MODEL first and ask
+the user to confirm before writing code.
+
 ## The pieces
 
 | Piece | Where | You touch it when |
@@ -136,6 +142,8 @@ A list of values means *the first that answers*; a number is a constant.
 
 ## TDD workflow (Chicago school)
 
+Name each test `should <outcome> [when <situation>]`, in the person's words, never a method, type or mechanism verb → [Naming tests](../implement-feature/references/tdd-patterns.md#naming-tests).
+
 ### 1 · Research and fixtures
 Find where the usage really comes from (CLI command, endpoint, local file) and
 capture **real** responses, redacted, including the failure answers: logged
@@ -152,14 +160,14 @@ through the real `Provider` over stubbed connections with `StubbedProvider`
 @Suite
 struct AcmeDefinitionTests {
     @Test
-    func `acme json keeps the definition laws`() throws {
-        let acme = try Providers.builtIn("acme")
+    func `should read Acme from its API by default`() throws {
+        let acme = try ProviderFactory.builtIn("acme")
         #expect(acme.dataSources.map(\.kind) == ["api"])
         #expect(acme.defaultDataSource == "api")
     }
 
     @Test
-    func `api reads the session window`() async throws {
+    func `should show the session window when the API answers`() async throws {
         let stub = try StubbedProvider(providerId: "acme")
         defer { stub.cleanUp() }
         stub.environment = ["ACME_API_KEY": "test-key"]
@@ -172,7 +180,7 @@ struct AcmeDefinitionTests {
     }
 
     @Test
-    func `api without a key says so at the lookup step`() async throws {
+    func `should say the key is missing when the API has no key`() async throws {
         let stub = try StubbedProvider(providerId: "acme")
         defer { stub.cleanUp() }
         let acme = try stub.make("acme")
@@ -187,7 +195,7 @@ Assert on **state**: the usage, `lastError`, `lastFailedStep`, `answeredBy`, and
 files written back. Don't `verify()` calls. Cover every fixture from step 1.
 
 ### 3 · Write the definition (green)
-Add `<id>.json` until the golden tests pass. `Providers.builtIn` validates it:
+Add `<id>.json` until the golden tests pass. `ProviderFactory.builtIn` validates it:
 kinds are unique, and the default and every fallback name an existing kind.
 
 ### 4 · When the language can't say it
@@ -206,7 +214,7 @@ script, `<id>-<what>.js`. Test it through Swift with real captured screens
 // Sources/App/ClaudeBarApp.swift
 let acme = Self.builtIn("acme", settings: settingsRepository,
                         accounts: settingsRepository.accounts(forProvider: "acme"), secrets: vault)
-// …acme.defaultAccount in the AIProviders list, acme.accounts in the added-logins loop
+// …and acme in the `providers` list QuotaMonitor's Providers is made from; its logins come with it
 ```
 Its name, symbol and colours are `profile.look` in the JSON — no `switch id`
 table to edit. Add the icon image to the asset catalog under `look.icon`

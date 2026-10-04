@@ -61,10 +61,12 @@ struct ProviderSelectionSpec {
                 capturedAt: Date()
             ))
 
-            let claude = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-            let codex = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
+            let claudeProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+            let claude = claudeProduct.defaultAccount
+            let codexProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+            let codex = codexProduct.defaultAccount
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: kept([claudeProduct, codexProduct]),
                 clock: TestClock()
             )
 
@@ -103,33 +105,37 @@ struct ProviderSelectionSpec {
         func `disabled providers are hidden from the pill list`() {
             // Given — Claude enabled, Codex disabled
             let settings = Self.makeSettings()
-            let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+            let claude = claudeProduct.defaultAccount
+            let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+            let codex = codexProduct.defaultAccount
             codex.isEnabled = false
 
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: kept([claudeProduct, codexProduct]),
                 clock: TestClock()
             )
 
             // Then — only Claude appears
-            #expect(monitor.enabledProviders.count == 1)
-            #expect(monitor.enabledProviders.first?.id == "claude")
+            #expect(monitor.lineup.count == 1)
+            #expect(monitor.lineup.first?.id == "claude")
         }
 
         @Test
         func `all enabled providers appear in the pill list`() {
             // Given — both enabled
             let settings = Self.makeSettings()
-            let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+            let claude = claudeProduct.defaultAccount
+            let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+            let codex = codexProduct.defaultAccount
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: kept([claudeProduct, codexProduct]),
                 clock: TestClock()
             )
 
             // Then
-            #expect(monitor.enabledProviders.count == 2)
+            #expect(monitor.lineup.count == 2)
         }
     }
 
@@ -155,10 +161,12 @@ struct ProviderSelectionSpec {
         func `disabling Claude auto-switches selection to Codex`() {
             // Given — Claude is selected
             let settings = Self.makeSettings()
-            let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+            let claude = claudeProduct.defaultAccount
+            let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+            let codex = codexProduct.defaultAccount
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: kept([claudeProduct, codexProduct]),
                 clock: TestClock()
             )
             #expect(monitor.selectedProviderId == "claude")
@@ -175,13 +183,15 @@ struct ProviderSelectionSpec {
         func `Claude disabled at startup selects first enabled provider`() {
             // Given — Claude disabled before init
             let settings = Self.makeSettings()
-            let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+            let claude = claudeProduct.defaultAccount
+            let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+            let codex = codexProduct.defaultAccount
             claude.isEnabled = false
 
             // When — monitor initializes
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: kept([claudeProduct, codexProduct]),
                 clock: TestClock()
             )
 
@@ -208,12 +218,14 @@ struct ProviderSelectionSpec {
             given(settings).isEnabled(forProvider: .any).willReturn(true)
             given(settings).setEnabled(.any, forProvider: .any).willReturn()
 
-            let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+            let claude = claudeProduct.defaultAccount
+            let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+            let codex = codexProduct.defaultAccount
             codex.isEnabled = false
 
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: kept([claudeProduct, codexProduct]),
                 clock: TestClock()
             )
 

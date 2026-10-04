@@ -112,6 +112,13 @@ struct DailyUsageStatTests {
         #expect(stat.totalTokensWithCache == 11_500)
     }
 
+    @Test func `a log that keeps only the total counts that total`() {
+        // Claude Desktop's buddy-tokens.json, Mistral's session totals (#198).
+        let stat = DailyUsageStat(date: Date(), totalCost: 0, totalTokens: 74_422, workingTime: 0, sessionCount: 1)
+        #expect(stat.totalTokensWithCache == 74_422)
+        #expect(stat.formattedTotalTokensWithCache == "74.4K")
+    }
+
     @Test func `cacheHitRate is cache_read divided by cache_read plus input`() {
         let stat = DailyUsageStat(
             date: Date(),

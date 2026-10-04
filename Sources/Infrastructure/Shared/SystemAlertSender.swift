@@ -63,4 +63,30 @@ public final class SystemAlertSender: AlertSender, @unchecked Sendable {
 
         try await center.add(request)
     }
+
+    /// The button's id — the app opens `userInfo["link"]` when it is pressed.
+    public static let linkAction = "OPEN_LINK"
+
+    func send(title: String, body: String, categoryIdentifier: String, button: String, link: URL) async throws {
+        guard let center = notificationCenter else { return }
+        // A category's buttons are fixed, so each button title gets its own.
+        let category = "\(categoryIdentifier).\(button)"
+        var categories = await center.notificationCategories()
+        if !categories.contains(where: { $0.identifier == category }) {
+            categories.insert(UNNotificationCategory(
+                identifier: category,
+                actions: [UNNotificationAction(identifier: Self.linkAction, title: button, options: [])],
+                intentIdentifiers: []
+            ))
+            center.setNotificationCategories(categories)
+        }
+
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        content.categoryIdentifier = category
+        content.userInfo = ["link": link.absoluteString]
+        try await center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+    }
 }

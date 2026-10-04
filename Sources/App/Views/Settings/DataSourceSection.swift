@@ -24,7 +24,7 @@ struct DataSourceSection: View {
     @State private var cliPath = ""
     @State private var cliPathError: String?
 
-    private var text: DataSourceSectionText { DataSourceSectionText(definition: provider.definitionAsRun) }
+    private var text: DataSourceSectionText { DataSourceSectionText(definition: provider.configuration.definitionAsRun) }
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
@@ -59,8 +59,8 @@ struct DataSourceSection: View {
                 )
         )
         .onAppear {
-            kind = provider.activeKind
-            fallbackOn = provider.isFallbackEnabled(from: kind)
+            kind = provider.configuration.activeKind
+            fallbackOn = provider.configuration.isFallbackEnabled(from: kind)
         }
     }
 
@@ -163,7 +163,7 @@ struct DataSourceSection: View {
                     .onSubmit { saveCLIPath() }
                 Button("Choose…") { chooseCLI() }
                     .controlSize(.small)
-                if provider.cliPath != nil {
+                if provider.configuration.cliPath != nil {
                     Button("Reset") { cliPath = ""; saveCLIPath() }
                         .controlSize(.small)
                 }
@@ -173,14 +173,14 @@ struct DataSourceSection: View {
                 .foregroundStyle(cliPathError == nil ? theme.textTertiary : theme.statusWarning)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .onAppear { cliPath = provider.cliPath ?? "" }
+        .onAppear { cliPath = provider.configuration.cliPath ?? "" }
     }
 
     private func saveCLIPath() {
         do {
-            try provider.setCLIPath(cliPath)
+            try provider.configuration.setCLIPath(cliPath)
             cliPathError = nil
-            cliPath = provider.cliPath ?? ""
+            cliPath = provider.configuration.cliPath ?? ""
         } catch {
             cliPathError = error.localizedDescription
         }
@@ -263,7 +263,7 @@ struct DataSourceSection: View {
                     .accessibilityLabel(sentence)
             }
             .onChange(of: fallbackOn) { _, newValue in
-                provider.setFallbackEnabled(newValue, from: kind)
+                provider.configuration.setFallbackEnabled(newValue, from: kind)
             }
         } else {
             HStack(alignment: .top, spacing: 8) {
@@ -315,8 +315,8 @@ struct DataSourceSection: View {
     /// only when the new source needs no explicit check first — picking is not
     /// intent to start a CLI that may open a login on its own (#216).
     private func pick(_ newKind: String) {
-        guard provider.use(newKind) else { return }
-        fallbackOn = provider.isFallbackEnabled(from: newKind)
+        guard provider.configuration.use(newKind) else { return }
+        fallbackOn = provider.configuration.isFallbackEnabled(from: newKind)
         testResult = nil
         if let ttl = provider.definition.dataSource(newKind)?.cache?.ttl,
            let seconds = settings.refreshInterval.seconds, Double(seconds) < ttl {

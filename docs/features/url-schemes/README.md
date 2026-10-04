@@ -1,5 +1,5 @@
 ---
-description: Drive ClaudeBar from Raycast, Alfred, Shortcuts, BetterTouchTool or a terminal with claudebar://open, claudebar://refresh and claudebar://settings. Use when scripting ClaudeBar.
+description: Drive ClaudeBar from Raycast, Alfred, Shortcuts, BetterTouchTool or a terminal with claudebar://open, claudebar://refresh, claudebar://settings and claudebar://use. Use when scripting ClaudeBar.
 ---
 
 # URL Schemes
@@ -11,8 +11,9 @@ ClaudeBar registers the `claudebar://` URL scheme, so anything that can open a U
 | `claudebar://open` | Opens the popover and brings ClaudeBar to the front | `open claudebar://open` |
 | `claudebar://refresh` | Refreshes every enabled provider now | `open claudebar://refresh` |
 | `claudebar://settings` | Opens the Settings window | `open claudebar://settings` |
+| `claudebar://use?provider=<id>&account=<name>` | New terminal sessions of that provider start on that login ([In use](../in-use/README.md)). `account` is its name, its email or `default` | `open "claudebar://use?provider=claude&account=work"` |
 
-There are no other actions and no parameters. Anything else, such as `claudebar://foo`, `claudebar://open/` or `claudebar://refresh?now=1`, is ignored and logged as "Received unhandled URL" in the [log](../../troubleshooting.md).
+There are no other actions, and only `use` takes parameters: exactly `provider` and `account`, each once. Anything else, such as `claudebar://foo`, `claudebar://open/` or `claudebar://refresh?now=1`, is ignored and logged as "Received unhandled URL" in the [log](../../troubleshooting.md).
 
 ## Examples
 

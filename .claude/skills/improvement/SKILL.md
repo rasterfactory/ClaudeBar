@@ -26,6 +26,15 @@ Make improvements to existing functionality using TDD and rich domain design.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│  0. CHECK THE DESIGN (docs are the source of truth)          │
+├─────────────────────────────────────────────────────────────┤
+│  • Read CANONICAL_MODEL, TARGET_ARCHITECTURE, design.md      │
+│  • Does the improvement change a law, an owner, a word?      │
+│  • If so: write it into the docs, ask the user to confirm    │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼ (design confirmed, or unchanged)
+┌─────────────────────────────────────────────────────────────┐
 │  1. UNDERSTAND CURRENT STATE                                 │
 ├─────────────────────────────────────────────────────────────┤
 │  • Read existing code                                        │
@@ -51,6 +60,14 @@ Make improvements to existing functionality using TDD and rich domain design.
 │  • All existing tests still pass                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+## Phase 0: Check the design
+
+The design docs are the source of truth ([AGENTS.md](../../../AGENTS.md#design-docs-are-the-source-of-truth)).
+Read [CANONICAL_MODEL.md](../../../docs/architecture/CANONICAL_MODEL.md), [TARGET_ARCHITECTURE.md](../../../docs/architecture/TARGET_ARCHITECTURE.md) and the
+feature's `design.md`. An improvement that only makes the code match the docs needs no
+approval. One that changes a law, its owner, a word the screen prints, or adds a piece is a
+design change: write it into the docs and ask the user to confirm before coding.
 
 ## Types of Improvements
 
@@ -83,7 +100,7 @@ Examples:
 **Test approach**: State-based domain tests
 
 ```swift
-@Test func `model provides convenient access to lowest quota`() {
+@Test func `should point at the quota with the least left`() {
     // Given
     let snapshot = UsageSnapshot(quotas: [quota1, quota2, quota3])
 
@@ -125,13 +142,15 @@ Examples:
 
 ## TDD Pattern (Chicago School)
 
+Name each test `should <outcome> [when <situation>]`, in the person's words, never a method, type or mechanism verb → [Naming tests](../implement-feature/references/tdd-patterns.md#naming-tests).
+
 ### Write Test for Improved Behavior
 
 ```swift
 @Suite
 struct {Component}Tests {
 
-    @Test func `{describes improved behavior}`() {
+    @Test func `should {improved outcome} [when {situation}]`() {
         // Given - standard setup
         let component = Component(...)
 

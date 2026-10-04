@@ -32,8 +32,6 @@ public protocol ProviderVisualIdentity {
 
 /// A provider that is data takes its face from its definition's profile.
 extension Account: ProviderVisualIdentity {
-    private var look: ProviderLook { provider.definition.profile.look }
-
     public var symbolIcon: String { look.symbol ?? ProviderVisualIdentityLookup.symbolIcon(for: id) }
 
     public var iconAssetName: String { look.icon ?? ProviderVisualIdentityLookup.iconAssetName(for: id) }
@@ -66,81 +64,11 @@ extension ProviderLook {
     }
 }
 
-// MARK: - ExtensionProvider Visual Identity
-
-extension ExtensionProvider: ProviderVisualIdentity {
-    public var symbolIcon: String {
-        ProviderVisualIdentityLookup.validSymbol(manifest.icon) ?? "questionmark.circle.fill"
-    }
-
-    /// Extensions have no bundled asset, so views always take the SF Symbol path.
-    public var iconAssetName: String { "" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        ProviderVisualIdentityLookup.color(for: id, scheme: scheme)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        ProviderVisualIdentityLookup.gradient(for: id, scheme: scheme)
-    }
-}
-
-// MARK: - AIProvider Visual Identity Helper
-
-/// Extension to access visual identity from any AIProvider.
-/// Uses type casting to dispatch to the correct implementation.
-extension AIProvider {
-    /// Returns the visual identity if this provider conforms to ProviderVisualIdentity
-    public var visualIdentity: ProviderVisualIdentity? {
-        self as? ProviderVisualIdentity
-    }
-
-    /// SF Symbol icon, with fallback for unknown providers
-    public var symbolIconOrDefault: String {
-        visualIdentity?.symbolIcon ?? "questionmark.circle.fill"
-    }
-
-    /// Icon asset name, with fallback for unknown providers
-    public var iconAssetNameOrDefault: String {
-        visualIdentity?.iconAssetName ?? "QuestionIcon"
-    }
-
-    /// Theme color with fallback
-    public func themeColorOrDefault(for scheme: ColorScheme) -> Color {
-        visualIdentity?.themeColor(for: scheme) ?? BaseTheme.purpleVibrant
-    }
-
-    /// Theme gradient with fallback
-    public func themeGradientOrDefault(for scheme: ColorScheme) -> LinearGradient {
-        visualIdentity?.themeGradient(for: scheme) ?? LinearGradient(
-            colors: [BaseTheme.coralAccent, BaseTheme.pinkHot],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-    }
-}
-
 // MARK: - Static Provider Identity Lookup
 
 /// Static helpers to look up provider visual identity by ID string.
-/// Used by views that only have a providerId, not the full AIProvider object.
+/// Used by views that only have a providerId, not the login itself.
 enum ProviderVisualIdentityLookup {
-    /// SF Symbols declared by extension manifests, keyed by provider id (`ext-<manifest.id>`).
-    /// Consulted only after the built-in tables, so an extension can never restyle a built-in provider.
-    private static let extensionSymbols = Mutex<[String: String]>([:])
-
-    /// Records the manifest icons of loaded extensions so id-only call sites can draw them.
-    /// Icons that are empty or not a known SF Symbol are skipped and keep the question mark.
-    @MainActor
-    static func registerExtensionIcons(from providers: [ExtensionProvider]) {
-        let declared = providers.map { ($0.id, validSymbol($0.manifest.icon)) }
-        extensionSymbols.withLock { symbols in
-            for (id, symbol) in declared {
-                symbols[id] = symbol
-            }
-        }
-    }
-
     /// Returns `name` when it names an SF Symbol available on this system.
     static func validSymbol(_ name: String?) -> String? {
         guard let name, !name.isEmpty,
@@ -151,7 +79,7 @@ enum ProviderVisualIdentityLookup {
     /// Get provider theme color by ID
     /// The look a definition gives, for screens that only hold an id.
     private static func look(for providerId: String) -> ProviderLook? {
-        Providers.definition(forLineupId: providerId)?.profile.look
+        ProviderFactory.definition(forLineupId: providerId)?.profile.look
     }
 
     static func color(for providerId: String, scheme: ColorScheme) -> Color {
@@ -194,7 +122,7 @@ enum ProviderVisualIdentityLookup {
 
     /// Get provider display name by ID
     static func name(for providerId: String) -> String {
-        if let definition = Providers.definition(forLineupId: providerId) { return definition.profile.name }
+        if let definition = ProviderFactory.definition(forLineupId: providerId) { return definition.profile.name }
         switch providerId {
         default: return providerId.capitalized
         }
@@ -202,10 +130,7 @@ enum ProviderVisualIdentityLookup {
 
     /// Get provider SF symbol icon by ID
     static func symbolIcon(for providerId: String) -> String {
-        if let symbol = look(for: providerId)?.symbol { return symbol }
-        switch providerId {
-        default:
-            return extensionSymbols.withLock { $0[providerId] } ?? "questionmark.circle.fill"
-        }
+        // A symbol a person wrote (an extension's icon) must exist, or the question mark.
+        validSymbol(look(for: providerId)?.symbol) ?? "questionmark.circle.fill"
     }
 }

@@ -1,121 +1,123 @@
 import DataSources
-import Quotas
+import Diagnostics
 import Foundation
-import Synchronization
+import Observation
 
-/// The module's factory: definition → `Provider`, its data sources made live
-/// by `DataSources.make`. The App composes with this and never names a worker.
-public enum Providers {
-    /// A built-in definition, shipped in this module's `Resources/Providers/`.
-    public static func builtIn(_ id: String) throws -> ProviderDefinition {
-        try ProviderDefinition.parse(try builtInData(id))
-    }
+/// *Providers* — the providers you keep: the Settings → Providers pane
+/// (TARGET §12, slice 3). It creates a custom provider, reads them and the
+/// lineup, keeps their order and deletes a custom one. The Monitor holds it
+/// and only watches; a login added to a provider is the provider's own
+/// business, never this collection's.
+@MainActor
+@Observable
+public final class Providers {
+    /// Every provider, in the pane's order.
+    public private(set) var all: [Provider]
 
-    /// The built-in definition's JSON, as shipped.
-    public static func builtInData(_ id: String) throws -> Data {
-        guard let url = Bundle.module.url(forResource: id, withExtension: "json") else {
-            throw DefinitionError.missingFile(id)
+    @ObservationIgnored private let settings: (any ProviderSettingsRepository)?
+    @ObservationIgnored private let catalog: ProviderCatalog
+    @ObservationIgnored private let vault: (any SecretVault)?
+    @ObservationIgnored private let make: (ProviderDefinition) -> Provider
+
+    /// - Parameter make: makes a definition live — the real connections in
+    ///   the app, stubbed ones in tests.
+    public init(_ providers: [Provider],
+                settings: (any ProviderSettingsRepository)? = nil,
+                catalog: ProviderCatalog = ProviderCatalog(),
+                vault: (any SecretVault)? = nil,
+                make: @escaping (ProviderDefinition) -> Provider) {
+        self.settings = settings
+        self.catalog = catalog
+        self.vault = vault
+        self.make = make
+        let unique = providers.reduce(into: [Provider]()) { kept, provider in
+            if !kept.contains(where: { $0.id == provider.id }) { kept.append(provider) }
         }
-        return try Data(contentsOf: url)
+        self.all = Self.ordered(unique, by: settings?.providerOrder() ?? [])
     }
 
-    /// Every built-in definition, by id — read once from `Resources/Providers/`.
-    public static let builtInDefinitions: [String: ProviderDefinition] = {
-        let urls = Bundle.module.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? []
-        var definitions: [String: ProviderDefinition] = [:]
-        for url in urls {
-            guard let data = try? Data(contentsOf: url), let definition = try? ProviderDefinition.parse(data) else { continue }
-            definitions[definition.id] = definition
+    // MARK: - Read
+
+    /// Every login of every provider, on or off, in the pane's order.
+    public var logins: [Account] { all.flatMap(\.accounts) }
+
+    /// The enabled logins of enabled providers, in the pane's order — what
+    /// the pills, the menu bar, refreshes and alerts show. Derived, never kept.
+    public var lineup: [Account] { all.flatMap { provider in provider.accounts.filter(provider.isInLineup) } }
+
+    public func provider(id: String) -> Provider? { all.first { $0.id == id } }
+
+    /// A login by its lineup id — `claude`, `codex.<acct>`.
+    public func login(id: String) -> Account? { logins.first { $0.id == id } }
+
+    /// A login's product — found by the id the login names, `nil` once it is
+    /// gone. The way to ask anything product-level about a login (TARGET §12,
+    /// slice 7: a login never refers to its provider).
+    public func provider(of account: Account) -> Provider? { provider(id: account.providerId) }
+
+    // MARK: - Create
+
+    /// *Add Provider*: saves the definition, then keeps it after the others.
+    @discardableResult
+    public func add(_ definition: ProviderDefinition) throws -> Provider {
+        guard provider(id: definition.id) == nil else { throw DefinitionError.duplicateProvider(definition.id) }
+        try catalog.add(definition)
+        return keep(definition)
+    }
+
+    /// *Import*: the reviewed definition, saved and kept like an added one.
+    @discardableResult
+    public func `import`(_ review: ImportReview) throws -> Provider {
+        let definition = try catalog.import(review)
+        guard provider(id: definition.id) == nil else { throw DefinitionError.duplicateProvider(definition.id) }
+        return keep(definition)
+    }
+
+    private func keep(_ definition: ProviderDefinition) -> Provider {
+        ProviderFactory.register(custom: definition)
+        let provider = make(definition)
+        all.append(provider)
+        AppLog.providers.info("Kept custom provider \(definition.id)")
+        return provider
+    }
+
+    // MARK: - Update: the order
+
+    /// Moves a provider, its logins together, `offset` places; stops at either end.
+    public func move(_ id: String, by offset: Int) {
+        guard offset != 0, let index = all.firstIndex(where: { $0.id == id }) else { return }
+        let newIndex = min(max(index + offset, 0), all.count - 1)
+        guard newIndex != index else { return }
+        all.insert(all.remove(at: index), at: newIndex)
+        settings?.setProviderOrder(logins.map(\.id))
+    }
+
+    /// The saved order is by login id; a provider goes where its first login
+    /// is named, one it doesn't name keeps its place after those it does.
+    private static func ordered(_ providers: [Provider], by order: [String]) -> [Provider] {
+        guard !order.isEmpty else { return providers }
+        let rank = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+        func place(_ provider: Provider, _ offset: Int) -> Int {
+            provider.accounts.compactMap { rank[$0.id] }.min() ?? order.count + offset
         }
-        return definitions
-    }()
-
-    /// The built-in definition a lineup id belongs to — `codex.<account>`
-    /// belongs to `codex`. What screens that only hold an id use for a face.
-    public static func builtInDefinition(forLineupId id: String) -> ProviderDefinition? {
-        builtInDefinitions[id] ?? id.split(separator: ".", maxSplits: 1).first.flatMap { builtInDefinitions[String($0)] }
+        return providers.enumerated()
+            .sorted { place($0.element, $0.offset) < place($1.element, $1.offset) }
+            .map(\.element)
     }
 
-    /// The custom definitions in use — what `definition(forLineupId:)` finds
-    /// after the built-ins. Set when the app loads them, and on *Save* / *Delete*.
-    private static let customDefinitions = Mutex<[String: ProviderDefinition]>([:])
+    // MARK: - Delete
 
-    public static func register(custom definition: ProviderDefinition) {
-        customDefinitions.withLock { $0[definition.id] = definition }
-    }
-
-    public static func unregister(custom id: String) {
-        customDefinitions.withLock { $0[id] = nil }
-    }
-
-    /// The definition — built in, then custom — a lineup id belongs to.
-    public static func definition(forLineupId id: String) -> ProviderDefinition? {
-        if let builtIn = builtInDefinition(forLineupId: id) { return builtIn }
-        let base = id.split(separator: ".", maxSplits: 1).first.map(String.init) ?? id
-        return customDefinitions.withLock { $0[id] ?? $0[base] }
-    }
-
-    /// A mapping script shipped beside the built-in definitions.
-    public static let builtInScripts: DataSources.ScriptSource = { file in
-        let name = (file as NSString).deletingPathExtension
-        let ext = (file as NSString).pathExtension
-        guard let url = Bundle.module.url(forResource: name, withExtension: ext.isEmpty ? "js" : ext) else { return nil }
-        return try? String(contentsOf: url, encoding: .utf8)
-    }
-
-    /// A provider on the real network, CLI, Keychain and file system, with
-    /// its default login and every login in `accounts`.
-    @MainActor
-    public static func make(
-        _ definition: ProviderDefinition,
-        settings: any MultiAccountSettingsRepository,
-        accounts: [ProviderAccountConfig] = [],
-        secrets: (any SecretVault)? = nil,
-        guestPasses: GuestPasses? = nil,
-        usageHistory: UsageHistory? = nil,
-        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] },
-        cloudWatch: (any CloudWatchClient)? = nil,
-        priceCatalog: (any PriceCatalog)? = nil
-    ) -> Provider {
-        Provider(
-            definition: definition,
-            settings: settings,
-            accounts: accounts,
-            makeDataSource: { source, login in
-                DataSources.make(source, providerId: definition.id, scripts: builtInScripts, secrets: secrets?.scoped(to: login),
-                                 environment: environment, cloudWatch: cloudWatch, priceCatalog: priceCatalog)
-            },
-            guestPasses: guestPasses,
-            // The definition says how to read each login's logs.
-            usageHistory: usageHistory ?? definition.usageHistory.map { history($0, login: definition.id, environment: environment) },
-            makeUsageHistory: { history($0, login: $1, environment: environment) },
-            vault: secrets
-        )
-    }
-
-    /// A login's usage history on this Mac, its closed days kept under its lineup id.
-    @MainActor
-    private static func history(_ definition: UsageLog.Definition, login: String,
-                                environment: @escaping @Sendable (String) -> String?) -> UsageHistory {
-        UsageHistory(log: DataSources.makeUsageLog(definition, scripts: builtInScripts, environment: environment),
-                     ledger: DayLedger(store: FileLedgerStore(), key: login))
-    }
-
-    /// A built-in provider by id — `Providers.make("codex", settings:)`.
-    @MainActor
-    public static func make(
-        _ id: String,
-        settings: any MultiAccountSettingsRepository,
-        accounts: [ProviderAccountConfig] = [],
-        secrets: (any SecretVault)? = nil,
-        guestPasses: GuestPasses? = nil,
-        usageHistory: UsageHistory? = nil,
-        environment: @escaping @Sendable (String) -> String? = { ProcessInfo.processInfo.environment[$0] },
-        cloudWatch: (any CloudWatchClient)? = nil,
-        priceCatalog: (any PriceCatalog)? = nil
-    ) throws -> Provider {
-        make(try builtIn(id), settings: settings, accounts: accounts, secrets: secrets, guestPasses: guestPasses,
-             usageHistory: usageHistory, environment: environment,
-             cloudWatch: cloudWatch, priceCatalog: priceCatalog)
+    /// Deletes a provider you made: its file, its keys and its place. A
+    /// built-in or an extension is never deleted — it is turned off.
+    public func remove(_ id: String) throws {
+        guard let provider = provider(id: id) else { return }
+        guard provider.definition.profile.origin == .custom else { throw DefinitionError.notDeletable(id) }
+        try catalog.remove(id)
+        for setting in provider.definition.settings where setting.kind == .secret {
+            for login in provider.accounts { vault?.delete(setting.id, provider: login.id) }
+        }
+        ProviderFactory.unregister(custom: id)
+        all.removeAll { $0.id == id }
+        AppLog.providers.info("Deleted custom provider \(id)")
     }
 }

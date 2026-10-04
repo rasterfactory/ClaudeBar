@@ -116,7 +116,7 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
 
         for providerId in providerIds {
             // Fall back to the globally selected provider only for the primary slot
-            guard let provider = monitor.provider(for: providerId) else { continue }
+            guard let provider = monitor.login(id: providerId) else { continue }
             let config = settings.menuBarConfiguration(for: providerId)
             let snapshot = monitor.usage(of: provider)
             let quotas = snapshot?.quotas ?? []
@@ -175,7 +175,7 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
 
     private func resolveIdentity(
         for quota: UsageQuota?,
-        provider: any AIProvider,
+        provider: Account,
         isMultiple: Bool,
         settings: AppSettings
     ) -> (providerId: String, name: String) {
@@ -189,7 +189,7 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
             return (provider.id, "Antigravity")
         }
 
-        let baseName = provider.name
+        let baseName = monitor?.lineupName(of: provider) ?? provider.displayName
         if isMultiple, let quota {
             let compact = quota.menuBarTitle ?? quota.compactTitle ?? quota.quotaType.shortLabel
             if !compact.isEmpty, !baseName.localizedCaseInsensitiveContains(compact) {

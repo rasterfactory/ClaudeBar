@@ -66,7 +66,7 @@ extension ProviderCatalog {
     /// built-in or a saved provider already has it; then it gets a new one.
     public func review(_ file: Data) throws -> ImportReview {
         var definition = try ProviderDefinition.parse(file, origin: .custom)
-        if Providers.builtInDefinitions[definition.id] != nil || custom().contains(where: { $0.id == definition.id }) {
+        if ProviderFactory.builtInDefinitions[definition.id] != nil || custom().contains(where: { $0.id == definition.id }) {
             definition = definition.renamed(id: mintId(for: definition.profile.name))
         }
         return ImportReview(
@@ -94,9 +94,11 @@ extension ProviderDefinition {
             enabledByDefault: enabledByDefault,
             dataSources: dataSources,
             defaultDataSource: defaultDataSource,
+            together: together,
             accounts: accounts,
             settings: settings,
-            usageHistory: usageHistory
+            usageHistory: usageHistory,
+            setup: setup
         )
     }
 }

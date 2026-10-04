@@ -1,0 +1,7 @@
+node_modules/
+.cloudflare/
+public/leaderboard/globe.js
+# Copied from ../docs by `npm run assets`; docs/ is the single source.
+public/screenshots/
+public/sponsors/
+public/app-icon.png

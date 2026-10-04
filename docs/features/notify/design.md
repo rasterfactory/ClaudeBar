@@ -218,7 +218,7 @@ Domain holds every decision as pure value types: the device link and its kind, t
 
 The dependency direction is the usual one. Domain declares `NotifyPublishing` and knows nothing about URLs; `NotifyGatewayClient` in Infrastructure is the implementation and the only place `URLRequest` appears; the App layer owns the driver, because that is where `QuotaMonitor` and `AppSettings` both are.
 
-`QuotaMonitor+NotifyReadings.swift` is the seam worth naming. `AIProvider` is main actor isolated and `NotifyPayloadBuilder` takes `Sendable` values, so something has to flatten one into the other, and it has to happen inside the driver's observation read closure. It reads `enabledProviders`, each provider's `snapshot`, and the quotas hanging off it, unconditionally and without caching or filtering, because a property this function skips is a property observation never registers, and a quota that changed afterwards would never reach the phone.
+`QuotaMonitor+NotifyReadings.swift` is the seam worth naming. `Account` is main actor isolated and `NotifyPayloadBuilder` takes `Sendable` values, so something has to flatten one into the other, and it has to happen inside the driver's observation read closure. It reads `enabledProviders`, each provider's `snapshot`, and the quotas hanging off it, unconditionally and without caching or filtering, because a property this function skips is a property observation never registers, and a quota that changed afterwards would never reach the phone.
 
 Settings keys, all under `notify.*` in `~/.claudebar/settings.json`:
 

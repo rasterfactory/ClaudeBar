@@ -25,8 +25,14 @@ struct LeaderboardVectors: Decodable {
         let cases: [Case]
     }
 
+    struct Links: Decodable {
+        let valid: [[String]]
+        let invalid: [[String]]
+    }
+
     let usernames: Usernames
     let signing: Signing
+    let links: Links
 
     static func load(filePath: String = #filePath) throws -> LeaderboardVectors {
         let url = URL(fileURLWithPath: filePath).deletingLastPathComponent().appendingPathComponent("vectors.json")

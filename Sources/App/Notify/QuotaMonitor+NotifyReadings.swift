@@ -16,11 +16,11 @@ extension QuotaMonitor {
     /// `Sendable` readings `NotifyPayloadBuilder` takes. Being `@MainActor` by
     /// inheritance is exactly right: the caller is a driver on the main actor.
     func notifyReadings() -> [NotifyQuotaReading] {
-        enabledProviders.flatMap { provider in
+        lineup.flatMap { provider in
             (usage(of: provider)?.quotas ?? []).map { quota in
                 NotifyQuotaReading(
                     providerId: provider.id,
-                    providerName: provider.name,
+                    providerName: lineupName(of: provider),
                     quota: quota
                 )
             }

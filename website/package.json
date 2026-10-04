@@ -1,0 +1,29 @@
+{
+  "name": "claudebar-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run assets && esbuild client/globe.ts --bundle --minify --format=esm --target=es2022 --legal-comments=none --outfile=public/leaderboard/globe.js",
+    "typecheck": "npm run build && tsc --noEmit -p client",
+    "test": "node --test test/*.test.mjs",
+    "predeploy": "npm run build",
+    "deploy": "cf deploy",
+    "assets": "rm -rf public/screenshots public/sponsors public/app-icon.png && cp -R ../docs/screenshots ../docs/sponsors ../docs/app-icon.png public/"
+  },
+  "dependencies": {
+    "d3-geo": "^3.1.1",
+    "i18n-iso-countries": "^7.14.0",
+    "three": "^0.186.1",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/d3-geo": "^3.1.1",
+    "@types/three": "^0.186.0",
+    "@types/topojson-client": "^3.1.5",
+    "cf": "^1.0.0-beta.12",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.147.0"
+  }
+}

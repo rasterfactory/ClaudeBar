@@ -41,11 +41,11 @@ struct ClaudeAccountsTests {
         try claude.writeClaudeConfig(email: "me@example.com")
         let work = try claude.writeLogin(in: "work", email: "work@example.com", token: "work-token")
         answerByToken(claude, ["default-token": 20, "work-token": 70])
-        let provider = try claude.provider(settings: Self.api, accounts: [config("w", folder: work, email: "work@example.com")]).provider
+        let provider = try claude.provider(settings: Self.api, accounts: [config("w", folder: work, email: "work@example.com")])
         let (me, added) = (provider.accounts[0], provider.accounts[1])
 
-        let mine = try await me.refresh()
-        let theirs = try await added.refresh()
+        let mine = try await provider.refresh(me)
+        let theirs = try await provider.refresh(added)
 
         #expect(added.id == "claude.w")
         #expect(mine.sessionQuota?.percentRemaining == 80)
@@ -61,11 +61,11 @@ struct ClaudeAccountsTests {
         try claude.writeCredentials(accessToken: "default-token")
         let work = try claude.writeLogin(in: "work", email: "someone-else@example.com", token: "work-token")
         answerByToken(claude, ["default-token": 20, "work-token": 70])
-        let provider = try claude.provider(settings: Self.api, accounts: [config("w", folder: work, email: "work@example.com")]).provider
+        let provider = try claude.provider(settings: Self.api, accounts: [config("w", folder: work, email: "work@example.com")])
         let (me, added) = (provider.accounts[0], provider.accounts[1])
 
-        try await me.refresh()
-        await #expect(throws: UsageError.self) { try await added.refresh() }
+        try await provider.refresh(me)
+        await #expect(throws: UsageError.self) { try await provider.refresh(added) }
 
         #expect(added.snapshot == nil)
         #expect(added.lastError?.localizedDescription.contains("Reconnect the original Claude account") == true)
@@ -74,7 +74,7 @@ struct ClaudeAccountsTests {
 
     @Test
     func `the cli for an added login runs in its folder without the default login's keys`() throws {
-        let sources = try Providers.builtIn("claude").dataSources(forAccount: [
+        let sources = try ProviderFactory.builtIn("claude").dataSources(forAccount: [
             "configDirectory": "/Users/me/claude-work", "loginEmail": "work@example.com", "credentialService": "svc",
         ])
 
@@ -92,7 +92,7 @@ struct ClaudeAccountsTests {
 
     @Test
     func `folder trust is granted in the added login's own config`() throws {
-        let sources = try Providers.builtIn("claude").dataSources(forAccount: [
+        let sources = try ProviderFactory.builtIn("claude").dataSources(forAccount: [
             "configDirectory": "/Users/me/claude-work", "loginEmail": "work@example.com", "credentialService": "svc",
         ])
         let cli = try #require(sources.first { $0.kind == "cli" })
@@ -105,7 +105,7 @@ struct ClaudeAccountsTests {
 
     @Test
     func `the default login is untouched by the accounts block`() throws {
-        let definition = try Providers.builtIn("claude")
+        let definition = try ProviderFactory.builtIn("claude")
         let cli = try #require(definition.dataSource("cli"))
 
         #expect(cli.identity == nil)
@@ -123,7 +123,7 @@ struct ClaudeAccountsTests {
             settings: Self.api,
             accounts: [config("w", folder: work, email: "work@example.com")],
             guestPasses: GuestPasses(source: MockGuestPassSource())
-        ).provider
+        )
 
         #expect(provider.accounts[1].guestPasses == nil)
         #expect(provider.defaultAccount.guestPasses != nil)
@@ -137,9 +137,9 @@ struct ClaudeAccountsTests {
         defer { claude.cleanUp() }
         let settings = InMemoryProviderSettings()
         let work = try claude.writeLogin(in: "work", email: "work@example.com")
-        let provider = try claude.provider(settings: settings).provider
+        let provider = try claude.provider(settings: settings)
 
-        let added = try provider.addAccount(signedInAt: work)
+        let added = try provider.accounts.add(signedInAt: work)
 
         let folder = try #require(added.values["configDirectory"])
         let hash = SHA256.hash(data: Data(folder.utf8)).map { String(format: "%02x", $0) }.joined()
@@ -155,11 +155,11 @@ struct ClaudeAccountsTests {
         defer { claude.cleanUp() }
         let work = try claude.writeLogin(in: "work", email: "work@example.com")
         let again = try claude.writeLogin(in: "work-again", email: "work@example.com")
-        let provider = try claude.provider().provider
-        try provider.addAccount(signedInAt: work)
+        let provider = try claude.provider()
+        try provider.accounts.add(signedInAt: work)
 
-        #expect(throws: UsageError.self) { try provider.addAccount(signedInAt: work) }
-        #expect(throws: UsageError.self) { try provider.addAccount(signedInAt: again) }
+        #expect(throws: UsageError.self) { try provider.accounts.add(signedInAt: work) }
+        #expect(throws: UsageError.self) { try provider.accounts.add(signedInAt: again) }
         #expect(provider.accounts.count == 2)
     }
 
@@ -169,9 +169,9 @@ struct ClaudeAccountsTests {
         defer { claude.cleanUp() }
         let folder = try claude.writeLogin(in: "half", email: "half@example.com")
         try FileManager.default.removeItem(at: folder.appendingPathComponent(".credentials.json"))
-        let provider = try claude.provider().provider
+        let provider = try claude.provider()
 
-        #expect(throws: UsageError.self) { try provider.addAccount(signedInAt: folder) }
+        #expect(throws: UsageError.self) { try provider.accounts.add(signedInAt: folder) }
     }
 
     @Test
@@ -180,8 +180,8 @@ struct ClaudeAccountsTests {
         defer { claude.cleanUp() }
         try claude.writeClaudeConfig(email: "me@example.com")
         let copy = try claude.writeLogin(in: "copy", email: "me@example.com")
-        let provider = try claude.provider().provider
+        let provider = try claude.provider()
 
-        #expect(throws: UsageError.self) { try provider.addAccount(signedInAt: copy) }
+        #expect(throws: UsageError.self) { try provider.accounts.add(signedInAt: copy) }
     }
 }

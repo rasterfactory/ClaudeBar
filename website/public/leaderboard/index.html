@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeBar Leaderboard</title>
+<meta name="description" content="Top ClaudeBar users by AI coding tokens, shared by choice from their own Macs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--lav:#EDE6FF;--mint:#9FE3B8;--pink:#FFB3C7;--sun:#FFD84D;--sky:#A9D8FF;--violet:#7C5CFF;--line:3px solid var(--ink);--shadow:4px 4px 0 var(--ink)}
+@media (prefers-color-scheme:dark){:root{--paper:#17151F;--dot:#2A2735;--ink:#F3EEFF;--muted:#B9B2D0;--card:#221F2E;--lav:#2E2840;--mint:#2F7A50;--pink:#8A3A55;--sun:#8A6D10;--sky:#2C5A80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 16px 64px;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font-size:clamp(32px,6vw,48px);font-weight:800;letter-spacing:-.02em;line-height:1}
+.sub{margin:6px 0 0;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.seg{display:flex;border:var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;color:var(--ink);font:700 14px "Bricolage Grotesque",sans-serif;padding:8px 14px;cursor:pointer;min-height:40px}
+.seg button+button{border-left:2px solid var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:2px solid var(--ink);border-radius:999px;background:var(--card);color:var(--ink);font:700 13px "Bricolage Grotesque",sans-serif;padding:4px 12px;cursor:pointer;min-height:36px}
+.chip[aria-pressed="true"]{background:var(--sun)}
+.podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end}
+.step{border:var(--line);border-radius:18px 18px 8px 8px;box-shadow:var(--shadow);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;min-width:0}
+.step .medal{font-size:30px;font-weight:800;line-height:1}
+.step .name{font-weight:800;font-size:17px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step .tok{font:700 18px "JetBrains Mono",monospace}
+.s1{background:var(--sun);min-height:200px}.s2{background:var(--sky);min-height:170px}.s3{background:var(--pink);min-height:150px}
+.box{overflow-x:auto;border:var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{padding:10px 14px;text-align:left;border-bottom:2px solid var(--dot);font-size:14px}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+td.num,th.num{text-align:right;font-family:"JetBrains Mono",monospace}
+.mix{display:flex;height:12px;border:2px solid var(--ink);border-radius:999px;overflow:hidden;min-width:110px}
+.mix span{display:block;height:100%}
+.note{font-size:13px;color:var(--muted)}
+.state{padding:24px;text-align:center;color:var(--muted)}
+a{color:var(--violet)}
+/* The globe */
+.globe-wrap{display:flex;flex-wrap:wrap;gap:18px;scroll-margin-top:16px}
+.globe-card{flex:999 1 520px;min-width:0;position:relative;border:var(--line);border-radius:20px;box-shadow:var(--shadow);background:radial-gradient(circle at 50% 45%,#2B2442 0%,#17141F 70%);overflow:hidden;min-height:480px}
+#globe{position:absolute;inset:0}
+#globe canvas{display:block;cursor:grab}
+.globe-head{position:absolute;left:16px;top:14px;right:16px;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;pointer-events:none}
+.globe-head h2{margin:0;color:#FFF8EC;font-size:20px;font-weight:800}
+.globe-seg{pointer-events:auto;display:flex;border:2px solid #FFF8EC;border-radius:999px;overflow:hidden}
+.globe-seg button{border:0;background:transparent;color:#FFF8EC;font:800 12px "Bricolage Grotesque",sans-serif;padding:6px 12px;cursor:pointer;min-height:32px}
+.globe-seg button[aria-pressed="true"]{background:#FFF8EC;color:#1E1B2E}
+.globe-legend{position:absolute;left:16px;bottom:14px;right:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:#D9D2EE;font-size:12px;pointer-events:none}
+.globe-legend .gchip{border:1.5px solid rgba(255,248,236,.5);border-radius:999px;padding:2px 10px;color:#FFF8EC}
+.globe-tip{position:absolute;pointer-events:none;background:#FFF8EC;color:#1E1B2E;border:var(--line);border-radius:12px;box-shadow:3px 3px 0 #1E1B2E;padding:8px 12px;font-size:13px;transform:translate(-50%,calc(-100% - 14px));white-space:nowrap;opacity:0;transition:opacity .12s}
+.globe-tip b{font-size:15px}
+.globe-msg[hidden]{display:none}
+.globe-msg{position:absolute;inset:0;display:grid;place-items:center;color:#D9D2EE;font-size:14px;text-align:center;padding:24px;pointer-events:none}
+.globe-side{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.globe-side .card{background:var(--card);border:var(--line);border-radius:18px;box-shadow:var(--shadow);padding:14px}
+.globe-side .label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.globe-side .big{font-size:40px;font-weight:800;line-height:1;margin-top:4px}
+#globe-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+#globe-list li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border:2px solid var(--ink);border-radius:12px;position:relative;overflow:hidden;font-size:13px}
+#globe-list li .fill{position:absolute;inset:0 auto 0 0;background:var(--sky);opacity:.55}
+#globe-list li>*:not(.fill){position:relative}
+#globe-list .num{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:12px}
+/* Profile links */
+.who{display:inline-flex;align-items:center;gap:8px}
+a.plink{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;color:var(--muted);flex:none}
+a.plink:hover,a.plink:focus-visible{color:var(--ink);background:var(--sun);outline:none}
+a.plink svg{width:14px;height:14px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>ClaudeBar Leaderboard</h1>
+    <p class="sub" id="subtitle">Top ClaudeBar users by tokens · last 7 days</p>
+  </header>
+
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Period" id="periods"></div>
+    <div class="chips" role="group" aria-label="Provider" id="providers"></div>
+  </div>
+
+  <section class="podium" id="podium" aria-label="Top three"></section>
+
+  <div class="box">
+    <table>
+      <thead><tr><th scope="col">#</th><th scope="col">User</th><th scope="col">Mix</th><th class="num" scope="col">Input</th><th class="num" scope="col">Output</th><th class="num" scope="col">Cache</th><th class="num" scope="col">Total</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="7" class="state">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <section class="globe-wrap" id="globe-section" aria-labelledby="globe-title">
+    <div class="globe-card">
+      <div id="globe" role="img" aria-label="Globe of ClaudeBar members by country"></div>
+      <div class="globe-msg" id="globe-loading">Loading the globe…</div>
+      <div class="globe-msg" id="globe-empty" hidden>No country has three members on the globe yet.</div>
+      <div class="globe-head">
+        <h2 id="globe-title">Where ClaudeBar is used</h2>
+        <div class="globe-seg" role="group" aria-label="Size markers by">
+          <button type="button" data-globe-metric="members" aria-pressed="true">Members</button>
+          <button type="button" data-globe-metric="tokens" aria-pressed="false">Tokens</button>
+        </div>
+      </div>
+      <div class="globe-legend">
+        <span class="gchip">Country only</span><span class="gchip">Opt-in</span><span class="gchip">≥ 3 members per country</span>
+        <span>Last 30 days · drag to turn</span><span class="gchip" id="globe-backend">…</span>
+      </div>
+      <div class="globe-tip" id="globe-tip"></div>
+    </div>
+    <div class="globe-side">
+      <div class="card"><div class="label">Countries on the globe</div><div class="big" id="globe-count">0</div></div>
+      <div class="card"><div class="label" id="globe-list-title">Top countries · members</div><ol id="globe-list"></ol></div>
+      <p class="note"><b><span id="globe-hidden">0</span> more countries</b> have fewer than 3 members on the globe, so they aren't shown. <b>Add or remove your country:</b> ClaudeBar → Settings → Leaderboard → Show my country on the globe. Only your country is kept, never your city or IP, and turning it off removes it at once.</p>
+    </div>
+  </section>
+
+  <p class="note">Profile links are added by each member and aren't verified.</p>
+
+  <p class="note">Totals are shared by each member's own ClaudeBar: daily token counts only, never prompts or projects. Join from the Leaderboard tab in the <a href="https://github.com/tddworks/ClaudeBar">ClaudeBar</a> menu.</p>
+</main>
+<script type="module" src="/leaderboard/globe.js"></script>
+
+<script>
+// Every value from the server is written with textContent, never as HTML.
+// The API lives on its own host; /board and /globe allow any origin.
+const API = "https://claudebar-api.tddworks.com";
+const PERIODS = [["today", "Today"], ["7d", "7 days"], ["30d", "30 days"]];
+const PROVIDERS = [[null, "All"], ["claude", "Claude"], ["codex", "Codex"], ["mistral", "Mistral"]];
+const COLORS = { claude: "#7C5CFF", codex: "#1FA37A", mistral: "#F29B38" };
+const state = { period: "7d", provider: null };
+
+// Profile links: a platform and a handle from the server; the link is built
+// from the platform's own address. Not verified.
+// Brand marks from Simple Icons 16.34.0 (CC0), taken from each brand's official assets.
+const LINKS = {
+  x: { name: "X", base: "https://x.com/", d: "M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z" },
+  instagram: { name: "Instagram", base: "https://instagram.com/", d: "M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077" },
+  github: { name: "GitHub", base: "https://github.com/", d: "M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" },
+};
+const SVG = "http://www.w3.org/2000/svg";
+function linkIcon(s) {
+  const p = s.link && LINKS[s.link.platform];
+  if (!p || typeof s.link.handle !== "string") return null;
+  const a = document.createElement("a");
+  a.className = "plink";
+  a.href = p.base + encodeURIComponent(s.link.handle);
+  a.target = "_blank";
+  a.rel = "nofollow ugc noopener noreferrer";
+  a.title = `${p.name}: ${s.link.handle} · linked by @${s.username} · not verified`;
+  a.setAttribute("aria-label", `@${s.username} on ${p.name} (not verified)`);
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(SVG, "path");
+  path.setAttribute("d", p.d); path.setAttribute("fill", "currentColor");
+  svg.append(path);
+  a.append(svg);
+  return a;
+}
+
+const el = (tag, props = {}, ...children) => {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (key === "text") node.textContent = value;
+    else if (key === "style") node.style.cssText = value;
+    else node.setAttribute(key, value);
+  }
+  for (const child of children) node.append(child);
+  return node;
+};
+
+const fmt = (n) => n >= 1e9 ? (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : String(n);
+
+function controls() {
+  const periods = document.getElementById("periods");
+  periods.replaceChildren(...PERIODS.map(([id, label]) => {
+    const button = el("button", { type: "button", "aria-pressed": String(state.period === id), text: label });
+    button.addEventListener("click", () => { state.period = id; load(); });
+    return button;
+  }));
+  const providers = document.getElementById("providers");
+  providers.replaceChildren(...PROVIDERS.map(([id, label]) => {
+    const button = el("button", { type: "button", class: "chip", "aria-pressed": String(state.provider === id), text: label });
+    button.addEventListener("click", () => { state.provider = id; load(); });
+    return button;
+  }));
+  const period = PERIODS.find(([id]) => id === state.period)[1].toLowerCase();
+  const provider = PROVIDERS.find(([id]) => id === state.provider)[1];
+  document.getElementById("subtitle").textContent =
+    `Top ClaudeBar users by tokens · ${state.provider ? provider : "all providers"} · ${period}`;
+}
+
+function render(standings) {
+  const order = [[standings[1], "s2", "2"], [standings[0], "s1", "1"], [standings[2], "s3", "3"]];
+  document.getElementById("podium").replaceChildren(...order.map(([s, cls, medal]) => s
+    ? el("div", { class: `step ${cls}` }, el("span", { class: "medal", text: medal }),
+         el("span", { class: "name", text: "@" + s.username }), el("span", { class: "tok", text: fmt(s.total) }))
+    : el("div")));
+
+  const rows = document.getElementById("rows");
+  if (standings.length === 0) {
+    rows.replaceChildren(el("tr", {}, el("td", { colspan: "7", class: "state", text: "No one is on the board for this view yet." })));
+    return;
+  }
+  rows.replaceChildren(...standings.map((s) => {
+    const mix = el("span", { class: "mix", role: "img", "aria-label": Object.entries(s.byProvider).map(([p, n]) => `${p} ${fmt(n)}`).join(", ") });
+    for (const [provider, count] of Object.entries(s.byProvider)) {
+      mix.append(el("span", { style: `width:${(count / s.total) * 100}%;background:${COLORS[provider] ?? "#999"}` }));
+    }
+    return el("tr", {},
+      el("td", { class: "num", text: String(s.rank) }),
+      el("td", {}, el("span", { class: "who" }, el("strong", { text: "@" + s.username }), ...[linkIcon(s)].filter(Boolean))),
+      el("td", {}, mix),
+      el("td", { class: "num", text: fmt(s.input) }),
+      el("td", { class: "num", text: fmt(s.output) }),
+      el("td", { class: "num", text: fmt(s.cache) }),
+      el("td", { class: "num" }, el("strong", { text: fmt(s.total) })));
+  }));
+}
+
+async function load() {
+  controls();
+  const query = new URLSearchParams({ period: state.period });
+  if (state.provider) query.set("provider", state.provider);
+  try {
+    const response = await fetch(`${API}/board?${query}`);
+    if (!response.ok) throw new Error(String(response.status));
+    render((await response.json()).standings);
+  } catch {
+    document.getElementById("podium").replaceChildren();
+    document.getElementById("rows").replaceChildren(
+      el("tr", {}, el("td", { colspan: "7", class: "state", text: "The leaderboard can't be reached right now." })));
+  }
+}
+
+load();
+</script>
+</body>
+</html>

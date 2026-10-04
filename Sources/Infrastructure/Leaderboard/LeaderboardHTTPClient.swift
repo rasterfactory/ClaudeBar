@@ -36,9 +36,8 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
         return try decode(MemberSummary.self, data)
     }
 
-    public func update(username: String?, visible: Bool?, as credentials: MemberCredentials) async throws {
-        _ = try await send("PATCH", "/me", body: try JSONEncoder().encode(Update(username: username, visible: visible)),
-                           signedBy: credentials)
+    public func update(_ change: MemberChange, as credentials: MemberCredentials) async throws {
+        _ = try await send("PATCH", "/me", body: try JSONEncoder().encode(change), signedBy: credentials)
     }
 
     public func leave(as credentials: MemberCredentials) async throws {
@@ -49,16 +48,15 @@ public struct LeaderboardHTTPClient: LeaderboardAPI {
         try decode(Board.self, try await send("GET", "/board", query: Self.query(view))).standings
     }
 
+    public func globe(in view: BoardView) async throws -> GlobeSummary {
+        try decode(GlobeSummary.self, try await send("GET", "/globe", query: Self.query(view)))
+    }
+
     // MARK: - Wire
 
     private struct Upload: Encodable {
         let today: String
         let days: [DailyTokens]
-    }
-
-    private struct Update: Encodable {
-        let username: String?
-        let visible: Bool?
     }
 
     private struct Board: Decodable {

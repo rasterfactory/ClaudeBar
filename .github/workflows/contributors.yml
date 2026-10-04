@@ -50,17 +50,17 @@ jobs:
 
       - name: Commit if changed
         run: |
-          if git diff --quiet -- .all-contributorsrc README.md docs/index.html; then
+          if git diff --quiet -- .all-contributorsrc README.md website/public/index.html; then
             echo "Contributors already up to date."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .all-contributorsrc README.md docs/index.html
+          git add .all-contributorsrc README.md website/public/index.html
           git commit -m "docs: sync contributors [skip ci]"
           git push
           # A push with GITHUB_TOKEN starts no workflows, so deploy the site here
-          gh workflow run deploy-pages.yml --ref main
+          gh workflow run website.yml --ref main
         env:
           GH_TOKEN: ${{ github.token }}

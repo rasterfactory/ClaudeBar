@@ -21,7 +21,7 @@ import Foundation
 
 @Suite
 struct UsageQuotaTests {
-    @Test func `quota at zero percent is depleted`() {
+    @Test func `should show a quota as depleted when nothing is left`() {
         let quota = UsageQuota(percentRemaining: 0, quotaType: .session, providerId: "test")
         #expect(quota.status == .depleted)
         #expect(quota.isDepleted == true)
@@ -29,10 +29,43 @@ struct UsageQuotaTests {
 }
 ```
 
+## Naming tests
+
+A test name is the behaviour it guards, as one sentence in a backtick
+identifier:
+
+```
+should <outcome the person / menu bar / login / provider observes> [when <domain situation>]
+```
+
+- **Say what the person gets, not which code runs.** The actors are the
+  person reading their quotas, the menu bar and its pills, a login, a
+  provider, a CLI or API ClaudeBar asks. The name never holds a method or
+  type name (`refresh`, `UsageSnapshot`), a JSON key (`usedPercent`), or a
+  mechanism verb (`returns`, `parses`, `calls`, `maps`, `fires`).
+- **The `when` is a fact about the world**, not a code path: "when the saved
+  login is refused", not "when `fetch` throws".
+- **Pair every happy path with its counterpart.** "should show the weekly
+  window" travels with "should show no weekly window when the plan has none".
+- **The body follows the sentence**: arrange the situation (stub the port),
+  do one thing through the public surface, assert the resulting state
+  (Chicago school: no `verify()`).
+
+| Mechanism-shaped (avoid) | Business-shaped |
+|---|---|
+| `rpc reads the session and weekly windows` | `should show the session and weekly windows when Codex answers over RPC` |
+| `a refused saved login asks to sign in again` | `should ask to sign in again when the saved login is refused` |
+| `neither running nor signed in is not available` | `should be unavailable when the app is neither running nor signed in` |
+| `an empty environment key falls back to the saved default key` | `should use the saved key when the environment key is empty` |
+| `formats metric as expected` | `should print the cost in dollars with two decimals` |
+
+Older tests predate this rule. Rename one to this shape when you change it
+or its file; don't sweep files you aren't otherwise changing.
+
 ## Given-When-Then Structure
 
 ```swift
-@Test func `quota between 20 and 50 percent shows warning`() {
+@Test func `should warn when between 20 and 50 percent is left`() {
     // Given
     let quota = UsageQuota(percentRemaining: 35, quotaType: .session, providerId: "claude")
 
@@ -72,7 +105,7 @@ resulting state. A provider's tests run its **real definition** through the real
 @Suite
 struct CodexDefinitionTests {
     @Test
-    func `rpc reads the session and weekly windows`() async throws {
+    func `should show the session and weekly windows when Codex answers over RPC`() async throws {
         // Given - STUB the connection to answer with a captured response
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }
@@ -102,7 +135,7 @@ by calling a parser directly:
 
 ```swift
 @Test
-func `api without a key says so at the lookup step`() async throws {
+func `should say the key is missing when the API has no key`() async throws {
     let stub = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
     defer { stub.cleanUp() }
     let codex = try stub.make("codex")

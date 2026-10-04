@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In Use — As Built</title>
+<style>
+:root{--paper:#F6F3FB;--ink:#1E1B2E;--muted:#6B6580;--card:#fff;--hair:#E4DEEF;--accent:#C2507A;--healthy:#2E9E62;--low:#D64545;--glass:rgba(255,255,255,.7)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:32px 16px 64px;display:flex;flex-direction:column;gap:28px}
+h1{margin:0;font-size:30px;letter-spacing:-.02em}
+h2{margin:0 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sub{margin:6px 0 0;color:var(--muted);max-width:760px}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+figure{margin:0;display:flex;flex-direction:column;gap:8px}
+figure img{width:320px;max-width:100%;height:auto;filter:drop-shadow(0 18px 36px rgba(30,27,46,.16))}
+figcaption{font-size:12px;color:var(--muted);max-width:320px}
+.issue{background:var(--card);border:1px solid var(--hair);border-radius:14px;padding:14px 16px;max-width:560px}
+.issue b{display:block;margin-bottom:4px}
+.issue code{font-size:12px;background:#F1ECF8;padding:1px 5px;border-radius:5px}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;margin-right:6px}
+.bad{background:#FCE4E4;color:var(--low)}.fix{background:#DFF3E7;color:var(--healthy)}
+
+/* The proposed strip, drawn in the app's light theme */
+.pop{width:360px;max-width:100%;background:linear-gradient(180deg,#FBF8FF,#F3EEFA);border:1px solid var(--hair);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 18px 36px rgba(30,27,46,.12)}
+.chips{display:flex;gap:6px;align-items:center;font-size:11px}
+.chips .lbl{font-size:9px;font-weight:600;color:#9A93AE;letter-spacing:.06em}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:var(--glass);border:1px solid var(--hair);font-weight:500}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:var(--healthy)}
+.chip .term{font-size:9px;color:var(--accent)}
+.strip{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px 7px 10px;border-radius:10px;background:rgba(255,255,255,.55);border:1px solid var(--hair)}
+.strip .what{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.pill{position:relative;display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:#fff;border:1px solid var(--hair);font-size:11px;font-weight:700;cursor:pointer}
+.pill:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pill svg{width:9px;height:9px}
+.menu{position:absolute;right:0;top:calc(100% + 4px);min-width:150px;background:#fff;border:1px solid var(--hair);border-radius:8px;box-shadow:0 8px 24px rgba(30,27,46,.15);padding:4px;display:none;z-index:2}
+.pill[aria-expanded="true"] .menu{display:block}
+.menu div{padding:5px 8px;border-radius:5px;font-weight:500;display:flex;gap:6px}
+.menu div:hover{background:#F1ECF8}
+.menu .check{width:12px;color:var(--accent)}
+.warn{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:10px;background:#FFF5DE;border:1px solid #F1D79A;font-size:11px}
+.warn button{border:1px solid #E7B95A;background:#FFE7B3;border-radius:999px;font:700 10.5px -apple-system,system-ui;padding:4px 9px;cursor:pointer}
+.code{font:10px/1.45 ui-monospace,Menlo,monospace;background:rgba(255,255,255,.7);border:1px solid var(--hair);border-radius:8px;padding:8px;white-space:pre;overflow:auto}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#16141F;--ink:#ECE9F5;--muted:#A49DB8;--card:#211E2E;--hair:#34304A}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>In use — as built</h1>
+    <p class="sub">The real app (Debug build of <code>feat/in-use</code>) on mock data — <code>DEMO_SCENE=in-use scripts/demo-screenshots.sh</code>: sample logins <i>personal</i> and <i>work</i>, no real account, email or usage. Below each, what is wrong, and the proposed fix to confirm.</p>
+  </header>
+
+  <section>
+    <h2>As built</h2>
+    <div class="row">
+      <figure>
+        <img src="popover-in-use.png" width="400" height="1165" alt="The popover with two Claude logins and the New terminal sessions line under the account chips.">
+        <figcaption>Two logins, <i>personal</i> IN USE; ⋯ on each chip switches; the caption says what it means.</figcaption>
+      </figure>
+      <figure>
+        <img src="popover-pop.png" width="400" height="1261" alt="The popover in the Pop theme: IN USE on personal's chip, a one-click Use on work's.">
+        <figcaption>Pop theme: the chips drawn like the provider pills — IN USE on the login in use, a one-click <i>Use</i> on the other.</figcaption>
+      </figure>
+      <figure>
+        <img src="popover-low.png" width="400" height="1165" alt="The popover while the login in use is low: a banner offers the other login.">
+        <figcaption>personal at 8%: the banner offers <i>Use work</i>.</figcaption>
+      </figure>
+      <figure>
+        <img src="popover-setup.png" width="400" height="1166" alt="The popover with the one-time shell setup card open.">
+        <figcaption>After <code>claudebar://use?…&amp;account=work</code> before the shell lines exist: the setup card.</figcaption>
+      </figure>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="issue"><span class="tag fix">1 · fixed</span><b>Built as the approved mockup</b>
+          IN USE badge in the chip, ⋯ with <i>Use for New Sessions</i>, a one-line caption, the low banner; Settings: a radio on each account row. (It was a system <code>Menu</code> with a lone chevron.)</div>
+        <div class="issue"><span class="tag fix">2 · fixed</span><b>The record belongs to the CLI</b>
+          <code>~/.claudebar/in-use/&lt;command&gt;</code>; a CLI is wrapped once however many products run it, and the setup names each once — "claude or codex". (It said "claude, codex, or claude" and wrote <code>function claude</code> twice.)</div>
+        <div class="issue"><span class="tag bad">3 · UI</span><b>The setup card pushes the usage down</b>
+          It sits above the cards at full height. Acceptable as a one-time step, but the lines box could be collapsed behind <i>Show the lines</i>.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Proposed fixes — confirm before they're built</h2>
+    <div class="row">
+      <figure>
+        <img src="../mockup-approved.png" width="430" alt="The approved mockup: IN USE badge inside the chip, a ⋯ menu per chip, a plain caption line, and the Settings radio list.">
+        <figcaption>The approved mockup (<code>design-concept/in-use/index.html</code>) — the design to build.</figcaption>
+      </figure>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="issue"><span class="tag fix">1</span><b>Build what the approved mockup shows</b>
+          The login in use carries an <b>IN USE</b> badge inside its chip; each chip has a <b>⋯</b> menu with <i>Use for new sessions</i> (a click on the chip still hides it from the view). Under the chips, a plain caption: <i>"New terminal sessions use <b>personal</b> · Desktop &amp; IDE keep their own login"</i> — no dropdown. Low: the yellow banner with <i>Use work for new sessions</i>. Settings: a radio list with an <b>IN USE</b> tag, <i>Switch when low</i>, then the shell status.</div>
+        <div class="issue"><span class="tag fix">2</span><b>The record belongs to the CLI, not the product</b>
+          <code>~/.claudebar/in-use/&lt;command&gt;</code> — <code>claude</code>, <code>codex</code>. One function per command, written once. Two products on the same CLI share its record: the last choice wins, and the other product's strip shows its plain login (a folder it doesn't have is the plain login — the law already says so). The setup names each command once.
+          <br><br>Laws that change (CANONICAL §5, in-use design §4): <i>"only its folder is recorded"</i> → <i>"only its folder is recorded, under its CLI's name"</i>; new: <i>"a CLI is wrapped once, whichever products run it"</i> — owner <code>NewSessions</code> (the commands, unique) and <code>LoginsInUse</code>.</div>
+        <div class="issue"><span class="tag fix">3</span><b>The lines behind a disclosure</b>
+          The setup card shows the sentence and the three buttons; <i>Show the lines</i> expands the box. The lines are still shown before anything is written — one click away instead of always open.</div>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+const pill = document.getElementById("pill");
+pill.addEventListener("click", () => pill.setAttribute("aria-expanded", String(pill.getAttribute("aria-expanded") !== "true")));
+</script>
+</body>
+</html>

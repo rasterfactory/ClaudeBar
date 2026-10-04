@@ -118,6 +118,9 @@ public struct DailyUsageReport: Sendable, Equatable {
         return Double(today.totalTokens) / Double(total)
     }
 
+    /// Whether working time is worth a card: either day has some.
+    public var hasWorkingTime: Bool { today.workingTime > 0 || previous.workingTime > 0 }
+
     /// Time progress as ratio of today vs (today + previous), clamped to 0-1
     public var timeProgress: Double {
         let total = today.workingTime + previous.workingTime

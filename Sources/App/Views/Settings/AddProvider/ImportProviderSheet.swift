@@ -122,7 +122,7 @@ struct ImportProviderSheet: View {
         testText = nil
         Task {
             defer { isTesting = false }
-            let live = DataSources.make(source, providerId: definition.id, scripts: Providers.builtInScripts,
+            let live = DataSources.make(source, providerId: definition.id, scripts: ProviderFactory.builtInScripts,
                                         secrets: TypedKeys(values: keys))
             do {
                 let response = try await live.fetchResponse()
@@ -140,14 +140,11 @@ struct ImportProviderSheet: View {
 
     private func add() {
         do {
-            let definition = try ProviderCatalog().import(review)
+            let provider = try monitor.providers.import(review)
             let vault = ProviderVault()
             for (name, value) in keys where !value.isEmpty {
-                vault.save(value, name, provider: definition.id)
+                vault.save(value, name, provider: provider.id)
             }
-            Providers.register(custom: definition)
-            let provider = Providers.make(definition, settings: JSONSettingsRepository.shared, secrets: vault)
-            monitor.addProvider(provider.defaultAccount)
             Task { await monitor.refresh(providerId: provider.defaultAccount.id) }
             onDone()
         } catch {

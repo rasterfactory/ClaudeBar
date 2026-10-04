@@ -74,7 +74,7 @@ Scenario: Selection survives restart
 ### Inner TDD Tests (existing)
 - `QuotaMonitorTests.selectProvider updates selectedProviderId for enabled provider`
 - `QuotaMonitorTests.selectProvider ignores disabled provider`
-- `QuotaMonitorTests.enabledProviders returns only enabled providers`
+- `QuotaMonitorTests.the lineup holds only enabled logins`
 - `QuotaMonitorTests.setProviderEnabled disables provider and updates selection`
 - `QuotaMonitorTests.init selects first enabled when default claude is disabled`
 

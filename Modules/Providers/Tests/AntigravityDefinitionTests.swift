@@ -38,7 +38,7 @@ struct AntigravityDefinitionTests {
             guard let answer = answers.first(where: { path.hasSuffix($0.key) })?.value else { return (Data(), StubbedProvider.response(404)) }
             return (Data(answer.1.utf8), StubbedProvider.response(answer.0))
         }
-        let definition = try Providers.builtIn("antigravity")
+        let definition = try ProviderFactory.builtIn("antigravity")
         return Provider(definition: definition, settings: InMemoryProviderSettings(), makeDataSource: { source, _ in
             DataSources.make(source, providerId: definition.id, makeCLIExecutor: { _ in commands }, makeCommandExecutor: { _ in commands },
                              network: network, localNetwork: network,
@@ -48,7 +48,7 @@ struct AntigravityDefinitionTests {
                                  guard let keychain, arguments.contains("gemini"), arguments.contains("antigravity") else { return (44, "") }
                                  return (0, "go-keyring-base64:" + Data(keychain.utf8).base64EncodedString())
                              },
-                             scripts: Providers.builtInScripts, secrets: nil, browserCookies: SystemBrowserCookies(),
+                             scripts: ProviderFactory.builtInScripts, secrets: nil, browserCookies: SystemBrowserCookies(),
                              environment: { _ in nil }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
         })
     }
@@ -57,8 +57,8 @@ struct AntigravityDefinitionTests {
         let provider = try make()
         #expect(provider.name == "Antigravity")
         #expect(provider.defaultAccount.isEnabled)
-        #expect(provider.defaultAccount.dashboardURL == nil)
-        #expect(provider.accountForm.isEmpty)
+        #expect(provider.plainDashboardURL == nil)
+        #expect(provider.accounts.form.isEmpty)
     }
 
     // MARK: - The running app
@@ -66,7 +66,7 @@ struct AntigravityDefinitionTests {
     @Test func `the app's quota summary is its shared pools, with their stated windows`() async throws {
         let seen = Seen()
         let provider = try make(answers: ["RetrieveUserQuotaSummary": (200, #"{"response":\#(Self.summary)}"#)], seen: seen)
-        let quotas = try await provider.defaultAccount.refresh().quotas
+        let quotas = try await provider.refreshPlain().quotas
         #expect(quotas.map(\.quotaType) == [.session, .weekly, .modelSpecific("Claude"), .modelSpecific("Claude Weekly")])
         #expect(quotas.map(\.percentRemaining) == [80, 60, 40, 20])
         // A 5-hour bucket is 5 hours — the probe called the 3p one a week.
@@ -77,7 +77,7 @@ struct AntigravityDefinitionTests {
     }
 
     @Test func `an older app answers user status: a quota per model, its plan and email`() async throws {
-        let snapshot = try await make(answers: ["GetUserStatus": (200, Self.userStatus)]).defaultAccount.refresh()
+        let snapshot = try await make(answers: ["GetUserStatus": (200, Self.userStatus)]).refreshPlain()
         #expect(snapshot.quotas.map(\.quotaType) == [.modelSpecific("Claude Sonnet"), .modelSpecific("Gemini Pro")])
         #expect(snapshot.quotas.map(\.percentRemaining) == [75, 50])
         #expect(snapshot.quotas[1].resetsAt == Date(timeIntervalSince1970: 1735689600))
@@ -93,7 +93,7 @@ struct AntigravityDefinitionTests {
             "retrieveUserQuotaSummary": (200, Self.summary),
             "loadCodeAssist": (200, #"{"paidTier":{"name":"Ultra"}}"#),
         ], keychain: #"{"token":{"access_token":"ya29.valid","refresh_token":"1//r","expiry":"2030-01-01T00:00:00Z"}}"#, seen: seen)
-        let snapshot = try await provider.defaultAccount.refresh()
+        let snapshot = try await provider.refreshPlain()
         #expect(snapshot.quotas.count == 4)
         #expect(snapshot.accountTier == .custom("ULTRA"))
         let first = try #require(seen.requests.first)
@@ -105,15 +105,15 @@ struct AntigravityDefinitionTests {
         let provider = try make(running: false, answers: ["retrieveUserQuotaSummary": (401, "")],
                                 keychain: #"{"token":{"access_token":"ya29.stale"}}"#)
         await #expect(throws: UsageError.sessionExpired(hint: "Sign in to Antigravity or run `agy` again.")) {
-            try await provider.defaultAccount.refresh()
+            try await provider.refreshPlain()
         }
     }
 
     @Test func `neither running nor signed in is not available`() async throws {
-        #expect(await (try make(running: false)).defaultAccount.isAvailable() == false)
+        #expect(await try make(running: false).isPlainAvailable() == false)
     }
 
     @Test func `running is available without a saved login`() async throws {
-        #expect(await (try make()).defaultAccount.isAvailable())
+        #expect(await try make().isPlainAvailable())
     }
 }

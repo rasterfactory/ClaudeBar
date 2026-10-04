@@ -30,9 +30,10 @@ Ask your agent to "add a new provider for X" to load the `add-provider` skill (`
 
 ## Rules
 
+- **Start from the problem.** An issue or PR says what someone was doing and what got in the way before it proposes a fix: a request for a solution hides the real need (the [XY problem](https://xyproblem.info)). The issue and PR templates ask in that order; the design follows the problem, in the design docs ([AGENTS.md](AGENTS.md#design-docs-are-the-source-of-truth)).
 - **Test first.** Chicago-school TDD with Swift Testing and `@Mockable`: assert on resulting state, not on calls. Bugs get a failing test before the fix (`fix-bug` skill).
 - Follow the layering and naming in [AGENTS.md](AGENTS.md).
-- **One CHANGELOG line** under `## [Unreleased]` for anything a user would notice. It is shown in Sparkle's update dialog, so write the effect in the user's words, ≤300 characters, and end with an absolute issue or PR link.
+- **One CHANGELOG line** under `## [Unreleased]` for anything a user would notice. It is shown in Sparkle's update dialog, so write the effect in the user's words, ≤300 characters, and end with an absolute issue or PR link. `Added` and `Changed` lines also link their doc (`→ [docs](…)`), and each kind of change has one heading, in the order `Removed` → `Changed` → `Fixed` → `Added`; past minors live in [docs/changelog/](docs/changelog/).
 
 ## Docs
 

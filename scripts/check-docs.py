@@ -18,6 +18,7 @@ LINE_BUDGETS = {"README.md": 150, "AGENTS.md": 100}
 FEATURE_README_BUDGET = 200
 AGENTS_CHAR_BUDGET = 12_000
 CHANGELOG_BULLET_BUDGET = 300
+CHANGELOG_ORDER = ["Removed", "Changed", "Deprecated", "Fixed", "Security", "Added"]
 DESCRIPTION_BUDGET = 250
 
 CONTRIBUTORS_BLOCK = re.compile(
@@ -90,6 +91,28 @@ def check_changelog():
         for target in LINK.findall(bullet):
             if not target.startswith(("http://", "https://")):
                 report("CHANGELOG.md", f"[Unreleased] link must be absolute (Sparkle can't resolve it): {target}")
+
+    # The upgrader's questions, in order: will this break me → is my bug fixed → what's new.
+    headings = re.findall(r"^### (\w+)", match.group(1), re.M)
+    for kind in set(headings):
+        if headings.count(kind) > 1:
+            report("CHANGELOG.md", f"[Unreleased] has {headings.count(kind)} '### {kind}' headings; one of each kind")
+    known = [k for k in headings if k in CHANGELOG_ORDER]
+    if known != sorted(known, key=CHANGELOG_ORDER.index):
+        report("CHANGELOG.md", f"[Unreleased] headings must run {' → '.join(CHANGELOG_ORDER)}; found {' → '.join(headings)}")
+
+    # Added and Changed say how to use it now: a docs link beside the PR.
+    for kind, block in re.findall(r"^### (\w+)\n(.*?)(?=^### |\Z)", match.group(1), re.S | re.M):
+        if kind not in ("Added", "Changed"):
+            continue
+        for bullet in re.findall(r"^- .*(?:\n  .*)*", block, re.M):
+            if "→ [docs](" not in bullet:
+                report("CHANGELOG.md", f"[Unreleased] {kind} bullet needs '→ [docs](…)': {bullet[:60]}…")
+
+    # Only [Unreleased] and the current minor; older minors live in docs/changelog/.
+    minors = set(re.findall(r"^## \[(\d+\.\d+)\.\d+\]", read("CHANGELOG.md"), re.M))
+    if len(minors) > 1:
+        report("CHANGELOG.md", f"holds {len(minors)} minors ({', '.join(sorted(minors))}); run scripts/changelog-rollover.py")
 
 
 def check_links():

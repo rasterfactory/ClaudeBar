@@ -17,7 +17,7 @@ struct CodexDefinitionTests {
 
     @Test
     func `codex json keeps the definition laws`() throws {
-        let codex = try Providers.builtIn("codex")
+        let codex = try ProviderFactory.builtIn("codex")
 
         #expect(codex.id == "codex")
         #expect(codex.profile.name == "Codex")
@@ -35,8 +35,8 @@ struct CodexDefinitionTests {
         let api = try StubbedProvider(dataSourceKind: "api", providerId: "codex")
         defer { rpc.cleanUp(); api.cleanUp() }
 
-        #expect(try rpc.make("codex").provider.activeKind == "rpc")
-        #expect(try api.make("codex").provider.activeKind == "api")
+        #expect(try rpc.makeProvider("codex").configuration.activeKind == "rpc")
+        #expect(try api.makeProvider("codex").configuration.activeKind == "api")
     }
 
     // MARK: - RPC
@@ -48,15 +48,15 @@ struct CodexDefinitionTests {
         stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":30,"resetsAt":1735000000,"windowDurationMins":300},"secondary":{"usedPercent":50,"resetsAt":1735500000}}}}"#)
         let codex = try stub.make("codex")
 
-        let usage = try await codex.refresh()
+        let usage = try await codex.refreshPlain()
 
         #expect(usage.providerId == "codex")
         #expect(usage.quota(for: .session)?.percentRemaining == 70)
         #expect(usage.quota(for: .session)?.resetsAt == Date(timeIntervalSince1970: 1735000000))
         #expect(usage.quota(for: .session)?.windowDuration == TimeInterval(300 * 60))
         #expect(usage.quota(for: .weekly)?.percentRemaining == 50)
-        #expect(codex.answeredBy == "rpc")
-        #expect(codex.lastError == nil)
+        #expect(codex.defaultAccount.answeredBy == "rpc")
+        #expect(codex.defaultAccount.lastError == nil)
     }
 
     @Test
@@ -65,7 +65,7 @@ struct CodexDefinitionTests {
         defer { stub.cleanUp() }
         stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"free"}}}"#)
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.quotas.count == 1)
         #expect(usage.quota(for: .session)?.percentRemaining == 100)
@@ -78,7 +78,7 @@ struct CodexDefinitionTests {
         defer { stub.cleanUp() }
         stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":30,"resetsAt":1735000000},"secondary":{"usedPercent":10}},"rateLimitsByLimitId":{"codex":{"limitId":"codex","primary":{"usedPercent":30,"resetsAt":1735000000}},"codex_spark":{"limitId":"codex_spark","limitName":"Codex Spark","primary":{"usedPercent":40,"resetsAt":1735100000},"secondary":{"usedPercent":20,"windowDurationMins":10080}}}}}"#)
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.quotas.count == 4)
         #expect(usage.quotas[0].quotaType == .session)
@@ -95,7 +95,7 @@ struct CodexDefinitionTests {
         defer { stub.cleanUp() }
         stub.answerRPC(#"{"id":2,"result":{"rateLimits":{"planType":"pro","primary":{"usedPercent":30}},"rateLimitsByLimitId":{"codex":{"limitId":"codex","primary":{"usedPercent":30}},"codex_spark":{"limitId":"codex_spark","limitName":"Codex Spark"},"codex_other":{"limitId":"codex_other","limitName":"Other","primary":{"usedPercent":5}}}}}"#)
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.quotas.map(\.quotaType) == [.session, .timeLimit("Other")])
         #expect(usage.quotas[1].percentRemaining == 95)
@@ -113,12 +113,12 @@ struct CodexDefinitionTests {
         """)
         let codex = try stub.make("codex")
 
-        let usage = try await codex.refresh()
+        let usage = try await codex.refreshPlain()
 
         #expect(usage.quota(for: .session)?.percentRemaining == 80)
         #expect(usage.quota(for: .weekly)?.percentRemaining == 35)
-        #expect(codex.answeredBy == "tty")
-        #expect(codex.answeredByLabel == "Terminal")
+        #expect(codex.defaultAccount.answeredBy == "tty")
+        #expect(codex.defaultAccount.answeredByLabel == "Terminal")
     }
 
     @Test
@@ -140,13 +140,13 @@ struct CodexDefinitionTests {
         given(stub.cli).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
             .willThrow(UsageError.executionFailed("TTY not available"))
         let codex = try stub.make("codex")
-        let first = try await codex.refresh()
+        let first = try await codex.refreshPlain()
 
-        await #expect(throws: UsageError.self) { try await codex.refresh() }
+        await #expect(throws: UsageError.self) { try await codex.refreshPlain() }
 
-        #expect(codex.lastError as? UsageError == .executionFailed("RPC error: Authentication required"))
-        #expect(codex.lastFailedStep == .fetch)
-        #expect(codex.snapshot == first)
+        #expect(codex.defaultAccount.lastError as? UsageError == .executionFailed("RPC error: Authentication required"))
+        #expect(codex.defaultAccount.lastFailedStep == .fetch)
+        #expect(codex.defaultAccount.snapshot == first)
     }
 
     // MARK: - Terminal
@@ -158,8 +158,8 @@ struct CodexDefinitionTests {
         stub.answerTerminal("Error: Not logged in. Please log in with `codex login`.")
         let codex = try stub.make("codex")
 
-        await #expect(throws: UsageError.authenticationRequired) { try await codex.refresh() }
-        #expect(codex.lastFailedStep == .mapping)
+        await #expect(throws: UsageError.authenticationRequired) { try await codex.refreshPlain() }
+        #expect(codex.defaultAccount.lastFailedStep == .mapping)
     }
 
     // MARK: - API
@@ -172,7 +172,7 @@ struct CodexDefinitionTests {
         stub.answerHTTP(#"{"rate_limit":{"primary_window":{"reset_after_seconds":3600}}}"#,
                         headers: ["x-codex-primary-used-percent": "25.5", "x-codex-secondary-used-percent": "40"])
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.quota(for: .session)?.percentRemaining == 74.5)
         #expect(usage.quota(for: .weekly)?.percentRemaining == 60)
@@ -186,7 +186,7 @@ struct CodexDefinitionTests {
         try stub.writeCodexAuth()
         stub.answerHTTP(#"{"rate_limit":{"primary_window":{"used_percent":15.0,"reset_at":1735000000},"secondary_window":{"used_percent":45.0}}}"#)
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.quota(for: .session)?.percentRemaining == 85)
         #expect(usage.quota(for: .session)?.resetsAt == Date(timeIntervalSince1970: 1735000000))
@@ -200,7 +200,7 @@ struct CodexDefinitionTests {
         try stub.writeCodexAuth()
         stub.answerHTTP(#"{"rate_limit":{"primary_window":{"used_percent":10},"secondary_window":{"used_percent":20}},"additional_rate_limits":[{"limit_name":"codex_spark","rate_limit":{"primary_window":{"used_percent":30,"limit_window_seconds":18000},"secondary_window":{"used_percent":40}}}]}"#)
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.quotas.map(\.quotaType) == [.session, .weekly, .timeLimit("Spark"), .timeLimit("Spark 7d")])
         #expect(usage.quotas[2].percentRemaining == 70)
@@ -216,7 +216,7 @@ struct CodexDefinitionTests {
         stub.answerHTTP(#"{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":10}},"credits":{"has_credits":true,"balance":"900"}}"#,
                         headers: ["x-codex-credits-balance": "750"])
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.accountTier == .custom("PLUS"))
         #expect(usage.costUsage?.totalCost == 250)
@@ -231,7 +231,7 @@ struct CodexDefinitionTests {
         try stub.writeCodexAuth()
         stub.answerHTTP(#"{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":0,"limit_window_seconds":604800}},"credits":{"has_credits":false,"unlimited":false,"balance":"0"}}"#)
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.costUsage == nil)
     }
@@ -243,7 +243,7 @@ struct CodexDefinitionTests {
         try stub.writeCodexAuth()
         stub.answerHTTP("{}")
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.quotas.isEmpty)
     }
@@ -254,9 +254,9 @@ struct CodexDefinitionTests {
         defer { stub.cleanUp() }
         let codex = try stub.make("codex")
 
-        #expect(await codex.isAvailable() == false)
-        await #expect(throws: UsageError.authenticationRequired) { try await codex.refresh() }
-        #expect(codex.lastFailedStep == .lookup)
+        #expect(await codex.isPlainAvailable() == false)
+        await #expect(throws: UsageError.authenticationRequired) { try await codex.refreshPlain() }
+        #expect(codex.defaultAccount.lastFailedStep == .lookup)
     }
 
     @Test
@@ -267,7 +267,7 @@ struct CodexDefinitionTests {
         stub.answerHTTP("", status: 401)
         let codex = try stub.make("codex")
 
-        await #expect(throws: UsageError.sessionExpired()) { try await codex.refresh() }
+        await #expect(throws: UsageError.sessionExpired()) { try await codex.refreshPlain() }
     }
 
     @Test
@@ -283,7 +283,7 @@ struct CodexDefinitionTests {
             return (Data(#"{"rate_limit":{"primary_window":{"used_percent":10.0}}}"#.utf8), StubbedProvider.response(authorized ? 200 : 401))
         }
 
-        let usage = try await stub.make("codex").refresh()
+        let usage = try await stub.make("codex").refreshPlain()
 
         #expect(usage.quota(for: .session)?.percentRemaining == 90)
         let tokens = try stub.readCodexAuth()["tokens"] as? [String: Any]
@@ -300,7 +300,7 @@ struct CodexDefinitionTests {
         stub.answerHTTP(#"{"error":{"code":"refresh_token_expired"}}"#, status: 400)
         let codex = try stub.make("codex")
 
-        await #expect(throws: UsageError.sessionExpired()) { try await codex.refresh() }
-        #expect(codex.lastFailedStep == .lookup)
+        await #expect(throws: UsageError.sessionExpired()) { try await codex.refreshPlain() }
+        #expect(codex.defaultAccount.lastFailedStep == .lookup)
     }
 }

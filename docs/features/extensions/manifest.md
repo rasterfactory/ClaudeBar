@@ -39,12 +39,12 @@ Each entry becomes a field in the extension's card in **Settings → Providers**
 
 | `type` | Control | Stored in |
 |---|---|---|
-| `string` | Text field | `~/.claudebar/settings.json`, under `extensions.<id>.<fieldId>` |
+| `string` | Text field | `~/.claudebar/settings.json`, as the provider `ext-<id>`'s setting |
 | `path` | Text field | same |
-| `number` | Text field | same, as text |
-| `toggle` | Switch | same, as `"true"` / `"false"` |
-| `choice` | Segmented picker | same |
-| `secret` | Hidden field with a show button | ClaudeBar's app preferences (UserDefaults), never `settings.json` |
+| `number` | Text field that takes a number | same, as text |
+| `toggle` | On / Off choice | same, as `"true"` / `"false"` |
+| `choice` | Picker | same |
+| `secret` | Hidden field | the Keychain, never `settings.json` |
 
 Every value reaches the script as a string.
 
@@ -60,7 +60,7 @@ Every value reaches the script as a string.
 | Field | Required | What it does |
 |---|---|---|
 | `id` | yes | Unique within the extension |
-| `type` | yes | `quotaGrid`, `costUsage`, `dailyUsage`, `metricsRow`, `statusBanner` or `healthCheck` |
+| `type` | yes | `quotaGrid`, `costUsage` or `healthCheck`. `dailyUsage`, `metricsRow` and `statusBanner` are no longer read |
 | `probe.command` | yes, unless `healthCheck` | Path of the executable to run. Relative to the extension folder unless it starts with `/`. No arguments |
 | `probe.timeout` | no | Seconds before the script is stopped. Default `10` |
 | `probe.interval` | no | Accepted but ignored. Every section runs on each refresh |
@@ -69,10 +69,8 @@ Every value reaches the script as a string.
 |---|---|
 | `quotaGrid` | Quota cards with a bar and reset time |
 | `costUsage` | A cost card, with budget progress when `budget` is set |
-| `dailyUsage` | Today-vs-previous cards for cost, tokens and working time |
-| `metricsRow` | Cards with a value, unit, optional bar and optional change |
-| `statusBanner` | Nothing yet (the output is checked, then dropped) |
-| `healthCheck` | "Status" and "Latency" cards for a URL, no script |
+| `healthCheck` | Nothing while the URL answers; *Couldn't connect* beside the rest when it doesn't. No script |
+| `dailyUsage` · `metricsRow` · `statusBanner` | **No longer read** — skipped and logged |
 
 ### Health check
 
@@ -110,35 +108,6 @@ One JSON object containing the key for its section type. Other keys are ignored.
 
 Required: `totalCost` and `apiDuration` (seconds). The rest are optional.
 
-### `dailyUsage` → `dailyUsage`
+### No longer read
 
-```json
-{ "dailyUsage": {
-    "today":    { "date": "2026-03-17", "totalCost": 10.26,  "totalTokens": 8300000, "workingTime": 454.0 },
-    "previous": { "date": "2026-03-16", "totalCost": 711.84, "totalTokens": 8693000, "workingTime": 42514.0 }
-} }
-```
-
-Both days are required, each with `date` (`yyyy-MM-dd`), `totalCost`, `totalTokens` (an integer) and `workingTime` (seconds). `sessionCount` is optional. The cards show only with **Settings → General → Daily Usage Cards** on.
-
-### `metricsRow` → `metrics`
-
-```json
-{ "metrics": [
-    { "label": "API Calls", "value": "1,234", "unit": "Requests",
-      "icon": "arrow.up.arrow.down", "color": "#4CAF50", "progress": 0.65,
-      "delta": { "vs": "Yesterday", "value": "+200", "percent": 19.3 } }
-] }
-```
-
-- Required: `label`, `value` and `unit`. **`value` must be a string** (`"1,234"`, not `1234`).
-- Optional: `icon` (an SF Symbol), `color` (hex), `progress` (0.0 to 1.0) and `delta`. `delta` needs `vs` and `value`, and `percent` is optional.
-- Keep `label` unique across the extension's metrics.
-
-### `statusBanner` → `status`
-
-```json
-{ "status": { "text": "Connected", "level": "healthy" } }
-```
-
-`level` is `healthy`, `warning`, `critical` or `inactive`. The output must be valid, or the section counts as failed, but it isn't shown yet.
+`dailyUsage`, `metricsRow` and `statusBanner` sections are skipped, and the log names each one. Daily usage comes from a provider's `usageHistory` (JSON-lines records), as for every provider; a metric that is a cost is `costUsage`.

@@ -6,16 +6,15 @@ Swift 6.2 introduces `@Observable` macro replacing `ObservableObject`:
 
 ```swift
 // Swift 6.2 - Use this
-@Observable
-final class AppState {
-    var providers: [any AIProvider] = []
-    var isRefreshing: Bool = false
+@MainActor @Observable
+public final class QuotaMonitor {
+    public let providers: Providers
+    public private(set) var isMonitoring = false
 }
 
 // Old pattern - Don't use
-class AppState: ObservableObject {
-    @Published var providers: [any AIProvider] = []
-    @Published var isRefreshing: Bool = false
+final class QuotaMonitor: ObservableObject {
+    @Published var isMonitoring = false
 }
 ```
 
@@ -46,11 +45,11 @@ Use `@State` to own `@Observable` objects in views:
 ```swift
 @main
 struct ClaudeBarApp: App {
-    @State private var appState = AppState()
+    @State private var monitor: QuotaMonitor   // built in init(), the composition root
 
     var body: some Scene {
         MenuBarExtra {
-            MenuContentView(appState: appState)
+            MenuContentView(monitor: monitor)
         }
     }
 }
@@ -58,13 +57,15 @@ struct ClaudeBarApp: App {
 
 ## Sendable Conformance
 
-`@Observable` classes need `@unchecked Sendable` for actor isolation:
+Isolate `@Observable` domain classes to the main actor: a `@MainActor` class
+is implicitly `Sendable`, and its writes land where SwiftUI reads them. Heavy
+work still runs off-main behind an `await`:
 
 ```swift
-@Observable
-public final class ClaudeProvider: AIProvider, @unchecked Sendable {
-    public let id: String = "claude"
-    public private(set) var isSyncing: Bool = false
+@MainActor @Observable
+public final class Account: Identifiable {
+    public let id: String
+    public private(set) var isSyncing = false
     public private(set) var snapshot: UsageSnapshot?
 }
 ```
@@ -74,18 +75,13 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
 Use computed properties for derived state:
 
 ```swift
-@Observable
-final class AppState {
-    var providers: [any AIProvider] = []
+@MainActor @Observable
+public final class Providers {
+    public private(set) var all: [Provider] = []
 
-    // Derived from providers - no @Published needed
-    var overallStatus: QuotaStatus {
-        providers.compactMap(\.snapshot?.overallStatus).max() ?? .healthy
-    }
-
-    var isRefreshing: Bool {
-        providers.contains { $0.isSyncing }
-    }
+    // Derived, never stored
+    public var logins: [Account] { all.flatMap(\.accounts) }
+    public var lineup: [Account] { logins.filter(\.isInLineup) }
 }
 ```
 
@@ -95,20 +91,20 @@ Pass `@Observable` objects through environment when needed:
 
 ```swift
 struct MenuContentView: View {
-    let appState: AppState
+    let monitor: QuotaMonitor
 
     var body: some View {
-        ProviderListView()
-            .environment(appState)
+        LoginListView()
+            .environment(monitor)
     }
 }
 
-struct ProviderListView: View {
-    @Environment(AppState.self) var appState
+struct LoginListView: View {
+    @Environment(QuotaMonitor.self) var monitor
 
     var body: some View {
-        ForEach(appState.providers, id: \.id) { provider in
-            ProviderRow(provider: provider)
+        ForEach(monitor.lineup, id: \.id) { login in
+            ProviderRow(provider: login)
         }
     }
 }

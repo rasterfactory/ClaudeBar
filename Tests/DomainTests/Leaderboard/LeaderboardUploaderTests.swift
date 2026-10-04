@@ -107,6 +107,36 @@ struct LeaderboardUploaderTests {
         #expect(membership.lastUpload == now)
     }
 
+    @Test func `an upload less than an hour old is not due yet`() async throws {
+        let membership = try await joined()
+        let last = now.addingTimeInterval(-59 * 60)
+        membership.recordUpload(at: last)
+
+        await uploader(membership).uploadDue()
+
+        #expect(logs.askedFor == nil)
+        #expect(membership.lastUpload == last)
+    }
+
+    @Test func `an upload an hour old is due, however long the Mac slept`() async throws {
+        let membership = try await joined()
+        membership.recordUpload(at: now.addingTimeInterval(-60 * 60))
+
+        await uploader(membership).uploadDue()
+
+        #expect(membership.lastUpload == now)
+    }
+
+    @Test func `an upload you ask for goes even within the hour`() async throws {
+        let membership = try await joined()
+        membership.recordUpload(at: now.addingTimeInterval(-5 * 60))
+
+        await uploader(membership).uploadNow()
+
+        #expect(logs.askedFor == DateRange(first: LeaderboardFixtures.date(4), last: now, calendar: calendar))
+        #expect(membership.lastUpload == now)
+    }
+
     @Test func `not joined, nothing is read or sent`() async {
         await uploader(membership()).uploadDue()
 

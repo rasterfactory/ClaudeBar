@@ -31,7 +31,7 @@ struct ClaudeHarness {
 
     /// One of `claude.json`'s data sources: `cli`, `cliCost` or `api`.
     func dataSource(_ kind: String) throws -> DataSource {
-        let definition = try Providers.builtIn("claude")
+        let definition = try ProviderFactory.builtIn("claude")
         guard let source = definition.dataSource(kind) else { throw DefinitionError.unknownDataSource("claude", kind) }
         return make(source)
     }
@@ -42,15 +42,15 @@ struct ClaudeHarness {
         settings: any MultiAccountSettingsRepository = InMemoryProviderSettings(),
         accounts: [ProviderAccountConfig] = [],
         guestPasses: GuestPasses? = nil
-    ) throws -> Account {
-        let definition = try Providers.builtIn("claude")
+    ) throws -> Provider {
+        let definition = try ProviderFactory.builtIn("claude")
         return Provider(
             definition: definition,
             settings: settings,
             accounts: accounts,
             makeDataSource: make,
             guestPasses: guestPasses
-        ).defaultAccount
+        )
     }
 
     private func make(_ source: DataSourceDefinition) -> DataSource {
@@ -67,7 +67,7 @@ struct ClaudeHarness {
                 guard arguments.first == "find-generic-password", let password else { return (44, "") }
                 return (0, password)
             },
-            scripts: Providers.builtInScripts,
+            scripts: ProviderFactory.builtInScripts,
             environment: { environment[$0] },
             homeDirectory: home,
             now: { now }
@@ -99,7 +99,7 @@ struct ClaudeHarness {
         try writeCredentials(subscriptionType: subscriptionType)
         let network = MockNetworkClient()
         given(network).request(.any).willReturn((Data(json.utf8), Self.response(200)))
-        let definition = try Providers.builtIn("claude")
+        let definition = try ProviderFactory.builtIn("claude")
         let now = self.now
         let source = DataSources.make(
             definition.dataSource("api")!,
@@ -107,7 +107,7 @@ struct ClaudeHarness {
             cliExecutor: cli,
             network: network,
             makeTransport: { _, _, _, _ in MockRPCTransport() },
-            scripts: Providers.builtInScripts,
+            scripts: ProviderFactory.builtInScripts,
             environment: { _ in nil },
             homeDirectory: home,
             now: { now }

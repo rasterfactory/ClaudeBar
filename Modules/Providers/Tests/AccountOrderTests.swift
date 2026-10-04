@@ -1,6 +1,6 @@
 import DataSources
 import Foundation
-import Providers
+@testable import Providers
 import Quotas
 import Testing
 
@@ -16,7 +16,7 @@ struct AccountOrderTests {
     }
 
     private func codex(_ settings: InMemoryProviderSettings) throws -> Provider {
-        try Providers.make("codex", settings: settings, accounts: settings.accounts(forProvider: "codex"))
+        try ProviderFactory.make("codex", settings: settings, accounts: settings.accounts(forProvider: "codex"))
     }
 
     private func saved(_ ids: String...) -> InMemoryProviderSettings {
@@ -37,7 +37,7 @@ struct AccountOrderTests {
         let settings = saved("work", "side")
         let first = try codex(settings)
 
-        first.move(first.accounts[2], to: 0)
+        first.accounts.move(first.accounts[2], to: 0)
 
         #expect(first.accounts.map(\.accountId) == ["side", "default", "work"])
         #expect(try codex(settings).accounts.map(\.accountId) == ["side", "default", "work"])
@@ -47,7 +47,7 @@ struct AccountOrderTests {
     func `the default login is found wherever it sits`() throws {
         let codex = try codex(saved("work"))
 
-        codex.move(codex.defaultAccount, to: 1)
+        codex.accounts.move(codex.defaultAccount, to: 1)
 
         #expect(codex.defaultAccount.isDefault)
         #expect(codex.defaultAccount.id == "codex")
@@ -58,9 +58,9 @@ struct AccountOrderTests {
     func `a login added later joins the end of the saved order`() throws {
         let settings = saved("work", "side")
         let first = try codex(settings)
-        first.move(first.accounts[2], to: 0)
+        first.accounts.move(first.accounts[2], to: 0)
 
-        first.add(login("new"))
+        first.accounts.add(login("new"))
 
         #expect(try codex(settings).accounts.map(\.accountId) == ["side", "default", "work", "new"])
     }
@@ -69,7 +69,7 @@ struct AccountOrderTests {
     func `moving past the end puts the login last`() throws {
         let codex = try codex(saved("work", "side"))
 
-        codex.move(codex.accounts[0], to: 99)
+        codex.accounts.move(codex.accounts[0], to: 99)
 
         #expect(codex.accounts.map(\.accountId) == ["work", "side", "default"])
     }

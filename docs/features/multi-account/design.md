@@ -114,7 +114,7 @@ diff:
 | **account values** | the account-scope settings that fill `{{account.x}}` — a folder, a login id, a region | secrets |
 | **account secret** | an account-scope secret (an API key) — a *name*, its value in the vault under that account | a value in `settings.json` |
 | **way to add** (`accounts.ways`) | how the definition lets a person add one — the keys it has: `signIn` · `folder` · `form` | a data source kind |
-| **signed-in folder** | the folder an added login lives in, and who made it — the person, or ClaudeBar by signing in | the default login's folder |
+| **signed-in folder** | the folder an added login lives in, and who made it — the person, or ClaudeBar by signing in. Put [*in use*](../in-use/design.md), the person's terminal starts on it too | the default login's folder |
 | **identity** | the fact that names a login (email, account id) and the rule that a fetch must still match it | the label |
 | **label** | the name a person gave an account ("work") | the email |
 | **display name** | what the pill says: label, else email, else the provider's name | the menu bar label |
@@ -248,7 +248,7 @@ ClaudeBarApp.init (composition root)
   │ ProviderCatalog → [ProviderDefinition]          bundled · ~/.claudebar/providers · (extensions, slice 5)
   │ settings.accounts(forProvider: id) → [ProviderAccountConfig]
   ▼
-Providers.make(definition, settings, vault)
+ProviderFactory.make(definition, settings, vault)
   │
   ├─ default account:  definition.dataSources ──map──▶ DataSources.make(_, secrets: vault.scoped(to: "<id>"))
   │
@@ -264,7 +264,7 @@ Providers.make(definition, settings, vault)
 QuotaMonitor(providers) → lineup = provider.accounts.filter(isEnabled), for every enabled provider
 ```
 
-Legacy providers enter the lineup as today: one `AIProvider`, one pill.
+Every provider is a `Provider`: its enabled logins are its pills (TARGET §12).
 
 ### 3.2 · Add Account
 
@@ -446,7 +446,7 @@ are the cases the definition declares (§8).
 
 Two laws #358 put in two places, now one each: the identity check (it ran in
 `DataSource` **and** in `Provider.refresh`'s bridge branch) and display naming
-(in `Account.name`, `Account.accountDescription` **and** `StatusItemLabelDriver`).
+(in `Account.name` — now `lineupName` —, `Account.accountDescription` **and** `StatusItemLabelDriver`).
 
 ## 5 · The tells
 
@@ -460,7 +460,7 @@ provider.remove(account)
 
 // Composition root
 let vault = ProviderVault()
-Providers.make(definition, settings: settings, vault: vault)   // binds every saved account
+ProviderFactory.make(definition, settings: settings, vault: vault)   // binds every saved account
 
 // Page
 Text(account.displayName)
@@ -483,7 +483,7 @@ Not: `LegacyAccountConnections.shared.recipe(for: provider.id)`,
 | `AddedAccounts` (a static namespace) | **gone**: `provider.addAccount(signedInAt:)` and `provider.signIn(…)`; the deletable-folder rule is `SignedInFolder.goesWithAccount` |
 | `BinaryLocator.findInApplicationBundles` | **built** as `signIn.alsoAt: [paths]` — checked only when the CLI isn't on the PATH |
 | `Provider.rename`, `ProviderAccountConfig.named` | **built**: `Provider` receives `any MultiAccountSettingsRepository`, so `rename` and `remove` save without a downcast; the default login's name is `setDefaultAccountLabel` (`providers.<id>.defaultAccountLabel`); the unused `activeAccountId` is gone |
-| `Account.name` / `accountDisplayName` / `accountDescription` / `isNamedByAccount` | **built**: one `displayName`; `name` (the pill) is the product's while `provider.hasSeveralAccounts` is false; `nameFromEmail` is gone |
+| `Account.name` / `accountDisplayName` / `accountDescription` / `isNamedByAccount` | **built**: one `displayName`; `lineupName` (the pill, the menu bar, an alert) is the product's while `provider.hasSeveralAccounts` is false (it was `name`, TARGET §12 slice 4); `nameFromEmail` is gone |
 | `AccountMenuBarLabel` (Domain) | **built**: `MenuBarAccountName` in App ([CANONICAL §1](../../architecture/CANONICAL_MODEL.md#1--the-tree): not in the model). Named so, not `MenuBarLabel`, which is already the quota text |
 | `ProviderAccountsCard` | **kept**, rendering `accounts.ways` and the form's account scope; no `switch provider.id` |
 | `CodexAccountsCard` | folded into `ProviderAccountsCard` |

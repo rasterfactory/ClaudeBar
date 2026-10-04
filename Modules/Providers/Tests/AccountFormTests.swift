@@ -88,13 +88,24 @@ struct AccountFormTests {
         let vault = MemoryVault(["custom-openrouter.apiKey": "sk-mine"])
         let openRouter = provider(try openRouter(), vault: vault, network: network(["sk-mine": 40, "sk-work": 7]))
 
-        let work = try openRouter.addAccount(filling: ["apiKey": "sk-work"])
-        let theirs = try await work.refresh()
-        let mine = try await openRouter.defaultAccount.refresh()
+        let work = try openRouter.accounts.add(filling: ["apiKey": "sk-work"])
+        let theirs = try await openRouter.refresh(work)
+        let mine = try await openRouter.refreshPlain()
 
         #expect(theirs.quotas.first?.left == .money(Money(7, currency: "USD"), of: Money(50, currency: "USD")))
         #expect(mine.quotas.first?.left == .money(Money(40, currency: "USD"), of: Money(50, currency: "USD")))
         #expect(work.madeBy == .form)
+    }
+
+    @Test
+    func `adding an account with its key is an opt-in to the product too`() throws {
+        let openRouter = provider(try openRouter(), vault: MemoryVault(), network: network([:]))
+        openRouter.isEnabled = false
+
+        let work = try openRouter.accounts.add(filling: ["apiKey": "sk-work"])
+
+        #expect(openRouter.isEnabled)
+        #expect(openRouter.isInLineup(work))
     }
 
     @Test
@@ -103,7 +114,7 @@ struct AccountFormTests {
         let settings = InMemoryProviderSettings()
         let openRouter = provider(try openRouter(), vault: vault, network: network([:]), settings: settings)
 
-        let work = try openRouter.addAccount(filling: ["apiKey": "sk-work"])
+        let work = try openRouter.accounts.add(filling: ["apiKey": "sk-work"])
 
         #expect(vault.secrets["\(work.id).apiKey"] == "sk-work")
         #expect(settings.accounts(forProvider: "custom-openrouter").first?.probeConfig["apiKey"] == nil)
@@ -113,10 +124,10 @@ struct AccountFormTests {
     func `an account without its own key never borrows the default's`() async throws {
         let vault = MemoryVault(["custom-openrouter.apiKey": "sk-mine"])
         let openRouter = provider(try openRouter(), vault: vault, network: network(["sk-mine": 40]))
-        let work = try openRouter.addAccount(filling: ["apiKey": "sk-work"])
+        let work = try openRouter.accounts.add(filling: ["apiKey": "sk-work"])
         vault.secrets["\(work.id).apiKey"] = nil
 
-        await #expect(throws: (any Error).self) { try await work.refresh() }
+        await #expect(throws: (any Error).self) { try await openRouter.refresh(work) }
 
         #expect(work.lastFailedStep == .lookup)
     }
@@ -125,7 +136,7 @@ struct AccountFormTests {
     func `a field left empty is refused, and nothing is added`() throws {
         let openRouter = provider(try openRouter(), vault: MemoryVault(), network: network([:]))
 
-        #expect(throws: UsageError.self) { try openRouter.addAccount(filling: ["apiKey": "  "]) }
+        #expect(throws: UsageError.self) { try openRouter.accounts.add(filling: ["apiKey": "  "]) }
         #expect(openRouter.accounts.count == 1)
     }
 
@@ -133,9 +144,9 @@ struct AccountFormTests {
     func `removing an account forgets its keys`() throws {
         let vault = MemoryVault()
         let openRouter = provider(try openRouter(), vault: vault, network: network([:]))
-        let work = try openRouter.addAccount(filling: ["apiKey": "sk-work"])
+        let work = try openRouter.accounts.add(filling: ["apiKey": "sk-work"])
 
-        openRouter.remove(work)
+        openRouter.accounts.remove(work)
 
         #expect(vault.secrets["\(work.id).apiKey"] == nil)
     }
@@ -145,10 +156,10 @@ struct AccountFormTests {
         let vault = MemoryVault()
         let settings = InMemoryProviderSettings()
         let first = provider(try openRouter(), vault: vault, network: network(["sk-work": 7]), settings: settings)
-        try first.addAccount(filling: ["apiKey": "sk-work"])
+        try first.accounts.add(filling: ["apiKey": "sk-work"])
 
         let relaunched = provider(try openRouter(), vault: vault, network: network(["sk-work": 7]), settings: settings)
-        let usage = try await relaunched.accounts[1].refresh()
+        let usage = try await relaunched.refresh(relaunched.accounts[1])
 
         #expect(usage.quotas.first?.left == .money(Money(7, currency: "USD"), of: Money(50, currency: "USD")))
     }

@@ -3,7 +3,8 @@ import Foundation
 /// *Signed-in Folder* — where an added login lives: the folder its CLI keeps
 /// its key in, and who made it. A folder the person chose is theirs, and
 /// their terminal may still use it; a folder ClaudeBar made for *Sign in
-/// with browser* is ClaudeBar's, and nothing else uses it.
+/// with browser* is ClaudeBar's, and only the person's terminal uses it
+/// besides, once they put it *in use* (docs/features/in-use/design.md).
 public struct SignedInFolder: Sendable, Equatable {
     public let url: URL
     public let madeBy: AccountOrigin

@@ -26,6 +26,7 @@ Start with the [README](../README.md). Something broken? See [troubleshooting](t
 | [mistral](providers/mistral/README.md) | Show today's and yesterday's Mistral Vibe cost and token totals, read from Vibe's local session logs. No API key needed. Use when setting up Mistral or when its card is empty. |
 | [omp](providers/omp/README.md) | Track the rate-limit windows of every account Oh My Pi (omp) is signed into, such as Claude, Codex and Z.ai, via `omp usage --json`. Use when setting up Oh My Pi or when an account shows "No usage reported". |
 | [opencode-go](providers/opencode-go/README.md) | Track OpenCode Go rolling 5-hour, weekly and monthly usage from the opencode.ai usage API, or from the local opencode database when no API key is set. Use when setting up OpenCode Go or when its numbers differ from the dashboard. |
+| [openrouter](providers/openrouter/README.md) | Track your OpenRouter credit balance (total credits minus usage, in USD) with an OpenRouter API key. Use when setting up OpenRouter or when its key is rejected. |
 | [vercel-gateway](providers/vercel-gateway/README.md) | Show your Vercel AI Gateway credit balance in dollars, using an AI Gateway API key stored in the Keychain or an environment variable. Use when setting up Vercel Gateway or when the connection test fails. |
 | [zai](providers/zai/README.md) | Track the Z.ai / Zhipu GLM Coding Plan 5-hour, weekly and MCP quotas, from a saved key or Claude Code's settings. Use when setting up Z.ai or when it shows "Key needed". |
 
@@ -35,6 +36,7 @@ Start with the [README](../README.md). Something broken? See [troubleshooting](t
 |---|---|
 | [daily-usage](features/daily-usage/README.md) | Daily usage cards in the popover show today's estimated cost, tokens and working time against yesterday, read from local Claude Code (and Mistral Vibe) session logs. Use when the cards are missing or the numbers look off. |
 | [extensions](features/extensions/README.md) | Add your own quota source to ClaudeBar with a manifest.json and a script that prints JSON, in ~/.claudebar/extensions/. Use when writing an extension or when one doesn't show up. |
+| [in-use](features/in-use/README.md) | Choose which Claude or Codex login new terminal sessions start with — switch by hand, get a nudge when it runs low, or let ClaudeBar switch. Use when you have personal and work logins and want the next `claude` on the one with room. |
 | [leaderboard](features/leaderboard/README.md) | Join the ClaudeBar Leaderboard with a username, share daily token totals from Claude, Codex or Mistral, and see your rank. Use when joining, changing what you share, or leaving. |
 | [menu-bar](features/menu-bar/README.md) | Show quota percentage and reset countdown for up to three providers right in the menu bar, one or two windows each, single-line or stacked. Use when choosing what the menu bar label shows. |
 | [multi-account](features/multi-account/README.md) | Track more than one Claude or Codex login side by side — sign in with your browser or choose a signed-in folder, name each account, pin them to the menu bar, and sign in again when a session expires. Use when you have personal and work accounts. |
@@ -44,6 +46,6 @@ Start with the [README](../README.md). Something broken? See [troubleshooting](t
 | [status-colors](features/status-colors/README.md) | How ClaudeBar colors a quota healthy, warning, critical or depleted, the optional pace-aware burn-rate warning, and custom status colors and High Contrast. Use when a color looks wrong or hard to read. |
 | [themes](features/themes/README.md) | Pick a built-in theme (System, Light, Dark, CLI, Christmas, Pop) or import an iTerm2 .itermcolors scheme to match your terminal. Use when changing how the popover, menu bar and Settings look. |
 | [touch-bar](features/touch-bar/README.md) | Show live quota gauges on a MacBook Pro Touch Bar in every app, or feed BetterTouchTool, MTMR and scripts from ~/.claudebar/status.json. Use on Touch Bar Macs or when wiring quota into another tool. |
-| [url-schemes](features/url-schemes/README.md) | Drive ClaudeBar from Raycast, Alfred, Shortcuts, BetterTouchTool or a terminal with claudebar://open, claudebar://refresh and claudebar://settings. Use when scripting ClaudeBar. |
+| [url-schemes](features/url-schemes/README.md) | Drive ClaudeBar from Raycast, Alfred, Shortcuts, BetterTouchTool or a terminal with claudebar://open, claudebar://refresh, claudebar://settings and claudebar://use. Use when scripting ClaudeBar. |
 
 Guides: [troubleshooting](troubleshooting.md) · [settings](settings.md) · [architecture](architecture/ARCHITECTURE.md) · [contributing](../CONTRIBUTING.md) · [documentation design](documentation-design/README.md)

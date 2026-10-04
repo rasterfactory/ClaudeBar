@@ -17,88 +17,99 @@ import Observation
 public final class Provider {
     public let definition: ProviderDefinition
 
-    /// The logins, in the order the person put them — never empty, and one
-    /// of them is the default login.
-    public private(set) var accounts: [Account] = []
-    /// The plain login the CLI already uses — found by being the default,
-    /// wherever the person moved it.
-    public var defaultAccount: Account { accounts.first(where: \.isDefault)! }
+    /// *The provider's Settings page* — data source, settings form, CLI
+    /// location. Owned here; it knows no one above it (TARGET §12, slice 6).
+    public let configuration: Configuration
+    /// *The Accounts card* — its logins, in your order, and adding, removing,
+    /// renaming and moving them. Owned here; it reports, never reaches up.
+    public let accounts: Accounts
+
+    /// The plain login the CLI already uses.
+    public var defaultAccount: Account { accounts.plain }
 
     /// *Share Claude Code*, for a provider whose plan can issue guest passes.
     public let guestPasses: GuestPasses?
-    /// *TODAY'S USAGE*, read from the default login's own logs.
-    public let usageHistory: UsageHistory?
-    /// Makes an added login's usage history from its adapted definition and
-    /// lineup id — `nil` when added logins have none.
-    private let makeUsageHistory: ((UsageLog.Definition, String) -> UsageHistory)?
-    /// Each added login's own usage history, by lineup id.
-    @ObservationIgnored private var usageHistories: [String: UsageHistory] = [:]
 
     let settings: any MultiAccountSettingsRepository
     /// Makes a definition live for one login, by its lineup id — so its
     /// keys come from that login's corner of the vault.
     private let makeDataSource: (DataSourceDefinition, String) -> DataSource
-    /// Where keys typed into *Add Account*'s form are kept.
-    private let vault: (any SecretVault)?
-    /// Where added logins' folders are made and deleted.
-    private let folders: any LoginFolders
-    /// What a path setting asks of this Mac.
-    private let paths: any PathChecking
-    /// Whether a path is a program the CLI location may point at.
-    private let isExecutable: @Sendable (String) -> Bool
-    /// The definition as it runs here: the CLI at the person's location.
-    @ObservationIgnored private var running: ProviderDefinition
-    /// *CLI location* — where this provider's CLI lives on this Mac, when the
-    /// person chose one (#210). `nil` finds it as usual.
-    public private(set) var cliPath: String?
-    @ObservationIgnored private var bound: [String: [DataSource]] = [:]
-    @ObservationIgnored private var refreshTasks: [String: Task<UsageSnapshot, Error>] = [:]
+    /// *The product's switch* — Claude on or off. Off hides every login (no
+    /// pill, menu-bar entry, refresh or alert) and keeps each login and its
+    /// own *Pause* (TARGET §12, slice 1).
+    public var isEnabled: Bool {
+        didSet { settings.setEnabled(isEnabled, forProvider: id) }
+    }
+
+    /// The plain login's own *Pause* — apart from the product's switch, which
+    /// keeps the key the plain login used to have.
+    static let plainLoginKey = "plainLoginEnabled"
+
+    /// *In use* — which login new terminal sessions start with; `nil` when
+    /// this product's CLI can't be started on a login's folder.
+    public private(set) var inUse: InUse?
+    /// Each login's live data sources, and the configuration revision they
+    /// were made at — made in this one place, remade when older.
+    @ObservationIgnored private var bound: [String: (revision: Int, sources: [DataSource])] = [:]
+    @ObservationIgnored private var refreshTasks: [String: SharedRefresh] = [:]
 
     /// - Parameter makeDataSource: makes a definition live — the real
     ///   connections in the app, stubbed ones in tests.
     public init(
         definition: ProviderDefinition,
         settings: any MultiAccountSettingsRepository,
-        accounts: [ProviderAccountConfig] = [],
+        accounts saved: [ProviderAccountConfig] = [],
         makeDataSource: @escaping (DataSourceDefinition, String) -> DataSource,
         guestPasses: GuestPasses? = nil,
         usageHistory: UsageHistory? = nil,
         makeUsageHistory: ((UsageLog.Definition, String) -> UsageHistory)? = nil,
         folders: any LoginFolders = DiskLoginFolders(),
+        loginsInUse: (any LoginsInUse)? = nil,
         vault: (any SecretVault)? = nil,
         paths: any PathChecking = DiskPaths(),
         isExecutable: @escaping @Sendable (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }
     ) {
-        self.folders = folders
-        self.paths = paths
-        self.vault = vault
-        self.isExecutable = isExecutable
         self.definition = definition
-        let cliPath = settings.cliPath(forProvider: definition.id)
-        self.cliPath = cliPath
-        do {
-            self.running = try definition.runningCLI(cliPath ?? "")
-        } catch {
-            AppLog.providers.error("\(definition.id): can't run the CLI at the saved location: \(error.localizedDescription)")
-            self.running = definition
-        }
         self.settings = settings
         self.makeDataSource = makeDataSource
         self.guestPasses = guestPasses
-        self.usageHistory = usageHistory
-        self.makeUsageHistory = makeUsageHistory
-        let label = settings.defaultAccountLabel(forProvider: definition.id) ?? ""
-        self.accounts = [Account(provider: self, login: ProviderAccount(providerId: definition.id, label: label), values: [:])]
-        bind(self.accounts[0])
-        for config in accounts {
-            attach(config)
+        let configuration = Configuration(definition: definition, settings: settings, vault: vault,
+                                          paths: paths, isExecutable: isExecutable)
+        self.configuration = configuration
+        self.accounts = Accounts(definition: definition, settings: settings, configuration: configuration,
+                                 folders: folders, makeDataSource: makeDataSource, makeUsageHistory: makeUsageHistory)
+        self.isEnabled = Self.productSwitch(definition, settings: settings, accounts: saved)
+        // `Accounts` is public and can outlive this provider: its callback
+        // holds it weakly (TARGET §12, slice 7).
+        accounts.start(plainHistory: usageHistory, guestPasses: guestPasses,
+                       onChange: { [weak self] change in self?.follow(change) }, saved: saved)
+        if let loginsInUse, let call = definition.accounts?.signIn, definition.accounts?.folder != nil {
+            inUse = InUse(accounts: accounts, productId: definition.id, productName: definition.profile.name,
+                          command: TerminalCommand(name: call.cli, variable: call.homeVariable),
+                          record: loginsInUse, switchWhenLow: SwitchWhenLow(providerId: definition.id, settings: settings))
         }
-        let order = settings.accountOrder(forProvider: definition.id)
-        self.accounts = self.accounts.enumerated().sorted { lhs, rhs in
-            let (left, right) = (order.firstIndex(of: lhs.element.accountId) ?? order.count + lhs.offset,
-                                 order.firstIndex(of: rhs.element.accountId) ?? order.count + rhs.offset)
-            return left < right
-        }.map(\.element)
+    }
+
+    /// The product's switch, read once from before it had its own: the old
+    /// `<id>.isEnabled` was the plain login's. Off while another login of it
+    /// was on meant *the plain login was paused* — kept as its pause, the
+    /// product on; otherwise it meant *the product was off*. Recorded once,
+    /// by the plain login's own setting.
+    private static func productSwitch(_ definition: ProviderDefinition, settings: any MultiAccountSettingsRepository,
+                                      accounts: [ProviderAccountConfig]) -> Bool {
+        let id = definition.id
+        let on = settings.isEnabled(forProvider: id, defaultValue: definition.enabledByDefault)
+        guard settings.isOn(plainLoginKey, forProvider: id) == nil else { return on }
+        let anotherOn = accounts.contains {
+            settings.isEnabled(forProvider: $0.toProviderAccount(providerId: id).id, defaultValue: definition.enabledByDefault)
+        }
+        if !on && anotherOn {
+            settings.setOn(false, plainLoginKey, forProvider: id)
+            settings.setEnabled(true, forProvider: id)
+            return true
+        }
+        settings.setOn(true, plainLoginKey, forProvider: id)
+        return on
     }
 
     /// A provider whose data sources ignore which login they run for — the
@@ -110,383 +121,88 @@ public final class Provider {
         makeDataSource: @escaping (DataSourceDefinition) -> DataSource,
         guestPasses: GuestPasses? = nil,
         folders: any LoginFolders = DiskLoginFolders(),
+        loginsInUse: (any LoginsInUse)? = nil,
         isExecutable: @escaping @Sendable (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }
     ) {
         self.init(definition: definition, settings: settings, accounts: accounts,
                   makeDataSource: { source, _ in makeDataSource(source) },
-                  guestPasses: guestPasses, folders: folders, isExecutable: isExecutable)
-    }
-
-    // MARK: - CLI location
-
-    /// *CLI location* — runs this provider's CLI from `path` for every login
-    /// and for Add Account's sign-in, saved and in effect at once. Empty goes
-    /// back to finding the CLI as usual. A path that isn't a program is
-    /// refused, and nothing changes.
-    public func setCLIPath(_ path: String?) throws {
-        let trimmed = (path ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let chosen = trimmed.isEmpty ? nil : NSString(string: trimmed).expandingTildeInPath
-        if let chosen, !isExecutable(chosen) {
-            throw UsageError.executionFailed("\(chosen) isn't a program ClaudeBar can run. Choose the \(definition.cli ?? name) executable itself.")
-        }
-        let running = try definition.runningCLI(chosen ?? "")
-        self.running = running
-        cliPath = chosen
-        settings.setCLIPath(chosen, forProvider: id)
-        for account in accounts {
-            bound[account.id] = try sources(for: account.values, isDefault: account.isDefault).map { makeDataSource($0, account.id) }
-        }
-    }
-
-    // MARK: - Settings — REGION, API KEY, ENV VAR …
-
-    /// What a setting holds for a login: the login's own value for an
-    /// account-scope one, else the provider's saved value, else its default.
-    /// Never a secret's: those are kept in the vault, not with these values.
-    public func value(of setting: Setting, for account: Account) -> String? {
-        value(of: setting, values: account.isDefault ? [:] : account.values)
-    }
-
-    /// What to do when the active data source's key lookup finds no key —
-    /// the lookup's own hint, when it has one.
-    public var keyHint: String? {
-        definition.dataSource(activeKind)?.credential?.hint
-    }
-
-    /// Whether a value of this setting is saved for a login — a key in the
-    /// vault, or a value in settings — never the value itself, so Settings
-    /// can say *Saved* without showing a key.
-    public func hasSaved(_ setting: Setting, for account: Account) -> Bool {
-        if vault?.secret(setting.id, provider: account.id) != nil { return true }
-        let own = account.isDefault ? settings.value(setting.id, forProvider: id) : account.values[setting.id]
-        return own != nil
-    }
-
-    /// Fills in a provider-scope setting — or the default login's value of an
-    /// account-scope one — and runs every login with it from the next
-    /// refresh. A secret goes to the vault; `nil` or empty forgets it.
-    public func set(_ id: String, to value: String?) throws {
-        guard let setting = definition.setting(id) else {
-            throw UsageError.executionFailed("\(name) has no setting \(id).")
-        }
-        let value = value?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let kept = (value?.isEmpty ?? true) ? nil : value
-        if let kept, let problem = setting.check(kept, paths: paths) {
-            throw UsageError.executionFailed(problem)
-        }
-        var entry = SettingEntry()
-        if let kept { setting.keep(kept, in: &entry, paths: paths) }
-        guard entry.secrets.isEmpty || vault != nil else {
-            throw UsageError.executionFailed("ClaudeBar can't keep this key securely here.")
-        }
-        settings.setValue(entry.values[id], id, forProvider: self.id)
-        if entry.secrets.isEmpty {
-            vault?.delete(id, provider: self.id)
-        } else {
-            try keep(entry.secrets, for: self.id)
-        }
-        for account in accounts { bind(account) }
-    }
-
-    /// The definition as the default login runs it — the CLI at its chosen
-    /// location and every `{{setting.x}}` filled — so Settings prints
-    /// `$MINIMAX_API_KEY`, not the template.
-    public var definitionAsRun: ProviderDefinition {
-        let sources = (try? sources(for: [:], isDefault: true)) ?? running.dataSources
-        return ProviderDefinition(profile: running.profile, cli: running.cli, enabledByDefault: running.enabledByDefault,
-                                  dataSources: sources, defaultDataSource: running.defaultDataSource,
-                                  accounts: running.accounts, settings: running.settings, usageHistory: running.usageHistory)
-    }
-
-    /// Every `{{setting.x}}` a login's data sources are filled with.
-    func settingFills(for account: Account) -> [String: String] {
-        settingFills(values: account.isDefault ? [:] : account.values)
-    }
-
-    private func settingFills(values: [String: String]) -> [String: String] {
-        definition.settings.reduce(into: [:]) { fills, setting in
-            fills.merge(setting.fills(for: value(of: setting, values: values))) { _, new in new }
-        }
-    }
-
-    private func value(of setting: Setting, values: [String: String]) -> String? {
-        let value = setting.value(from: setting.ownValue(in: values) ?? settings.value(setting.id, forProvider: id))
-        return value.isEmpty ? nil : value
-    }
-
-    /// Saves keys in the vault under a login, reading each back: an ad-hoc
-    /// build's Keychain can seem to save and keep nothing. On a refusal every
-    /// key goes back to what it was — a key being replaced is never lost.
-    private func keep(_ secrets: [String: String], for login: String) throws {
-        let before = secrets.keys.reduce(into: [String: String?]()) { $0[$1] = vault?.secret($1, provider: login) }
-        for (name, value) in secrets {
-            vault?.save(value, name, provider: login)
-            guard vault?.secret(name, provider: login) == value else {
-                for (name, previous) in before {
-                    vault?.delete(name, provider: login)
-                    if let previous { vault?.save(previous, name, provider: login) }
-                }
-                throw UsageError.executionFailed("ClaudeBar couldn't keep this key securely.")
-            }
-        }
-    }
-
-    /// A login's data sources as data: an added one's patched and filled
-    /// with its values, then every login's settings filled in.
-    private func sources(for values: [String: String], isDefault: Bool) throws -> [DataSourceDefinition] {
-        let sources = isDefault ? running.dataSources : try running.dataSources(forAccount: values)
-        let fills = settingFills(values: isDefault ? [:] : values)
-        guard !fills.isEmpty else { return sources }
-        return try sources.map { try $0.filled(fills, scope: "setting") }
-    }
-
-    /// Makes a login's data sources live again — after a setting changed.
-    private func bind(_ account: Account) {
-        do {
-            bound[account.id] = try sources(for: account.values, isDefault: account.isDefault).map { makeDataSource($0, account.id) }
-        } catch {
-            AppLog.providers.error("\(definition.id): can't run account \(account.id): \(error.localizedDescription)")
-        }
+                  guestPasses: guestPasses, folders: folders, loginsInUse: loginsInUse, isExecutable: isExecutable)
     }
 
     public var id: String { definition.id }
     public var name: String { definition.profile.name }
 
-    // MARK: - Accounts
+    // MARK: - Following the Accounts card
 
-    /// *Add Account* — a login beside the default one, saved. `nil` when the
-    /// definition has no added accounts, the login is already listed, or its
-    /// saved values don't fill what the definition needs.
-    @discardableResult
-    public func add(_ config: ProviderAccountConfig) -> Account? {
-        guard let account = attach(config) else { return nil }
-        settings.addAccount(config, forProvider: id)
-        return account
+    private func follow(_ change: Accounts.Change) {
+        switch change {
+        case .added(_, let byKey):
+            // Supplying a login's key opts its product in (an opt-in provider).
+            if byKey { isEnabled = true }
+        case .removed(let account):
+            inUse?.forget(account)
+            bound[account.id] = nil
+            refreshTasks[account.id]?.task.cancel()
+            refreshTasks[account.id] = nil
+        }
     }
 
-    /// A saved login made live — at launch, and by `add`.
-    @discardableResult
-    private func attach(_ config: ProviderAccountConfig) -> Account? {
-        let login = config.toProviderAccount(providerId: definition.id)
-        guard definition.accounts != nil, !login.isDefault, !accounts.contains(where: { $0.id == login.id }) else {
-            return nil
-        }
-        var values = config.probeConfig
-        for setting in definition.accountSettings {
-            if case .path = setting.kind, let value = values[setting.id], !value.isEmpty {
-                values[setting.id] = paths.canonical(value)
-            }
-        }
+    // MARK: - Data sources
+
+    /// The live data sources a login runs — made from the configuration at
+    /// its current revision, here and nowhere else.
+    public func dataSources(for account: Account) -> [DataSource] {
+        let revision = configuration.revision
+        if let made = bound[account.id], made.revision == revision { return made.sources }
         do {
-            bound[login.id] = try sources(for: values, isDefault: false).map { makeDataSource($0, login.id) }
+            let sources = try configuration.sources(for: account.values, isDefault: account.isDefault)
+                .map { makeDataSource($0, account.id) }
+            bound[account.id] = (revision, sources)
+            return sources
         } catch {
-            AppLog.providers.error("\(definition.id): can't run account \(login.id): \(error.localizedDescription)")
-            return nil
-        }
-        let account = Account(provider: self, login: login, values: values, madeBy: config.madeBy)
-        accounts.append(account)
-        if let makeUsageHistory, let own = definition.usageHistory(forAccount: values) {
-            usageHistories[login.id] = makeUsageHistory(own, login.id)
-        }
-        return account
-    }
-
-    /// A login's usage history: the default's, or an added login's own.
-    func usageHistory(for account: Account) -> UsageHistory? {
-        account.isDefault ? usageHistory : usageHistories[account.id]
-    }
-
-    /// *Remove* — forgets the login here and its saved settings, and deletes
-    /// the folder only when ClaudeBar made it by signing in. A folder the
-    /// person chose is theirs and stays. The default login can't be removed.
-    public func remove(_ account: Account) {
-        guard !account.isDefault, accounts.contains(where: { $0 === account }) else { return }
-        if let folder = account.folder, folder.goesWithAccount {
-            folders.delete(folder.url)
-        }
-        // Whatever of the form went to the vault goes with the login.
-        for setting in definition.accountSettings {
-            vault?.delete(setting.id, provider: account.id)
-        }
-        accounts.removeAll { $0.id == account.id }
-        bound[account.id] = nil
-        usageHistories[account.id] = nil
-        refreshTasks[account.id]?.cancel()
-        refreshTasks[account.id] = nil
-        settings.removeAccount(accountId: account.accountId, forProvider: id)
-    }
-
-    /// *Choose Signed-in Folder* — adds the login a folder holds, read by the
-    /// definition's own lookups filled with that folder. Refused when the
-    /// folder holds no key, or the login is the default one or already listed.
-    @discardableResult
-    public func addAccount(signedInAt folder: URL) throws -> Account {
-        try addAccount(SignedInFolder(url: folder, madeBy: .folder))
-    }
-
-    /// What *Add Account*'s form asks for: the account settings the active
-    /// data source uses.
-    public var accountForm: [Setting] {
-        definition.accountSettings.filter { $0.isUsed(by: activeKind) }
-    }
-
-    /// *Add Account* by its form — the login's own account-scope settings.
-    /// Each value keeps its setting's rule, a default fills a blank, a path
-    /// is never another login's, and a secret is kept in the vault under the
-    /// new login's id — read back before the login is kept, so nothing is
-    /// half saved.
-    @discardableResult
-    public func addAccount(filling entered: [String: String]) throws -> Account {
-        let form = accountForm
-        guard !form.isEmpty else { throw UsageError.executionFailed("\(name) has no account form.") }
-        var entry = SettingEntry()
-        for setting in form {
-            let value = setting.value(from: entered[setting.id])
-            if let problem = setting.check(value, paths: paths) { throw UsageError.executionFailed(problem) }
-            if isTaken(value, by: setting) {
-                throw UsageError.executionFailed("Choose a separate folder for \(setting.label) — another \(name) login uses this one.")
-            }
-            setting.keep(value, in: &entry, paths: paths)
-        }
-        guard entry.secrets.isEmpty || vault != nil else {
-            throw UsageError.executionFailed("ClaudeBar can't keep this key securely here.")
-        }
-        let config = ProviderAccountConfig(accountId: UUID().uuidString.lowercased(), label: "", probeConfig: entry.values, madeBy: .form)
-        let lineupId = config.toProviderAccount(providerId: id).id
-        do {
-            try keep(entry.secrets, for: lineupId)
-        } catch {
-            throw UsageError.executionFailed("ClaudeBar couldn't keep this key securely. The account wasn't added.")
-        }
-        guard let account = add(config) else {
-            for name in entry.secrets.keys { vault?.delete(name, provider: lineupId) }
-            throw UsageError.executionFailed("This \(name) account can't be added.")
-        }
-        // Supplying this login's key is an explicit opt-in, even when the
-        // product's unconfigured default login starts disabled.
-        account.isEnabled = true
-        return account
-    }
-
-    /// Two logins never share a path setting — the default login's included.
-    private func isTaken(_ value: String, by setting: Setting) -> Bool {
-        accounts.contains { account in
-            guard let other = self.value(of: setting, values: account.isDefault ? [:] : account.values) else { return false }
-            return setting.isSamePlace(value, as: other, paths: paths)
+            AppLog.providers.error("\(definition.id): can't run account \(account.id): \(error.localizedDescription)")
+            return []
         }
     }
 
-    /// *Sign in with browser* — runs the definition's login into a new folder
-    /// under `root`, then adds it as *Choose Signed-in Folder* would. A folder
-    /// that ends up holding no new login is deleted.
-    @discardableResult
-    public func signIn(with runner: AccountSignIn = AccountSignIn(), under root: URL = SignedInFolder.signInRoot) async throws -> Account {
-        guard let call = running.accounts?.signIn else {
-            throw UsageError.executionFailed("\(name) has no sign-in.")
-        }
-        let folder = SignedInFolder.forSignIn(to: id, under: root)
-        try await runner.signIn(call, into: folder.url)
-        do {
-            return try addAccount(folder)
-        } catch {
-            folders.delete(folder.url)
-            throw error
-        }
+    /// Whether a data source's key lookup finds a key for a login — what a
+    /// config card shows as *credentials found*.
+    public func hasKey(for kind: String, account: Account? = nil) -> Bool {
+        dataSource(kind, for: account ?? defaultAccount)?.hasKey ?? false
     }
 
-    private func addAccount(_ folder: SignedInFolder) throws -> Account {
-        guard let rule = definition.accounts?.folder else {
-            throw UsageError.executionFailed("\(name) has no added accounts.")
-        }
-        let home = folder.url.resolvingSymlinksInPath().path
-        let defaultHome = rule.default.map { URL(fileURLWithPath: DataSources.expandPath($0)).resolvingSymlinksInPath().path }
-        guard home != defaultHome else {
-            throw UsageError.executionFailed("This is the default \(name) login, which is already listed.")
-        }
-        let values = rule.values(for: home)
-        guard let login = signedIn(with: values.merging([rule.accountId.savedAs: ""]) { _, empty in empty }, rule: rule),
-              let accountId = login.accountId, let email = login.email else {
-            throw UsageError.executionFailed(rule.notSignedIn ?? "No \(name) login found in this folder.")
-        }
-        let defaultAccountId = dataSources(for: defaultAccount).lazy.compactMap { $0.value(of: rule.accountId.field) }.first
-        let listed = accounts.contains {
-            $0.values[rule.accountId.savedAs] == accountId || $0.folder?.url.resolvingSymlinksInPath().path == home
-        }
-        guard accountId != defaultAccountId, !listed else {
-            throw UsageError.executionFailed("This \(name) account is already listed.")
-        }
-        let config = ProviderAccountConfig(
-            accountId: UUID().uuidString.lowercased(), label: "", email: email,
-            probeConfig: values.merging([rule.accountId.savedAs: accountId]) { _, id in id },
-            madeBy: folder.madeBy
-        )
-        guard let account = add(config) else {
-            throw UsageError.executionFailed("This \(name) login can't be added.")
-        }
-        return account
+    /// *TODAY'S USAGE* — the plain login's.
+    public var usageHistory: UsageHistory? { defaultAccount.usageHistory }
+
+    // MARK: - What only the product knows about one of its logins
+
+    /// In the lineup — pills, menu bar, refreshes, alerts: the login is on,
+    /// and so is its product.
+    public func isInLineup(_ account: Account) -> Bool { account.isEnabled && isEnabled }
+
+    /// *The name the lineup prints* — on a pill, the menu bar, an alert: the
+    /// product's while it has one login to tell apart, else the login's own
+    /// (TARGET §12.1). Pages never re-decide it.
+    public func lineupName(of account: Account) -> String {
+        accounts.hasSeveral ? account.displayName : name
     }
 
-    /// Who is signed in with these values: the first data source that looks
-    /// up a key, filled with them. A folder whose key does not answer holds
-    /// no login, whatever else it holds.
-    private func signedIn(with values: [String: String], rule: ProviderDefinition.Accounts.Folder) -> (accountId: String?, email: String?)? {
-        guard let source = try? running.dataSources(forAccount: values).first(where: { $0.credential != nil }) else { return nil }
-        let live = makeDataSource(source, "\(id).new")
-        guard live.hasKey else { return nil }
-        return (live.value(of: rule.accountId.field).flatMap { $0.isEmpty ? nil : $0 }, live.value(of: rule.email))
+    /// The dashboard for the plan a login's last usage reported (#328).
+    public func dashboardURL(of account: Account) -> URL? {
+        definition.profile.links.dashboard(for: account.snapshot?.accountTier,
+                                           settings: configuration.settingFills(ownValues: account.isDefault ? [:] : account.values))
     }
 
-    /// *Rename* — the name the person gives a login. Who it is, its values
-    /// and its usage stay; an empty name goes back to the email.
-    public func rename(_ account: Account, to name: String) {
-        guard accounts.contains(where: { $0 === account }) else { return }
-        let label = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if account.isDefault {
-            settings.setDefaultAccountLabel(label.isEmpty ? nil : label, forProvider: id)
-        } else if let saved = settings.accounts(forProvider: id).first(where: { $0.accountId == account.accountId }) {
-            settings.updateAccount(saved.named(label), forProvider: id)
-        }
-        account.label = label
+    /// What setting a login up takes: the definition's words, or its name
+    /// and what failed when the definition says nothing.
+    public func setupNotice(of account: Account) -> ProviderDefinition.Setup {
+        definition.setup ?? .fallback(for: lineupName(of: account), error: account.lastError)
     }
 
-    /// *Move* — puts a login at `index` in the person's order, saved.
-    public func move(_ account: Account, to index: Int) {
-        guard let from = accounts.firstIndex(where: { $0 === account }) else { return }
-        accounts.remove(at: from)
-        accounts.insert(account, at: min(max(0, index), accounts.count))
-        settings.setAccountOrder(accounts.map(\.accountId), forProvider: id)
-    }
-
-    /// *Re-auth* for a login ClaudeBar signed in to: runs the definition's
-    /// login again in that login's own folder, then refreshes it — so the
-    /// identity rule decides whether the same person came back. A folder the
-    /// person chose is theirs to sign in to; ClaudeBar never runs a login there.
-    @discardableResult
-    public func signInAgain(_ account: Account, with runner: AccountSignIn = AccountSignIn()) async throws -> UsageSnapshot {
-        guard let call = running.accounts?.signIn, let folder = account.folder, folder.goesWithAccount else {
-            throw UsageError.executionFailed("Sign in again in this folder yourself, then refresh.")
-        }
-        try await runner.signInAgain(call, in: folder.url)
-        return try await refresh(account, .interactive)
-    }
-
-    /// More than one enabled login, so each needs telling apart by name.
-    public var hasSeveralAccounts: Bool {
-        accounts.lazy.filter(\.isEnabled).prefix(2).count > 1
-    }
-
-    /// The enabled login with the most left — *switch to work*.
-    public var bestAccount: Account? {
-        accounts.filter(\.isEnabled).max {
-            ($0.snapshot?.lowestQuota?.percentRemaining ?? -.infinity) < ($1.snapshot?.lowestQuota?.percentRemaining ?? -.infinity)
-        }
-    }
-
-    /// The enabled login that makes the provider's status what it is — the
-    /// one the popover names. `nil` while every login is healthy.
-    public var worstAccount: Account? {
-        let worst = accounts.filter(\.isEnabled).max { $0.status < $1.status }
-        return worst.flatMap { $0.status > .healthy ? $0 : nil }
+    /// A data source that serves cached usage sets how often the background
+    /// may ask (Claude's API: 15 minutes, #204).
+    public var backgroundRefreshFloor: Duration? {
+        definition.dataSource(configuration.activeKind)?.cache.map { .seconds($0.ttl) }
     }
 
     /// The worst quota health across the enabled logins.
@@ -494,54 +210,26 @@ public final class Provider {
         accounts.filter(\.isEnabled).map(\.status).max() ?? .healthy
     }
 
-    // MARK: - Data sources — one choice for every login
-
-    /// The data source in use: the one the person picked, else the default.
-    public var activeKind: String {
-        if let chosen = settings.dataSourceKind(forProvider: definition.id), definition.dataSource(chosen) != nil {
-            return chosen
+    /// *Test Connection* — the active data source looks up the key and
+    /// fetches for a login (the default unless named), stopping BEFORE
+    /// mapping: what came back, or which step failed. An explicit test checks
+    /// a CLI session the way an explicit refresh does (#216).
+    public func testConnection(_ account: Account? = nil) async -> Result<Response, DataSourceError> {
+        let account = account ?? defaultAccount
+        guard let active = dataSource(configuration.activeKind, for: account) else {
+            return .failure(DataSourceError(.fetch, .noData))
         }
-        return definition.defaultDataSource
-    }
-
-    /// Switches the data source. `false` when the provider has no such one.
-    @discardableResult
-    public func use(_ kind: String) -> Bool {
-        guard definition.dataSource(kind) != nil else { return false }
-        settings.setDataSourceKind(kind, forProvider: definition.id)
-        return true
-    }
-
-    /// Whether a data source's fallback is on — a fallback the definition
-    /// lets the person turn off (`enabledBySetting`) reads that setting; any
-    /// other fallback is always on. `false` when there is no fallback.
-    public func isFallbackEnabled(from kind: String) -> Bool {
-        guard let fallback = definition.dataSource(kind)?.fallback else { return false }
-        guard let setting = fallback.enabledBySetting else { return true }
-        return settings.isOn(setting, forProvider: definition.id) != false
-    }
-
-    /// Turns a switchable fallback on or off; does nothing for one that isn't.
-    public func setFallbackEnabled(_ on: Bool, from kind: String) {
-        guard let setting = definition.dataSource(kind)?.fallback?.enabledBySetting else { return }
-        settings.setOn(on, setting, forProvider: definition.id)
-    }
-
-    /// Whether a data source's key lookup finds a key for a login — what a
-    /// config card shows as *credentials found*. The default login unless named.
-    public func hasKey(for kind: String, account: Account? = nil) -> Bool {
-        dataSource(kind, for: account ?? defaultAccount)?.hasKey ?? false
-    }
-
-    /// The live data sources a login runs.
-    public func dataSources(for account: Account) -> [DataSource] {
-        bound[account.id] ?? []
-    }
-
-    /// A data source that serves cached usage sets how often the background
-    /// may ask (Claude's API: 15 minutes, #204).
-    public var backgroundRefreshFloor: Duration? {
-        definition.dataSource(activeKind)?.cache.map { .seconds($0.ttl) }
+        do {
+            let response = try await active.fetchResponse()
+            if active.definition.verifyBeforeBackground {
+                markVerified()
+            }
+            return .success(response)
+        } catch let failure as DataSourceError {
+            return .failure(failure)
+        } catch {
+            return .failure(DataSourceError(.fetch, .executionFailed(error.localizedDescription)))
+        }
     }
 
     // MARK: - Refresh — one login at a time
@@ -565,6 +253,7 @@ public final class Provider {
     /// and not a fallback's, which would send the person chasing the wrong problem.
     @discardableResult
     public func refresh(_ account: Account, _ kind: RefreshKind = .interactive) async throws -> UsageSnapshot {
+        try Task.checkCancellation()
         guard let active = startingDataSource(for: account) else {
             throw UsageError.noData
         }
@@ -576,37 +265,41 @@ public final class Provider {
             account.lastError = error
             throw error
         }
-        // Overlapping refreshes of one login share one result.
-        if let running = refreshTasks[account.id] { return try await running.value }
-        let task = Task { try await run(account, from: active, kind) }
-        refreshTasks[account.id] = task
-        defer { refreshTasks[account.id] = nil }
-        let usage = try await task.value
-        if kind == .interactive, active.definition.verifyBeforeBackground {
-            markVerified()
+        let caller = UUID()
+        let running: SharedRefresh
+        while true {
+            let candidate: SharedRefresh
+            if let existing = refreshTasks[account.id] {
+                candidate = existing
+            } else {
+                candidate = SharedRefresh(task: Task {
+                    definition.together ? try await runTogether(account) : try await run(account, from: active, kind)
+                })
+                refreshTasks[account.id] = candidate
+            }
+            if candidate.join(caller) {
+                running = candidate
+                break
+            }
+            // A cancelled worker must finish before a new one owns this login's state.
+            _ = await candidate.task.result
+            try Task.checkCancellation()
+            if refreshTasks[account.id] === candidate { refreshTasks[account.id] = nil }
         }
-        return usage
-    }
-
-    /// *Test Connection* — the active data source looks up the key and
-    /// fetches for a login (the default unless named), stopping BEFORE
-    /// mapping: what came back, or which step failed. An explicit test checks
-    /// a CLI session the way an explicit refresh does (#216).
-    public func testConnection(_ account: Account? = nil) async -> Result<Response, DataSourceError> {
-        let account = account ?? defaultAccount
-        guard let active = dataSource(activeKind, for: account) else {
-            return .failure(DataSourceError(.fetch, .noData))
-        }
-        do {
-            let response = try await active.fetchResponse()
-            if active.definition.verifyBeforeBackground {
+        return try await withTaskCancellationHandler {
+            defer {
+                running.leave(caller)
+                if refreshTasks[account.id] === running { refreshTasks[account.id] = nil }
+            }
+            let result = await running.task.result
+            try Task.checkCancellation()
+            let usage = try result.get()
+            if kind == .interactive, active.definition.verifyBeforeBackground {
                 markVerified()
             }
-            return .success(response)
-        } catch let failure as DataSourceError {
-            return .failure(failure)
-        } catch {
-            return .failure(DataSourceError(.fetch, .executionFailed(error.localizedDescription)))
+            return usage
+        } onCancel: {
+            running.leave(caller)
         }
     }
 
@@ -619,7 +312,7 @@ public final class Provider {
     /// Where a login's refresh starts: the active data source — or, when the
     /// login's patch left it out, the next one along its fallback chain.
     private func startingDataSource(for account: Account) -> DataSource? {
-        var kind: String? = activeKind
+        var kind: String? = configuration.activeKind
         var seen: Set<String> = []
         while let current = kind, seen.insert(current).inserted {
             if let source = dataSource(current, for: account) { return source }
@@ -672,6 +365,55 @@ public final class Provider {
         throw account.lastError ?? UsageError.noData
     }
 
+    /// `together` — every data source of the login answers at once; the usage
+    /// is their union in the definition's order. A failed one is left out of
+    /// it and shows beside it as fetch health; the refresh fails only when
+    /// all do.
+    private func runTogether(_ account: Account) async throws -> UsageSnapshot {
+        account.isSyncing = true
+        defer { account.isSyncing = false }
+        let sources = dataSources(for: account)
+        let results = await withTaskGroup(of: (Int, Result<UsageSnapshot, Error>).self) { group in
+            for (index, source) in sources.enumerated() {
+                group.addTask {
+                    do { return (index, .success(try await source.fetchUsage())) } catch { return (index, .failure(error)) }
+                }
+            }
+            var results: [(Int, Result<UsageSnapshot, Error>)] = []
+            for await result in group { results.append(result) }
+            return results.sorted { $0.0 < $1.0 }.map(\.1)
+        }
+        try Task.checkCancellation()
+        for case .failure(let error) in results where error is CancellationError {
+            throw CancellationError()
+        }
+        let answered = results.compactMap { try? $0.get() }
+        guard let first = answered.first else {
+            let error = results.lazy.compactMap { result -> Error? in
+                if case .failure(let error) = result { return error } else { return nil }
+            }.first ?? UsageError.noData
+            account.fail(error)
+            throw account.lastError ?? error
+        }
+        let metrics = answered.flatMap { $0.extensionMetrics ?? [] }
+        let union = UsageSnapshot(
+            providerId: first.providerId,
+            quotas: answered.flatMap(\.quotas),
+            capturedAt: Date(),
+            accountEmail: answered.lazy.compactMap(\.accountEmail).first,
+            accountTier: answered.lazy.compactMap(\.accountTier).first,
+            costUsage: answered.lazy.compactMap(\.costUsage).first,
+            extensionMetrics: metrics.isEmpty ? nil : metrics
+        )
+        let kind = sources.indices.first { if case .success = results[$0] { return true } else { return false } }.map { sources[$0].kind }
+        let usage = account.succeed(identified(union, for: account), from: kind ?? definition.defaultDataSource)
+        let failed = results.lazy.compactMap { result -> Error? in
+            if case .failure(let error) = result { return error } else { return nil }
+        }.first
+        if let failed { account.noteFailure(failed) }
+        return usage
+    }
+
     /// An added login is checked by being added; the default login once an
     /// explicit refresh succeeds, remembered as `<id>.verifiedAtLeastOnce`.
     private func isVerified(_ account: Account) -> Bool {
@@ -711,15 +453,38 @@ public final class Provider {
 
     /// The fallback a data source names, unless a provider setting turns it off.
     private func enabledFallback(of source: DataSource, for account: Account) -> DataSource? {
-        guard let fallback = source.definition.fallback else { return nil }
-        if let setting = fallback.enabledBySetting, settings.isOn(setting, forProvider: definition.id) == false {
-            return nil
-        }
+        guard let fallback = source.definition.fallback, configuration.isFallbackEnabled(from: source.kind) else { return nil }
         return dataSource(fallback.to, for: account)
     }
 
 
     static func reason(of error: Error) -> UsageError? {
         (error as? DataSourceError)?.reason ?? (error as? UsageError)
+    }
+}
+
+/// One request shared by its interested callers. Cancellation handlers run
+/// outside the main actor, so membership and the last caller's cancellation
+/// must change together under the lock.
+private final class SharedRefresh: @unchecked Sendable {
+    let task: Task<UsageSnapshot, Error>
+    private let lock = NSLock()
+    private var callers: Set<UUID> = []
+
+    init(task: Task<UsageSnapshot, Error>) { self.task = task }
+
+    func join(_ caller: UUID) -> Bool {
+        lock.withLock {
+            guard !task.isCancelled else { return false }
+            callers.insert(caller)
+            return true
+        }
+    }
+
+    func leave(_ caller: UUID) {
+        lock.withLock {
+            guard callers.remove(caller) != nil else { return }
+            if callers.isEmpty { task.cancel() }
+        }
     }
 }

@@ -10,6 +10,19 @@ public enum Mapping: Sendable, Equatable {
     /// JavaScript file run in JavaScriptCore, with no file, network or
     /// process access.
     case script(ScriptMapping)
+    /// ClaudeBar's own documented output — `quotas[]` and `costUsage` — which
+    /// an extension's script prints, and any script provider may.
+    case usage(UsageMapping)
+}
+
+/// `{ "usage": {} }` — the output format documented for extensions
+/// (docs/features/extensions/manifest.md): `quotas[]` with `type`
+/// (`session`, `weekly`, `model:<name>`, or a name of its own),
+/// `percentRemaining`, `resetsAt` (ISO 8601), `resetText`, `dollarRemaining`;
+/// and `costUsage` with `totalCost`, `budget`, `apiDuration`, `wallDuration`,
+/// `linesAdded`, `linesRemoved`.
+public struct UsageMapping: Sendable, Equatable, Codable {
+    public init() {}
 }
 
 /// `{ "script": { "file": "claude-usage-screen.js", "credential": ["subscriptionType"] } }`
@@ -716,8 +729,9 @@ public struct TextMapping: Sendable, Equatable, Codable {
 extension Mapping: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
-        switch try container.singleTag(of: ["json", "text", "script"], in: "mapping") {
+        switch try container.singleTag(of: ["json", "text", "script", "usage"], in: "mapping") {
         case "json": self = .json(try container.decode(JSONMapping.self, forKey: TagKey("json")))
+        case "usage": self = .usage(try container.decode(UsageMapping.self, forKey: TagKey("usage")))
         case "script": self = .script(try container.decode(ScriptMapping.self, forKey: TagKey("script")))
         default: self = .text(try container.decode(TextMapping.self, forKey: TagKey("text")))
         }
@@ -729,6 +743,7 @@ extension Mapping: Codable {
         case .json(let mapping): try container.encode(mapping, forKey: TagKey("json"))
         case .text(let mapping): try container.encode(mapping, forKey: TagKey("text"))
         case .script(let mapping): try container.encode(mapping, forKey: TagKey("script"))
+        case .usage(let mapping): try container.encode(mapping, forKey: TagKey("usage"))
         }
     }
 }

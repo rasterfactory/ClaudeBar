@@ -7,8 +7,8 @@ import Testing
 /// `omp usage --json` read by `omp-usage.js`, through Oh My Pi's definition.
 enum OmpFixtures {
     static func parse(_ text: String) throws -> UsageSnapshot {
-        let definition = try Providers.builtIn("omp")
-        let source = DataSources.make(definition.dataSources[0], providerId: "omp", scripts: Providers.builtInScripts,
+        let definition = try ProviderFactory.builtIn("omp")
+        let source = DataSources.make(definition.dataSources[0], providerId: "omp", scripts: ProviderFactory.builtInScripts,
                                       environment: { _ in nil })
         do { return try source.read(Response(text: text)) }
         catch let error as DataSourceError { throw error.reason }

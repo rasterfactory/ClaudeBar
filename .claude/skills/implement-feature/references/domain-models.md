@@ -62,21 +62,22 @@ public struct UsageSnapshot: Sendable, Equatable {
 }
 ```
 
-## Protocols for Capabilities
+## Capabilities as Handles
 
-Define protocols for what entities can do:
+A capability a product may or may not offer is declared in its definition and
+reached through a handle that is `nil` when it isn't — never a flag, a cast
+or a protocol every provider half-implements:
 
 ```swift
-public protocol AIProvider: AnyObject, Sendable, Identifiable {
-    var id: String { get }
-    var name: String { get }
-    var isSyncing: Bool { get }
-    var snapshot: UsageSnapshot? { get }
-    var lastError: Error? { get }
-
-    func isAvailable() async -> Bool
-    func refresh() async throws -> UsageSnapshot
+@MainActor @Observable
+public final class Provider {
+    public let definition: ProviderDefinition
+    public private(set) var accounts: [Account]   // its logins
+    /// *In use* — nil when the definition declares no sign-in to choose from.
+    public var inUse: InUse? { ... }
 }
+
+if let inUse = provider.inUse { try inUse.use(account) }   // ask the product, never the login
 ```
 
 ## Value Types for Data
@@ -137,20 +138,21 @@ public enum QuotaStatus: Int, Comparable, Sendable {
 Use actors for stateful domain services:
 
 ```swift
-public actor QuotaMonitor {
-    private let providers: [any AIProvider]
+@MainActor @Observable
+public final class QuotaMonitor {
+    public let providers: Providers               // the providers you keep
     private var previousStatuses: [String: QuotaStatus] = [:]
 
     public func refreshAll() async {
         await withTaskGroup(of: Void.self) { group in
-            for provider in providers {
-                group.addTask { await self.refreshProvider(provider) }
+            for login in providers.lineup {
+                group.addTask { await self.refresh(login) }
             }
         }
     }
 
-    public func overallStatus() -> QuotaStatus {
-        providers.compactMap(\.snapshot?.overallStatus).max() ?? .healthy
+    public var overallStatus: QuotaStatus {
+        providers.lineup.compactMap { $0.snapshot?.overallStatus }.max() ?? .healthy
     }
 }
 ```

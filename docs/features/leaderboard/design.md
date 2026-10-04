@@ -126,8 +126,13 @@ There is no `Leaderboard` type on the app side that holds standings. The app doe
 // Join: the membership makes its key, the server answers whether the name is free.
 try await membership.join(as: Username("tokenwhale"), sharing: [.claude, .codex])
 
-// Hourly, and once right after joining (driver, like NotifyPublishDriver).
+// The driver checks every few minutes and when the Mac wakes; the uploader decides
+// whether an hour has passed by the clock (driver, like NotifyPublishDriver).
 await uploader.uploadDue()                       // asks the membership for its days; never filters itself
+
+// An upload you asked for always goes: Refresh (on any tab), joining,
+// switching a shared provider on or off.
+await uploader.uploadNow()
 
 // Settings
 membership.share(.mistral)                       // throws if Mistral has no usage history on this Mac
@@ -160,6 +165,8 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | Your private key never leaves your Mac and is never logged | `SigningKeyStore` (Keychain, with the UserDefaults fallback Notify! uses for ad-hoc builds) |
 | Uploading a day again replaces it; it never adds | Server |
 | A missed hour, or a Mac asleep for days, heals on the next upload | `LeaderboardUploader`: uploads from the day of `lastUpload` to today, at most 30 days, and on join the last 30 |
+| Uploads stay hourly by the clock, even after the Mac sleeps | `LeaderboardUploader.uploadDue()`: uploads only when there is no `lastUpload` or it is at least an hour old by the wall clock. The App driver only asks often (every 5 minutes and on wake) and never decides |
+| An upload you asked for always goes, hour or not | `LeaderboardUploader.uploadNow()`: Refresh in the popover, whatever tab is open, joining, and switching a shared provider |
 | Every write and every private read is signed by the member's key | Server |
 | Who you are comes from the verified signature, never from a parameter | Server |
 | A signed request is accepted once, and only within 5 minutes of its timestamp | Server |
@@ -169,6 +176,9 @@ let days = membership.dailyTokens(from: usageHistories, in: range)
 | Standings rank by total tokens (the five counts summed); ties by username | Server |
 | A member's period ends on their own date, the one their Mac sent with its last upload, while it is within a day of UTC's | Server |
 | A hidden member is absent from the public board and still sees their own standing | Server |
+| The globe shows only countries, only for members who opted in, only where at least three are | Server |
+| A member who hasn't opted in sees the globe offered once, until they opt in or dismiss it | `LeaderboardMembership.showsGlobeHint` |
+| A profile link is a platform and a handle that fits its rules, never a URL | `ProfileLink` (the app, as you type) and the server (the authority); one `vectors.json` |
 | Leaving deletes the member and every row, on the server | Server — the app forgets the key only after a 2xx |
 
 ## 5 · The API
@@ -181,8 +191,9 @@ Host: `https://claudebar-api.tddworks.com`; the public board page is `https://cl
 | `PUT /usage` `{today, days: [DailyTokens]}` | signed | upserts each day; `today` is the Mac's date, refused when more than a day from UTC's |
 | `GET /me` | signed | the member, their standing in a view, every row they uploaded |
 | `GET /me/export` | signed | the same, as a downloadable JSON file |
-| `PATCH /me` `{username?, visible?}` | signed | rename, hide or show |
+| `PATCH /me` `{username?, visible?, shareCountry?, link?}` | signed | rename, hide or show; opt in to the globe (the server then keeps the country Cloudflare's edge reports) or out (it forgets it at once); set the profile link as `{platform, handle}` (`x`, `instagram` or `github`, each with its own username rule, pinned by `vectors.json`) or remove it with `null` |
 | `DELETE /me` | signed | deletes the member and every row |
+| `GET /globe?period=30d` | none | members and tokens per country, from opted-in members, only for countries with at least 3 of them; the rest are counted (`hiddenCountries`), never named |
 | `GET /board?period=7d&provider=claude` | none | standings of visible members, up to 100, cached briefly at the edge; the app reads it without its local HTTP cache |
 
 **Signing.** On join the app makes a `Curve25519.Signing.PrivateKey` (CryptoKit) and sends its public half. Every signed request carries:
@@ -205,6 +216,8 @@ The second destination after Notify! that sends ClaudeBar's own state outward, s
 - **What leaves the Mac:** the username, and per shared provider per day four token counts. No cost, no model names, no projects, no paths, no prompts, no account email.
 - **Where it goes:** a Cloudflare Worker run by tddworks, and from there to a public page if visible.
 - **Off by default.** Nothing is sent until the user joins, and only for providers they tick.
+- **A profile link is optional, and only a handle.** A member may add one X, Instagram or GitHub handle; the address is always built from the platform's own base, never typed. It is not verified, and every place it shows says so.
+- **The globe is opt-in, and only a country.** With *Show my country on the globe* on, the server keeps the two-letter country Cloudflare's edge sees the request come from; the Mac sends no location and asks for none. Never a city, coordinates or the IP. Publicly it is only ever a per-country total where at least three members are. Turning it off forgets the country at once.
 - **Leaving is deletion,** on the server, not hiding.
 - **The Worker logs no IP addresses and no request bodies.** Cloudflare itself still sees IPs to serve the request.
 
@@ -261,7 +274,7 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 | `UsageLog.Tokens.inputIncludesCacheRead` | Generic engine rule | A log whose input count already holds its cache reads; the engine takes them out, so input means the same for every provider |
 | `LeaderboardMembership` | The laws of §4 on this Mac | Only ticked providers leave; only providers with usage history can be ticked; a provider's logins are summed |
 | `RequestSigner` | The canonical string, signed with CryptoKit Ed25519 | Pinned by `Tests/DomainTests/Leaderboard/vectors.json`; the server checks an identical copy |
-| `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload` | `lastUpload` moves only on success |
+| `LeaderboardUploader` + App driver | Uploads 30 days on join, then hourly from `lastUpload`, and now when you ask | `lastUpload` moves only on success. The driver asks `uploadDue()` every 5 minutes and on `NSWorkspace.didWakeNotification`; a `Timer`'s clock stops while the Mac sleeps, so the hour is the uploader's to judge |
 | Server | The server's laws of §4 | Private repo `tddworks/claudebar-server`; deployed with the `cf` CLI |
 
 | Piece | Home |
@@ -269,7 +282,7 @@ A destination, not a provider, so it sits beside Notify! (AGENTS.md: destination
 | `LeaderboardMembership`, `DailyTokens`, `Username`, `BoardView`, `Standing`, `LeaderboardUploader` | `Sources/Domain/Leaderboard/` |
 | `@Mockable` ports `LeaderboardAPI` and `SigningKeyStore`; plain `LeaderboardSettingsRepository` (like Notify!'s) and `@MainActor` `TokenLogs`, faked in tests | `Sources/Domain/Leaderboard/` |
 | `LeaderboardHTTPClient`, `CredentialSigningKeyStore`; settings as `leaderboard.*` in `JSONSettingsRepository` | `Sources/Infrastructure/` |
-| `Leaderboard` (wiring + hourly timer), `MonitorTokenLogs`, popover tab, `LeaderboardPane` | `Sources/App/` |
+| `Leaderboard` (wiring, the 5-minute check and the wake observer, `refresh()` for the popover's Refresh), `MonitorTokenLogs`, popover tab, `LeaderboardPane` | `Sources/App/` |
 | Server and board page | Private repo `tddworks/claudebar-server` |
 
 ## 8 · Build sequence
@@ -281,7 +294,7 @@ Test-first slices, each green on its own. All nine are built; deployment is the 
 3. **Request signing.** Pins the canonical string and a signature against fixed vectors, shared with the Worker.
 4. **Worker: join, upload, board** (in `tddworks/claudebar-server`). Pins: bad signature 401, replay 401, stale timestamp 401, re-upload replaces, future day 400, hidden member off the board, ties by username.
 5. **Worker: `/me`, rename, hide, delete** (in `tddworks/claudebar-server`). Pins: delete removes every row; a member can only ever read their own rows.
-6. **`LeaderboardUploader`.** Pins: join uploads 30 days; an hourly upload resumes from `lastUpload`; a failed upload doesn't move `lastUpload`.
+6. **`LeaderboardUploader`.** Pins: join uploads 30 days; an hourly upload resumes from `lastUpload`; a failed upload doesn't move `lastUpload`; `uploadDue()` skips when `lastUpload` is under an hour old by the clock and uploads once it is an hour or more; `uploadNow()` uploads regardless.
 7. **Leaving.** Pins: the key is forgotten only after the server's 2xx; a failed delete leaves the member joined and says so.
 8. **App surfaces.** Popover tab and Settings pane, per the design concept.
 9. **Board page** on GitHub Pages.

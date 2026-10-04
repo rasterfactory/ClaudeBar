@@ -29,7 +29,7 @@ struct CommandCodeDefinitionTests {
     private func make(_ json: String = sampleResponse, whoami: String = #"{"user":{"userName":"alice"},"org":{"id":42}}"#,
                       status: Int = 200, creditsStatus: Int? = nil, networkFailure: Bool = false, acceptedTokens: [String] = ["personal", "work", "file"], vault: MemoryVault = MemoryVault(["commandcode.apiKey":"personal"]),
                       environment: [String:String] = [:], home: URL = FileManager.default.temporaryDirectory) throws -> Provider {
-        let definition = try Providers.builtIn("commandcode")
+        let definition = try ProviderFactory.builtIn("commandcode")
         let first = (try? JSONSerialization.jsonObject(with:Data(whoami.utf8))) as? [String:Any] ?? [:]
         let payload = first["data"] as? [String:Any] ?? first
         let expectedOrg = ((payload["org"] as? [String:Any])?["id"]).map { String(describing:$0) }
@@ -48,13 +48,13 @@ struct CommandCodeDefinitionTests {
         }
         return Provider(definition:definition,settings:InMemoryProviderSettings(),makeDataSource:{source,login in
             DataSources.make(source,providerId:definition.id,cliExecutor:MockCLIExecutor(),network:network,
-                makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:vault.scoped(to:login),
+                makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:ProviderFactory.builtInScripts,secrets:vault.scoped(to:login),
                 environment:{environment[$0]},homeDirectory:home,now:{Date()})
         },vault:vault)
     }
     private func parse(_ json: String, accountEmail: String? = nil) async throws -> UsageSnapshot {
         let user = try JSONSerialization.data(withJSONObject:["user":["userName":accountEmail ?? ""],"org":["id":42]])
-        return try await make(json,whoami:String(decoding:user,as:UTF8.self)).defaultAccount.refresh()
+        return try await make(json,whoami:String(decoding:user,as:UTF8.self)).refreshPlain()
     }
 
     @Test
@@ -261,15 +261,15 @@ struct CommandCodeDefinitionTests {
     @Test func `account key is isolated from the default environment`() async throws {
         let vault = MemoryVault(["commandcode.apiKey":"personal"])
         let provider = try make(vault:vault,environment:["COMMAND_CODE_API_KEY":"personal"])
-        let work = try provider.addAccount(filling:["apiKey":"work"])
+        let work = try provider.accounts.add(filling:["apiKey":"work"])
         #expect(work.isEnabled)
-        #expect(try await work.refresh().accountEmail == "alice")
+        #expect(try await provider.refresh(work).accountEmail == "alice")
         vault.secrets["\(work.id).apiKey"] = nil
-        await #expect(throws:UsageError.authenticationRequired) { try await work.refresh() }
+        await #expect(throws:UsageError.authenticationRequired) { try await provider.refresh(work) }
     }
     @Test(arguments:[401,403]) func `rejected keys preserve the login hint`(_ status:Int) async throws {
         await #expect(throws:UsageError.sessionExpired(hint:"Run `cmd login` or set COMMAND_CODE_API_KEY.")) {
-            try await make(status:status).defaultAccount.refresh()
+            try await make(status:status).refreshPlain()
         }
     }
     @Test func `saved CLI credentials remain readable`() async throws {
@@ -278,12 +278,12 @@ struct CommandCodeDefinitionTests {
         let dir = home.appendingPathComponent(".commandcode")
         try FileManager.default.createDirectory(at:dir,withIntermediateDirectories:true)
         try Data(#"{"apiKey":"file"}"#.utf8).write(to:dir.appendingPathComponent("auth.json"))
-        #expect(try await make(vault:MemoryVault(),home:home).defaultAccount.refresh().quotas.count == 3)
+        #expect(try await make(vault:MemoryVault(),home:home).refreshPlain().quotas.count == 3)
     }
 
     @Test(arguments:["{}",#"{"data":{"user":{"name":"Alice"},"org":{"id":"team & org"}}}"#])
     func `missing organization and wrapped organization queries remain valid`(_ whoami:String) async throws {
-        #expect(try await make(whoami:whoami).defaultAccount.refresh().quotas.count == 3)
+        #expect(try await make(whoami:whoami).refreshPlain().quotas.count == 3)
     }
 
     @Test(arguments: [
@@ -303,17 +303,18 @@ struct CommandCodeDefinitionTests {
         if !file.isEmpty { try Data(file.utf8).write(to: directory.appendingPathComponent("auth.json")) }
         let token = environment["COMMAND_CODE_API_KEY"] ?? environment["COMMANDCODE_API_KEY"] ?? "file"
         let provider = try make(acceptedTokens: [token], vault: MemoryVault(), environment: environment, home: home)
-        #expect(await provider.defaultAccount.isAvailable() == available)
-        if available { #expect(try await provider.defaultAccount.refresh().quotas.count == 3) }
-        else { await #expect(throws: UsageError.authenticationRequired) { try await provider.defaultAccount.refresh() } }
+        #expect(await provider.isPlainAvailable() == available)
+        if available { #expect(try await provider.refreshPlain().quotas.count == 3) }
+        else { await #expect(throws: UsageError.authenticationRequired) { try await provider.refreshPlain() } }
     }
 
     @Test func `definition preserves identity and initial state`() throws {
-        let provider = try make().defaultAccount
+        let providerProduct = try make()
+        let provider = providerProduct.defaultAccount
         #expect(provider.id == "commandcode")
-        #expect(provider.name == "Command Code")
+        #expect(providerProduct.lineupName(of: provider) == "Command Code")
         #expect(provider.cliCommand == "cmd")
-        #expect(provider.dashboardURL?.absoluteString == "https://commandcode.ai/usage")
+        #expect(providerProduct.dashboardURL(of: provider)?.absoluteString == "https://commandcode.ai/usage")
         #expect(provider.isEnabled)
         #expect(provider.snapshot == nil)
         #expect(provider.lastError == nil)
@@ -325,29 +326,32 @@ struct CommandCodeDefinitionTests {
         let error: UsageError = [401,403].contains(status)
             ? .sessionExpired(hint: "Run `cmd login` or set COMMAND_CODE_API_KEY.")
             : .executionFailed("HTTP error: \(status)")
-        let account = try make(creditsStatus: status).defaultAccount
-        await #expect(throws: error) { try await account.refresh() }
+        let product = try make(creditsStatus: status)
+        let account = product.defaultAccount
+        await #expect(throws: error) { try await product.refresh(account) }
         #expect(account.snapshot == nil)
         #expect(account.lastError as? UsageError == error)
     }
     @Test func `a rate limit on credits is remembered, not reported as an HTTP error`() async throws {
-        let account = try make(creditsStatus: 429).defaultAccount
-        await #expect { try await account.refresh() } throws: { ($0 as? UsageError)?.tag == "rateLimited" }
+        let product = try make(creditsStatus: 429)
+        let account = product.defaultAccount
+        await #expect { try await product.refresh(account) } throws: { ($0 as? UsageError)?.tag == "rateLimited" }
         #expect(account.snapshot == nil)
     }
 
     @Test func `network failure cannot become a successful snapshot`() async throws {
-        let account = try make(networkFailure: true).defaultAccount
-        await #expect(throws: UsageError.self) { try await account.refresh() }
+        let product = try make(networkFailure: true)
+        let account = product.defaultAccount
+        await #expect(throws: UsageError.self) { try await product.refresh(account) }
         #expect(account.snapshot == nil)
     }
     @Test(arguments: ["[]", "not JSON"])
     func `both responses must be JSON objects`(_ body: String) async throws {
         await #expect(throws: UsageError.parseFailed("Failed to parse Command Code response as JSON")) {
-            try await make(body).defaultAccount.refresh()
+            try await make(body).refreshPlain()
         }
         await #expect(throws: UsageError.parseFailed("Failed to parse Command Code response as JSON")) {
-            try await make(whoami: body).defaultAccount.refresh()
+            try await make(whoami: body).refreshPlain()
         }
     }
 

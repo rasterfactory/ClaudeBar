@@ -2,7 +2,7 @@ import DataSources
 import Quotas
 import Foundation
 import Mockable
-import Providers
+@testable import Providers
 import Testing
 
 /// *Sign in with browser*: the definition's login runs into a new folder, and
@@ -33,7 +33,7 @@ struct SignInAccountsTests {
     }
 
     private func signIn(_ login: AccountSignIn, into codex: Provider) async throws -> Account {
-        try await codex.signIn(with: login, under: root)
+        try await codex.accounts.signIn(with: login, under: root)
     }
 
 
@@ -107,11 +107,11 @@ struct SignInAccountsTests {
     @Test
     func `adding a login saves it`() throws {
         let settings = InMemoryProviderSettings()
-        let codex = try Providers.make("codex", settings: settings)
+        let codex = try ProviderFactory.make("codex", settings: settings)
         let work = ProviderAccountConfig(accountId: "a", label: "", email: "w@example.com",
                                          probeConfig: ["codexHome": "/tmp/a", "chatgptAccountId": "a"])
 
-        codex.add(work)
+        codex.accounts.add(work)
 
         #expect(settings.accounts(forProvider: "codex") == [work])
     }
@@ -123,7 +123,7 @@ struct SignInAccountsTests {
         let codex = try stub.makeProvider("codex")
         let added = try await signIn(codexLogin(email: "work@example.com", folders: stub.folders), into: codex)
 
-        codex.remove(added)
+        codex.accounts.remove(added)
 
         #expect(stub.folders.all.isEmpty)
         #expect(stub.settings.accounts(forProvider: "codex").isEmpty)
@@ -141,9 +141,9 @@ struct SignInAccountsTests {
             .write(to: folder.appendingPathComponent("auth.json"))
         try stub.folders.create(folder)
         let codex = try stub.makeProvider("codex")
-        let added = try codex.addAccount(signedInAt: folder)
+        let added = try codex.accounts.add(signedInAt: folder)
 
-        codex.remove(added)
+        codex.accounts.remove(added)
 
         #expect(stub.folders.exists(folder))
     }
@@ -159,7 +159,8 @@ struct SignInAccountsTests {
         let added = try await signIn(codexLogin(email: "work@example.com", folders: stub.folders), into: codex)
         let launch = SignInLaunch()
 
-        let usage = try await codex.signInAgain(added, with: launch.recording(folders: stub.folders))
+        try await codex.accounts.signInAgain(added, with: launch.recording(folders: stub.folders))
+        let usage = try await codex.refresh(added)
 
         #expect(launch.directory == added.folder?.url.path)
         #expect(usage.sessionQuota?.percentRemaining == 90)
@@ -177,10 +178,10 @@ struct SignInAccountsTests {
         try JSONSerialization.data(withJSONObject: ["tokens": ["access_token": "t", "account_id": "me", "id_token": jwt]])
             .write(to: folder.appendingPathComponent("auth.json"))
         let codex = try stub.makeProvider("codex")
-        let added = try codex.addAccount(signedInAt: folder)
+        let added = try codex.accounts.add(signedInAt: folder)
         let launch = SignInLaunch()
 
-        await #expect(throws: UsageError.self) { try await codex.signInAgain(added, with: launch.recording(folders: stub.folders)) }
+        await #expect(throws: UsageError.self) { try await codex.accounts.signInAgain(added, with: launch.recording(folders: stub.folders)) }
 
         #expect(launch.directory == nil)
     }
@@ -189,13 +190,13 @@ struct SignInAccountsTests {
 
     @Test
     func `codex and claude offer sign-in first, then choosing a folder`() throws {
-        #expect(try Providers.builtIn("codex").accounts?.ways == [.signIn, .folder])
-        #expect(try Providers.builtIn("claude").accounts?.ways == [.signIn, .folder])
+        #expect(try ProviderFactory.builtIn("codex").accounts?.ways == [.signIn, .folder])
+        #expect(try ProviderFactory.builtIn("claude").accounts?.ways == [.signIn, .folder])
     }
 
     @Test
     func `claude signs in with its own config folder and no inherited keys`() throws {
-        let signIn = try #require(try Providers.builtIn("claude").accounts?.signIn)
+        let signIn = try #require(try ProviderFactory.builtIn("claude").accounts?.signIn)
 
         #expect(signIn.args == ["auth", "login", "--claudeai"])
         #expect(signIn.homeVariable == "CLAUDE_CONFIG_DIR")

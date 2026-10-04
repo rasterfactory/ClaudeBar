@@ -12,7 +12,7 @@ import Quotas
 struct AmpDefinitionTests {
 
     private func make(_ output: String, exitCode: Int32 = 0, executionError: UsageError? = nil, located: Bool = true, vault: MemoryVault = MemoryVault()) throws -> Provider {
-        let definition = try Providers.builtIn("ampcode")
+        let definition = try ProviderFactory.builtIn("ampcode")
         let cli = MockCLIExecutor()
         given(cli).locate(.any).willReturn(located ? "/usr/local/bin/amp" : nil)
         given(cli).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
@@ -26,11 +26,11 @@ struct AmpDefinitionTests {
             }
         return Provider(definition: definition, settings: InMemoryProviderSettings(), makeDataSource: { source, login in
             DataSources.make(source, providerId: definition.id, cliExecutor: cli, network: MockNetworkClient(),
-                makeTransport: { _,_,_,_ in MockRPCTransport() }, scripts: Providers.builtInScripts,
+                makeTransport: { _,_,_,_ in MockRPCTransport() }, scripts: ProviderFactory.builtInScripts,
                 secrets: vault.scoped(to: login), environment: { _ in nil }, homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
         }, vault: vault)
     }
-    private func parse(_ output: String) async throws -> UsageSnapshot { try await make(output).defaultAccount.refresh() }
+    private func parse(_ output: String) async throws -> UsageSnapshot { try await make(output).refreshPlain() }
 
     // MARK: - Sample Data
 
@@ -221,29 +221,30 @@ struct AmpDefinitionTests {
         }
     }
     @Test func `missing binary keeps the legacy error`() async throws {
-        let account = try make(Self.sampleOutput, located: false).defaultAccount
-        #expect(!(await account.isAvailable()))
-        await #expect(throws: UsageError.cliNotFound("AmpCode")) { try await account.refresh() }
+        let product = try make(Self.sampleOutput, located: false)
+        let account = product.defaultAccount
+        #expect(!(await product.isAvailable(account)))
+        await #expect(throws: UsageError.cliNotFound("AmpCode")) { try await product.refresh(account) }
     }
     @Test func `nonzero exit cannot become usage`() async throws {
         await #expect(throws: UsageError.executionFailed("`amp` exited with code 1")) {
-            try await make(Self.sampleOutput, exitCode: 1).defaultAccount.refresh()
+            try await make(Self.sampleOutput, exitCode: 1).refreshPlain()
         }
     }
     @Test func `added account cannot use a default CLI login without its own key`() async throws {
         let vault = MemoryVault()
         let provider = try make(Self.sampleOutput, vault: vault)
-        let work = try provider.addAccount(filling: ["apiKey": "work-key"])
+        let work = try provider.accounts.add(filling: ["apiKey": "work-key"])
         #expect(work.isEnabled)
-        #expect(try await work.refresh().quotas.count == 2)
+        #expect(try await provider.refresh(work).quotas.count == 2)
         vault.secrets["\(work.id).apiKey"] = nil
-        await #expect(throws: UsageError.authenticationRequired) { try await work.refresh() }
-        #expect(try await provider.defaultAccount.refresh().quotas.count == 2)
+        await #expect(throws: UsageError.authenticationRequired) { try await provider.refresh(work) }
+        #expect(try await provider.refreshPlain().quotas.count == 2)
     }
 
     @Test func `a failure while running is reported as it happened`() async throws {
         await #expect(throws: UsageError.executionFailed("timeout")) {
-            try await make(Self.sampleOutput, executionError: .executionFailed("timeout")).defaultAccount.refresh()
+            try await make(Self.sampleOutput, executionError: .executionFailed("timeout")).refreshPlain()
         }
     }
 

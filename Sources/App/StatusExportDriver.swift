@@ -134,7 +134,7 @@ public final class StatusExportDriver {
             burnRateThreshold: settings.burnRateThreshold
         )
 
-        let selected = monitor.selectedProvider
+        let selected = monitor.selectedLogin
         let statusString: String
         if let labelStatus = label?.status {
             statusString = statusName(labelStatus)
@@ -145,12 +145,12 @@ public final class StatusExportDriver {
         }
 
         let isoFormatter = ISO8601DateFormatter()
-        let providers = monitor.enabledProviders.map { provider in
+        let providers = monitor.lineup.map { provider in
             let snapshot = monitor.usage(of: provider)
             let primary = snapshot?.quotas.first ?? snapshot?.lowestQuota
             return ExportPayload.ProviderSummary(
                 id: provider.id,
-                name: provider.name,
+                name: monitor.lineupName(of: provider),
                 status: statusName(snapshot?.overallStatus(under: settings.statusPolicy) ?? .healthy),
                 percentRemaining: primary?.percentRemaining,
                 percentUsed: primary?.percentUsed,
@@ -162,10 +162,10 @@ public final class StatusExportDriver {
         return ExportPayload(
             enabled: true,
             updatedAt: "",
-            menuBarText: label?.text ?? selected?.name ?? "ClaudeBar",
+            menuBarText: label?.text ?? selected.map(monitor.lineupName(of:)) ?? "ClaudeBar",
             status: statusString,
             selectedProviderId: monitor.selectedProviderId,
-            selectedProviderName: selected?.name,
+            selectedProviderName: selected.map(monitor.lineupName(of:)),
             providers: providers
         )
     }

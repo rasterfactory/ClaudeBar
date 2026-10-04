@@ -55,7 +55,20 @@ final class StatusItemLabelDriver {
     private var lastImage: NSImage?
     private var lastContent: LabelContent?
     private var lastLabelSelection: [String]?
+    /// The tooltip text of the last write that reached the button. The blink
+    /// never changes it, and re-setting an identical string still crosses into
+    /// the system's status-item service, so identical strings skip the write
+    /// (issue #281).
+    private var lastTooltip: String?
+    private var hasAppliedTooltip = false
     private var imageWipeObservation: NSKeyValueObservation?
+
+    /// Coalesces renders into actual button writes: at most one per
+    /// `minimumWriteInterval`, plus the trailing flush. Everything the pixels
+    /// depend on — image, position, tooltip, accessibility — goes through it,
+    /// so no render can push more than one update per interval into the
+    /// system's status-item service (issue #281).
+    private var writeGate: StatusItemWriteGate<LabelContent>?
 
     init(monitor: QuotaMonitor, settings: AppSettings, sessionMonitor: SessionMonitor) {
         self.monitor = monitor
@@ -134,6 +147,19 @@ final class StatusItemLabelDriver {
         self.statusItem = statusItem
         labelSync?.stop()
 
+        // A fresh gate per attachment: its writes resolve `statusItem?.button`
+        // at write time, so a flush left over from the previous item lands on
+        // the button we actually hold now.
+        writeGate = StatusItemWriteGate(
+            minimumInterval: Self.minimumWriteInterval,
+            write: { [weak self] content in self?.applyToButton(content) }
+        )
+        // The new button has never seen a tooltip: forget what the previous
+        // one had, so the first write assigns tooltip and accessibility to
+        // it instead of skipping as "unchanged" (issue #281 review).
+        hasAppliedTooltip = false
+        lastTooltip = nil
+
         let sync = ObservationRenderSync(
             read: { [self] in currentLabelContent() },
             render: { [self] content in render(content) }
@@ -185,7 +211,7 @@ final class StatusItemLabelDriver {
 
     private func currentLabelContent() -> LabelContent {
         let primaryQuotaKey = settings.menuBarPercentageQuotaKey.isEmpty
-            ? (monitor.provider(for: settings.menuBarPercentageProviderId).flatMap { monitor.usage(of: $0) }?.quotas.first?.quotaType.quotaKey ?? "session")
+            ? (monitor.login(id: settings.menuBarPercentageProviderId).flatMap { monitor.usage(of: $0) }?.quotas.first?.quotaType.quotaKey ?? "session")
             : settings.menuBarPercentageQuotaKey
         let freshLabel = monitor.menuBarLabel(
             providerId: settings.menuBarPercentageProviderId,
@@ -216,19 +242,19 @@ final class StatusItemLabelDriver {
         )
         let hasCountdownColon = ([label].compactMap { $0 } + additionalLabels.map(\.label))
             .contains { !CountdownColon.ranges(in: $0.text).isEmpty }
-        let primaryProvider = monitor.enabledProviders.first { $0.id == settings.menuBarPercentageProviderId }
+        let primaryProvider = monitor.lineup.first { $0.id == settings.menuBarPercentageProviderId }
         let showsQuota = settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled
         let shownIds = [settings.menuBarPercentageProviderId] + additionalLabels.map(\.providerId)
         let accountNames = MenuBarAccountName.names(Dictionary(uniqueKeysWithValues: Set(shownIds).compactMap { id in
-            (monitor.enabledProviders.first { $0.id == id } as? Account)
-                .flatMap { $0.provider.hasSeveralAccounts ? (id, settings.shown($0.displayName)) : nil }
+            monitor.login(id: id)
+                .flatMap { monitor.product(of: $0)?.accounts.hasSeveral == true ? (id, settings.shown($0.displayName)) : nil }
         }))
         let primaryProviderName = Self.showsPrimaryLogo(
             showsQuota: showsQuota,
             hasOtherReadouts: !additionalLabels.isEmpty,
             hasAccountName: accountNames[settings.menuBarPercentageProviderId] != nil,
             logoAlways: settings.menuBarProviderLogoEnabled
-        ) ? primaryProvider.map { settings.shown($0.name) } : nil
+        ) ? primaryProvider.map { settings.shown(monitor.lineupName(of: $0)) } : nil
 
         return LabelContent(
             label: label,
@@ -265,7 +291,7 @@ final class StatusItemLabelDriver {
     /// we have nothing to fall back to, so the normal "no data yet" icon shows.
     private func lastKnownLabel(whenFreshIsMissing freshLabel: MenuBarLabel?) -> MenuBarLabel? {
         guard freshLabel == nil, let previous = lastContent?.label else { return nil }
-        let providerHasSnapshot = monitor.enabledProviders.contains {
+        let providerHasSnapshot = monitor.lineup.contains {
             $0.id == settings.menuBarPercentageProviderId && $0.snapshot != nil
         }
         return providerHasSnapshot ? previous : nil
@@ -274,11 +300,11 @@ final class StatusItemLabelDriver {
     /// Status of the selected provider, considering the burn-rate setting.
     /// Mirrors the dropdown's status logic for the icon-only fallback.
     private var effectiveSelectedProviderStatus: QuotaStatus {
-        monitor.selectedProvider.flatMap { monitor.usage(of: $0) }?.overallStatus(under: settings.statusPolicy) ?? .healthy
+        monitor.selectedLogin.flatMap { monitor.usage(of: $0) }?.overallStatus(under: settings.statusPolicy) ?? .healthy
     }
 
     private func render(_ content: LabelContent) {
-        guard let button = statusItem?.button else {
+        guard statusItem?.button != nil else {
             // Loud but once: the symptom is a menu bar item that is invisible
             // and unclickable, which otherwise leaves no trace in the log.
             if !hasLoggedMissingButton {
@@ -289,9 +315,24 @@ final class StatusItemLabelDriver {
         }
         // Skip when nothing changed and our image is still in place —
         // re-setting an identical image redraws the button and can flicker.
-        if content == lastContent, let lastImage, button.image === lastImage {
+        if content == lastContent, let lastImage, statusItem?.button?.image === lastImage {
+            // The screen already shows this content, so a flush still armed
+            // from an earlier render is stale: point it at what is visible
+            // now instead of letting it publish an older value (issue #281).
+            writeGate?.reconcile(content)
             return
         }
+        // Everything past this point is a write into the system's status-item
+        // service. Coalesce instead of pushing every render straight through:
+        // macOS 26 aborts under a rapid stream of such writes (issue #281),
+        // and the blink tick alone rendered twice a second.
+        writeGate?.submit(content)
+    }
+
+    /// The write gate's single sink: one actual write into the button. Runs at
+    /// most once per `minimumWriteInterval`, plus the trailing flush.
+    private func applyToButton(_ content: LabelContent) {
+        guard let button = statusItem?.button else { return }
         let image = Self.compose(content, theme: resolvedTheme(for: content))
         lastContent = content
         lastImage = image
@@ -300,6 +341,12 @@ final class StatusItemLabelDriver {
         let primaryText = [content.primaryProviderName, content.label?.text].compactMap { $0 }.joined(separator: " ")
         let tooltip = settings.shown(([primaryText].filter { !$0.isEmpty } + content.additionalLabels.map(\.text))
             .joined(separator: " | "))
+        // The blink never changes the tooltip text; re-setting an identical
+        // string would still round-trip into the system service, so apply the
+        // string properties only when the text actually changed (issue #281).
+        guard !hasAppliedTooltip || tooltip != lastTooltip else { return }
+        hasAppliedTooltip = true
+        lastTooltip = tooltip
         button.toolTip = tooltip.isEmpty ? nil : tooltip
         button.setAccessibilityLabel(tooltip.isEmpty ? "ClaudeBar" : tooltip)
     }
@@ -317,6 +364,13 @@ final class StatusItemLabelDriver {
     /// name — or when the person asked for it always. Never without a readout.
     static func showsPrimaryLogo(showsQuota: Bool, hasOtherReadouts: Bool, hasAccountName: Bool, logoAlways: Bool) -> Bool {
         showsQuota && (hasOtherReadouts || hasAccountName || logoAlways)
+    }
+
+    /// Whether the themed status icon stands in for the readout. Not beside a
+    /// logo: the logo only shows when a readout was asked for, so a logo
+    /// without one is waiting for its first reading, and alone it says so.
+    static func showsStatusIcon(hasLabel: Bool, showsLogo: Bool) -> Bool {
+        !hasLabel && !showsLogo
     }
 
     // MARK: - Image Composition
@@ -352,7 +406,7 @@ final class StatusItemLabelDriver {
         if let label = content.label {
             parts.append(quotaImage(label, stacked: content.stacked, size: content.stackedSize,
                                     colonVisible: content.colonVisible, theme: theme, dark: content.isDarkAppearance))
-        } else {
+        } else if showsStatusIcon(hasLabel: false, showsLogo: content.primaryProviderId != nil) {
             if let symbolName = statusIconSymbol(
                 theme: theme, status: content.fallbackStatus, besideSessionGlyph: showsSessionGlyph
             ) {
@@ -612,10 +666,24 @@ final class StatusItemLabelDriver {
 
     // MARK: - Countdown Tick
 
-    /// Half a second on, half a second off — the cadence a digital clock blinks
-    /// its separator at. Also the rate the label re-reads the wall clock, so a
-    /// countdown advances within half a second of the true minute boundary.
-    private static let blinkInterval: TimeInterval = 0.5
+    /// One second on, one second off — half the cadence a digital clock
+    /// blinks its separator at, so the pulse reads as a slow 1 Hz beat. Also
+    /// the rate the label re-reads the wall clock, so a countdown advances
+    /// within about a second of the true minute boundary.
+    ///
+    /// Deliberately equal to `minimumWriteInterval`, and never fired early by
+    /// the runloop: a 0.5s tick under the 1s write gate would replace the
+    /// bright phase with the dim one inside every window, leaving the colon
+    /// permanently dimmed (the pulse would die). At 1s each phase lands on the
+    /// window boundary and writes alternate cleanly.
+    private static let blinkInterval: TimeInterval = 1.0
+
+    /// Minimum spacing between actual status-item writes. The tick runs at the
+    /// same rate (see `blinkInterval`), but probe refreshes, hook events and
+    /// wake repaints can still render between ticks, and macOS 26's Control
+    /// Center status-items XPC service aborts under a rapid stream of updates
+    /// (issue #281) — so every render is coalesced through the gate.
+    private static let minimumWriteInterval: TimeInterval = 1.0
 
     /// Starts watching whether a duration is shown at all, running the
     /// countdown tick only while one is. Sibling of `startMonitoringLifecycle`.
@@ -700,7 +768,7 @@ final class StatusItemLabelDriver {
     /// selected provider. Disabled providers are dropped (issue #67).
     private var backgroundRefreshProviderIds: [String]? {
         guard settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled else { return nil }
-        let enabledProviderIds = Set(monitor.enabledProviders.map(\.id))
+        let enabledProviderIds = Set(monitor.lineup.map(\.id))
         var seen = Set<String>()
         return ([monitor.selectedProviderId, settings.menuBarPercentageProviderId]
             + settings.menuBarAdditionalProviderIds)

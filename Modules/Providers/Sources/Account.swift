@@ -7,15 +7,20 @@ import Observation
 /// it. Two Codex logins are two accounts of one `Provider`: two things to
 /// watch (each its own pill and menu-bar entry), one thing to fix.
 ///
-/// An account has no fetching of its own. It conforms to `AIProvider` only as
-/// a shim, forwarding to its provider, so the monitor, the pills and the menu
-/// bar keep working until `AIProvider` folds into `Provider`.
+/// It knows only itself (TARGET §12, slice 7): who it is, its values, its
+/// pause, what we last saw, and what its definition alone says. It names its
+/// product by id and never refers to it — ask the product about a login
+/// (`provider.refresh(account)`, `provider.isInLineup(account)`), found
+/// through the root (`providers.provider(of: account)`).
 @MainActor
 @Observable
-public final class Account: AIProvider {
-    /// The product this login belongs to. Held strongly: the app keeps
-    /// accounts, and an account needs its provider to fetch.
-    public let provider: Provider
+public final class Account: Identifiable {
+    /// Its product, by id — a value, never a reference.
+    public let providerId: String
+    /// What its product's definition says — data, given at birth.
+    @ObservationIgnored let definition: ProviderDefinition
+    /// Where its own pause is kept.
+    @ObservationIgnored private let settings: any ProviderSettingsRepository
     /// `codex` for the default login, `codex.<account>` for an added one —
     /// the ids every saved setting and menu-bar pin is keyed by.
     public let id: String
@@ -32,8 +37,15 @@ public final class Account: AIProvider {
     /// before it was recorded.
     public let madeBy: AccountOrigin?
 
+    /// The login's own *Pause* — never the product's switch.
     public var isEnabled: Bool {
-        didSet { provider.settings.setEnabled(isEnabled, forProvider: id) }
+        didSet {
+            if isDefault {
+                settings.setOn(isEnabled, Provider.plainLoginKey, forProvider: providerId)
+            } else {
+                settings.setEnabled(isEnabled, forProvider: id)
+            }
+        }
     }
 
     // MARK: - What we last saw
@@ -49,11 +61,17 @@ public final class Account: AIProvider {
 
     /// What Settings calls that data source — *RPC*, *API*, *Terminal*.
     public var answeredByLabel: String? {
-        answeredBy.map { provider.definition.dataSource($0)?.label ?? $0 }
+        answeredBy.map { definition.dataSource($0)?.label ?? $0 }
     }
 
-    init(provider: Provider, login: ProviderAccount, values: [String: String], madeBy: AccountOrigin? = nil) {
-        self.provider = provider
+    init(definition: ProviderDefinition, settings: any ProviderSettingsRepository, login: ProviderAccount,
+         values: [String: String], madeBy: AccountOrigin? = nil,
+         usageHistory: UsageHistory? = nil, guestPasses: GuestPasses? = nil) {
+        self.providerId = definition.id
+        self.definition = definition
+        self.settings = settings
+        self.usageHistory = usageHistory
+        self.guestPasses = guestPasses
         self.id = login.id
         self.isDefault = login.isDefault
         self.accountId = login.accountId
@@ -61,8 +79,23 @@ public final class Account: AIProvider {
         self.email = login.email
         self.values = values
         self.madeBy = madeBy
-        self.isEnabled = provider.settings.isEnabled(forProvider: login.id, defaultValue: provider.definition.enabledByDefault)
+        self.isEnabled = login.isDefault
+            ? settings.isOn(Provider.plainLoginKey, forProvider: definition.id) ?? true
+            : settings.isEnabled(forProvider: login.id, defaultValue: definition.enabledByDefault)
     }
+
+    /// *NOT SET UP* — no usage yet, and the last refresh found no tool on
+    /// this Mac or no sign-in to read with. Waiting for the person, not
+    /// failing: the definition's `setup` says what it takes (#198).
+    public var needsSetup: Bool {
+        guard snapshot == nil, let error = lastError as? UsageError else { return false }
+        switch error {
+        case .cliNotFound, .authenticationRequired: return true
+        default: return false
+        }
+    }
+
+    public var readsUsage: Bool { usageHistory?.hasUsage == true }
 
     /// QUOTA health — the worst quota in its usage. A failed fetch is not a
     /// status: it is `lastError`, and the last usage stays.
@@ -70,9 +103,12 @@ public final class Account: AIProvider {
 
     /// Where the login lives, for a login added by its folder.
     public var folder: SignedInFolder? {
-        guard !isDefault, let rule = provider.definition.accounts?.folder, let path = values[rule.savedAs] else { return nil }
+        guard !isDefault, let rule = definition.accounts?.folder, let path = values[rule.savedAs] else { return nil }
         return SignedInFolder(url: URL(fileURLWithPath: path), madeBy: madeBy ?? .folder)
     }
+
+    /// What its tightest quota has left, in percent — `nil` before a usage.
+    public var percentLeft: Double? { snapshot?.lowestQuota?.percentRemaining }
 
     /// The email the data source reported, else the one it was added with.
     public var accountEmail: String? { snapshot?.accountEmail ?? email }
@@ -82,46 +118,21 @@ public final class Account: AIProvider {
     public var displayName: String {
         let given = label.trimmingCharacters(in: .whitespacesAndNewlines)
         if !given.isEmpty { return given }
-        return accountEmail ?? provider.name
+        return accountEmail ?? definition.profile.name
     }
 
-    // MARK: - AIProvider (forwarded to the provider)
+    // MARK: - What its definition says
 
-    /// The pill's name: the product's while this is the only login to tell
-    /// apart, else the account's own.
-    public var name: String { provider.hasSeveralAccounts ? displayName : provider.name }
-
-    public var cliCommand: String { provider.definition.cli ?? "" }
-    /// The dashboard for the plan the last usage reported (#328).
-    public var dashboardURL: URL? {
-        provider.definition.profile.links.dashboard(for: snapshot?.accountTier, settings: provider.settingFills(for: self))
-    }
-    public var statusPageURL: URL? { provider.definition.profile.links.status }
-    public var backgroundRefreshFloor: Duration? { provider.backgroundRefreshFloor }
-    /// Guest passes are read with the default login's CLI, so only it has them.
-    public var guestPasses: GuestPasses? { isDefault ? provider.guestPasses : nil }
+    /// Its product's face — symbol, colours — as the definition gives it.
+    public var look: ProviderLook { definition.profile.look }
+    public var cliCommand: String { definition.cli ?? "" }
+    public var statusPageURL: URL? { definition.profile.links.status }
+    /// *Share Claude Code* — read with the plain login's CLI, so only it has them.
+    public let guestPasses: GuestPasses?
     /// What this login used, day by day, from its own logs — `nil` when the
-    /// provider offers no usage history, or doesn't say where an added
-    /// login's logs are.
-    public var usageHistory: UsageHistory? { provider.usageHistory(for: self) }
-
-    public func isAvailable() async -> Bool {
-        await provider.isAvailable(self)
-    }
-
-    @discardableResult
-    public func refresh() async throws -> UsageSnapshot {
-        try await provider.refresh(self, .interactive)
-    }
-
-    @discardableResult
-    public func refresh(_ kind: RefreshKind) async throws -> UsageSnapshot {
-        try await provider.refresh(self, kind)
-    }
-
-    public func hasKey(for kind: String) -> Bool {
-        provider.hasKey(for: kind, account: self)
-    }
+    /// provider offers no usage history, doesn't say where an added login's
+    /// logs are, or the login was removed (its history goes with it).
+    public internal(set) var usageHistory: UsageHistory?
 
     // MARK: - Recording a fetch (the provider's)
 
@@ -131,6 +142,19 @@ public final class Account: AIProvider {
         lastFailedStep = nil
         answeredBy = kind
         return usage
+    }
+
+    /// Some of its data sources failed while others answered (`together`):
+    /// the usage they gave stays, and the failure shows beside it as fetch
+    /// health — never wiping what was seen.
+    func noteFailure(_ error: Error) {
+        if let failure = error as? DataSourceError {
+            lastError = failure.reason
+            lastFailedStep = failure.step
+        } else {
+            lastError = error
+            lastFailedStep = nil
+        }
     }
 
     func fail(_ error: Error) {
@@ -147,5 +171,19 @@ public final class Account: AIProvider {
            tag == "authenticationRequired" || tag == "sessionExpired" {
             snapshot = nil
         }
+    }
+}
+
+// MARK: - A login on the Settings page
+
+public extension Configuration {
+    /// What a setting holds for this login.
+    func value(of setting: Setting, for account: Account) -> String? {
+        value(of: setting, ownValues: account.isDefault ? [:] : account.values)
+    }
+
+    /// Whether a value of this setting is saved for this login.
+    func hasSaved(_ setting: Setting, for account: Account) -> Bool {
+        hasSaved(setting, login: account.id, ownValues: account.isDefault ? nil : account.values)
     }
 }

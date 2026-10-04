@@ -12,8 +12,8 @@ struct CodexUsageHistoryTests {
     private let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 
     private func history() throws -> UsageHistory {
-        let definition = try #require(try Providers.builtIn("codex").usageHistory)
-        return UsageHistory(log: DataSources.makeUsageLog(definition, scripts: Providers.builtInScripts,
+        let definition = try #require(try ProviderFactory.builtIn("codex").usageHistory)
+        return UsageHistory(log: DataSources.makeUsageLog(definition, scripts: ProviderFactory.builtInScripts,
                                                           environment: { _ in nil }, homeDirectory: home))
     }
 
@@ -92,13 +92,13 @@ struct CodexUsageHistoryTests {
 
     @Test func `Codex's logs name no model, so its history has no cost to show`() throws {
         #expect(try !history().knowsCost)
-        let claude = try #require(try Providers.builtIn("claude").usageHistory)
-        #expect(UsageHistory(log: DataSources.makeUsageLog(claude, scripts: Providers.builtInScripts,
+        let claude = try #require(try ProviderFactory.builtIn("claude").usageHistory)
+        #expect(UsageHistory(log: DataSources.makeUsageLog(claude, scripts: ProviderFactory.builtInScripts,
                                                            environment: { _ in nil }, homeDirectory: home)).knowsCost)
     }
 
     @Test func `an added account reads its own Codex folder`() throws {
-        let definition = try Providers.builtIn("codex")
+        let definition = try ProviderFactory.builtIn("codex")
         let account = try #require(definition.usageHistory(forAccount: ["codexHome": "/tmp/work-codex"]))
         #expect(account.records.files == "/tmp/work-codex/sessions/**/rollout-*.jsonl")
     }

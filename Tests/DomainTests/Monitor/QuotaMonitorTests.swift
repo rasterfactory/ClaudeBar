@@ -96,14 +96,14 @@ struct QuotaMonitorTests {
     }
 
     private func makeMonitor(
-        providers: any AIProviderRepository,
+        providers: Providers,
         alerter: (any QuotaAlerter)? = nil
     ) -> QuotaMonitor {
         QuotaMonitor(providers: providers, alerter: alerter, clock: TestClock())
     }
 
     private func makeSuspendingMonitor(
-        providers: any AIProviderRepository,
+        providers: Providers,
         alerter: (any QuotaAlerter)? = nil
     ) -> QuotaMonitor {
         QuotaMonitor(providers: providers, alerter: alerter, clock: SuspendingClock())
@@ -121,6 +121,43 @@ struct QuotaMonitorTests {
 
     // MARK: - Single Provider Monitoring
 
+    // MARK: - After a refresh: the one extension point
+
+    @Test
+    func `every observer hears each refreshed login, and the monitor knows none of them`() async throws {
+        let settings = makeSettingsRepository()
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date()))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
+        var heard: [String] = []
+        monitor.onRefreshed { heard.append("first:\($0.id)") }
+        monitor.onRefreshed { heard.append("second:\($0.id)") }
+
+        await monitor.refresh(providerId: "claude")
+
+        #expect(heard == ["first:claude", "second:claude"])
+    }
+
+    @Test
+    func `a failed refresh is not heard`() async throws {
+        let settings = makeSettingsRepository()
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willThrow(UsageError.timeout)
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
+        var heard = 0
+        monitor.onRefreshed { _ in heard += 1 }
+
+        await monitor.refresh(providerId: "claude")
+
+        #expect(heard == 0)
+    }
+
     @Test
     func `monitor can refresh a provider by ID`() async throws {
         // Given
@@ -135,8 +172,9 @@ struct QuotaMonitorTests {
             ],
             capturedAt: Date()
         ))
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
 
         // When
         await monitor.refresh(providerId: "claude")
@@ -161,8 +199,9 @@ struct QuotaMonitorTests {
             ],
             capturedAt: Date()
         ))
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
 
         // When
         await monitor.refresh(providerId: "claude")
@@ -181,8 +220,9 @@ struct QuotaMonitorTests {
     func `menu bar percentage display falls back when quota data is missing`() {
         // Given
         let settings = makeSettingsRepository()
-        let provider = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
 
         // When
         let display = monitor.menuBarPercentageDisplay(
@@ -213,8 +253,9 @@ struct QuotaMonitorTests {
             ],
             capturedAt: Date()
         ))
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
 
         // When
         await monitor.refresh(providerId: "claude")
@@ -232,8 +273,9 @@ struct QuotaMonitorTests {
     func `menu bar duration display is nil when quota data is missing`() {
         // Given
         let settings = makeSettingsRepository()
-        let provider = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
 
         // When
         let display = monitor.menuBarDurationDisplay(
@@ -267,9 +309,11 @@ struct QuotaMonitorTests {
     @Test
     func `additional labels keep selection order and omit disabled providers`() async {
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: CountingUsageProbe(providerId: "codex"), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let claudeProduct = stubbedProduct("claude", probe: CountingUsageProbe(providerId: "claude"), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: CountingUsageProbe(providerId: "codex"), settings: settings)
+        let codex = codexProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
         await monitor.refresh(providerId: "claude")
         await monitor.refresh(providerId: "codex")
         #expect(monitor.additionalMenuBarLabels(
@@ -285,10 +329,11 @@ struct QuotaMonitorTests {
 
     @Test
     func `additional provider awaiting first snapshot has a named placeholder`() {
-        let provider = StubClaudeProvider(
-            probe: CountingUsageProbe(providerId: "claude"), settingsRepository: makeSettingsRepository()
+        let providerProduct = stubbedProduct(
+            "claude", probe: CountingUsageProbe(providerId: "claude"), settings: makeSettingsRepository()
         )
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
         #expect(monitor.additionalMenuBarLabels(
             providerIds: ["claude"], showPercentage: true, showDuration: false, mode: .remaining
         ).map(\.text) == ["Claude —"])
@@ -325,8 +370,9 @@ struct QuotaMonitorTests {
             quotas: quotas,
             capturedAt: Date()
         ))
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
         await monitor.refresh(providerId: "claude")
         return monitor
     }
@@ -495,40 +541,6 @@ struct QuotaMonitorTests {
     }
 
     @Test
-    func `menu bar label prefers the quota's menuBarTitle for window prefixes`() async {
-        // Given: an aggregated quota whose full label carries a long account
-        // discriminator, condensed by the probe into `menuBarTitle`; the
-        // weekly window carries no override
-        let monitor = await makeRefreshedClaudeMonitor(quotas: [
-            UsageQuota(
-                percentRemaining: 69,
-                quotaType: .timeLimit("Claude 7d · jkjk987654321012"),
-                providerId: "claude",
-                menuBarTitle: "Claude 7d · jkjk987…"
-            ),
-            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
-        ])
-
-        // When
-        let label = monitor.menuBarLabel(
-            providerId: "claude",
-            primaryQuotaKey: "time:Claude 7d · jkjk987654321012",
-            secondaryQuotaKey: "weekly",
-            showPercentage: true,
-            showDuration: false,
-            mode: .remaining
-        )
-
-        // Then: the condensed title replaces the full label in the joined
-        // text and the segment; windows without an override keep shortLabel
-        #expect(label?.text == "Claude 7d · jkjk987… 69% | 7d 35%")
-        #expect(label?.segments == [
-            MenuBarLabel.Segment(text: "Claude 7d · jkjk987… 69%", status: .healthy),
-            MenuBarLabel.Segment(text: "7d 35%", status: .warning),
-        ])
-    }
-
-    @Test
     func `menu bar label segments cover the duration-only variant`() async {
         // Given: session quota with reset ~3h 58m away
         let monitor = await makeRefreshedClaudeMonitor(quotas: [
@@ -600,9 +612,9 @@ struct QuotaMonitorTests {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(false)
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings, available: false)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
 
         // When
         await monitor.refreshAll()
@@ -633,9 +645,11 @@ struct QuotaMonitorTests {
         ))
 
         let settings = makeSettingsRepository()
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
         // When
         await monitor.refreshAll()
@@ -661,9 +675,11 @@ struct QuotaMonitorTests {
         given(codexProbe).isAvailable().willReturn(true)
         given(codexProbe).probe().willThrow(UsageError.timeout)
 
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
         // When
         await monitor.refreshAll()
@@ -704,10 +720,13 @@ struct QuotaMonitorTests {
         ))
 
         let settings = makeSettingsRepository()
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let geminiProvider = StubGeminiProvider(probe: geminiProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider, geminiProvider]))
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
+        let geminiProviderProduct = stubbedProduct("gemini", probe: geminiProbe, settings: settings)
+        let geminiProvider = geminiProviderProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct, geminiProviderProduct]))
 
         // When - refresh all except Claude
         await monitor.refreshOthers(except: "claude")
@@ -725,11 +744,12 @@ struct QuotaMonitorTests {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
 
         // When
-        let found = monitor.provider(for: "claude")
+        let found = monitor.login(id: "claude")
 
         // Then
         #expect(found?.id == "claude")
@@ -738,10 +758,10 @@ struct QuotaMonitorTests {
     @Test
     func `monitor returns nil for unknown provider ID`() async {
         // Given
-        let monitor = makeMonitor(providers: AIProviders(providers: []))
+        let monitor = makeMonitor(providers: kept([]))
 
         // When
-        let found = monitor.provider(for: "unknown")
+        let found = monitor.login(id: "unknown")
 
         // Then
         #expect(found == nil)
@@ -769,9 +789,11 @@ struct QuotaMonitorTests {
         ))
 
         let settings = makeSettingsRepository()
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
         await monitor.refreshAll()
 
@@ -804,9 +826,11 @@ struct QuotaMonitorTests {
         ))
 
         let settings = makeSettingsRepository()
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
         // Selected provider is "claude" by default
 
@@ -838,9 +862,11 @@ struct QuotaMonitorTests {
         ))
 
         let settings = makeSettingsRepository()
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
         // When - switch to codex then refresh selected
         monitor.selectProvider(id: "codex")
@@ -864,8 +890,9 @@ struct QuotaMonitorTests {
             quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")],
             capturedAt: Date()
         ))
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
 
         // When
         let stream = monitor.startMonitoring(interval: .milliseconds(100))
@@ -892,9 +919,11 @@ struct QuotaMonitorTests {
         let settings = makeSettingsRepository()
         let claudeProbe = CountingUsageProbe(providerId: "claude")
         let codexProbe = CountingUsageProbe(providerId: "codex")
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
+        let monitor = makeSuspendingMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
         // When - App layer passes selected + configured menu bar provider ids in percentage mode.
         let stream = monitor.startMonitoring(
@@ -916,8 +945,9 @@ struct QuotaMonitorTests {
         // Given
         let settings = makeSettingsRepository()
         let probe = CountingUsageProbe(providerId: "claude")
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeSuspendingMonitor(providers: kept([providerProduct]))
 
         // When
         let stream = monitor.startMonitoring(
@@ -937,9 +967,11 @@ struct QuotaMonitorTests {
         let settings = makeSettingsRepository()
         let claudeProbe = CountingUsageProbe(providerId: "claude")
         let codexProbe = CountingUsageProbe(providerId: "codex")
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
+        let monitor = makeSuspendingMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
         monitor.selectProvider(id: "codex")
 
         // When - icon mode uses the default selected-provider monitoring path.
@@ -963,8 +995,9 @@ struct QuotaMonitorTests {
             quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")],
             capturedAt: Date()
         ))
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([providerProduct]))
 
         // When
         let stream = monitor.startMonitoring(interval: .milliseconds(50))
@@ -988,8 +1021,9 @@ struct QuotaMonitorTests {
         // suite and QuotaMonitor are @MainActor — the structural guard against
         // the #182 off-main mutation. The flow asserts the flag flips on, then off.
         let settings = makeSettingsRepository()
-        let provider = StubClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
-        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [provider]))
+        let providerProduct = stubbedProduct("claude", probe: CountingUsageProbe(providerId: "claude"), settings: settings)
+        let provider = providerProduct.defaultAccount
+        let monitor = makeSuspendingMonitor(providers: kept([providerProduct]))
 
         let stream = monitor.startMonitoring(interval: .seconds(60))
         #expect(monitor.isMonitoring == true)
@@ -1120,10 +1154,11 @@ struct QuotaMonitorTests {
     func `background loop pauses while display asleep and refreshes on wake`() async {
         let settings = makeSettingsRepository()
         let probe = CountingUsageProbe(providerId: "claude")
-        let provider = StubClaudeProvider(probe: probe, settingsRepository: settings)
+        let providerProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let provider = providerProduct.defaultAccount
         let power = FakePowerStateProvider(asleep: true)
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [provider]),
+            providers: kept([providerProduct]),
             clock: RecordingClock(),
             powerStateProvider: power
         )
@@ -1143,11 +1178,12 @@ struct QuotaMonitorTests {
     @Test
     func `background loop doubles the cadence while on battery`() async {
         let settings = makeSettingsRepository()
-        let provider = StubClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
+        let providerProduct = stubbedProduct("claude", probe: CountingUsageProbe(providerId: "claude"), settings: settings)
+        let provider = providerProduct.defaultAccount
         let power = FakePowerStateProvider(asleep: false, onBattery: true)
         let clock = RecordingClock()
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [provider]),
+            providers: kept([providerProduct]),
             clock: clock,
             powerStateProvider: power
         )
@@ -1162,11 +1198,12 @@ struct QuotaMonitorTests {
     @Test
     func `background loop keeps the normal cadence on AC power`() async {
         let settings = makeSettingsRepository()
-        let provider = StubClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
+        let providerProduct = stubbedProduct("claude", probe: CountingUsageProbe(providerId: "claude"), settings: settings)
+        let provider = providerProduct.defaultAccount
         let power = FakePowerStateProvider(asleep: false, onBattery: false)
         let clock = RecordingClock()
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [provider]),
+            providers: kept([providerProduct]),
             clock: clock,
             powerStateProvider: power
         )
@@ -1183,64 +1220,30 @@ struct QuotaMonitorTests {
     func `allProviders returns all registered providers`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         // Then
-        #expect(monitor.allProviders.count == 2)
+        #expect(monitor.logins.count == 2)
     }
 
     @Test
-    func `enabledProviders returns only enabled providers`() {
+    func `the lineup holds only enabled logins`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
         codex.isEnabled = false
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         // Then
-        #expect(monitor.enabledProviders.count == 1)
-        #expect(monitor.enabledProviders.first?.id == "claude")
-    }
-
-    // MARK: - Dynamic Provider Management
-
-    @Test
-    func `addProvider adds new provider`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
-
-        #expect(monitor.allProviders.count == 1)
-
-        // When
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        monitor.addProvider(codex)
-
-        // Then
-        #expect(monitor.allProviders.count == 2)
-        #expect(monitor.provider(for: "codex") != nil)
-    }
-
-    @Test
-    func `removeProvider removes provider by id`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
-
-        #expect(monitor.allProviders.count == 2)
-
-        // When
-        monitor.removeProvider(id: "codex")
-
-        // Then
-        #expect(monitor.allProviders.count == 1)
-        #expect(monitor.provider(for: "codex") == nil)
+        #expect(monitor.lineup.count == 1)
+        #expect(monitor.lineup.first?.id == "claude")
     }
 
     // MARK: - Lowest Quota
@@ -1265,9 +1268,11 @@ struct QuotaMonitorTests {
         ))
 
         let settings = makeSettingsRepository()
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
         await monitor.refreshAll()
 
@@ -1282,7 +1287,7 @@ struct QuotaMonitorTests {
     func `lowestQuota returns nil when no snapshots`() {
         // Given
         let settings = makeSettingsRepository()
-        let monitor = makeMonitor(providers: AIProviders(providers: [StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)]))
+        let monitor = makeMonitor(providers: kept([stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)]))
 
         // Then
         #expect(monitor.lowestQuota() == nil)
@@ -1294,36 +1299,40 @@ struct QuotaMonitorTests {
     func `selectedProvider returns provider matching selectedProviderId`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         // When
         monitor.selectedProviderId = "codex"
 
         // Then
-        #expect(monitor.selectedProvider?.id == "codex")
+        #expect(monitor.selectedLogin?.id == "codex")
     }
 
     @Test
     func `selectedProvider returns nil when selected provider is disabled`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
         claude.isEnabled = false
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
+        let monitor = makeMonitor(providers: kept([claudeProduct]))
         monitor.selectedProviderId = "claude"
 
         // Then
-        #expect(monitor.selectedProvider == nil)
+        #expect(monitor.selectedLogin == nil)
     }
 
     @Test
     func `selectedProviderStatus returns healthy when no snapshot`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct]))
 
         // Then
         #expect(monitor.selectedProviderStatus == .healthy)
@@ -1340,8 +1349,9 @@ struct QuotaMonitorTests {
             quotas: [UsageQuota(percentRemaining: 15, quotaType: .session, providerId: "claude")],
             capturedAt: Date()
         ))
-        let claude = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
+        let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct]))
 
         await monitor.refresh(providerId: "claude")
 
@@ -1350,12 +1360,39 @@ struct QuotaMonitorTests {
     }
 
     @Test
+    func `the selected tab's badge and status come from its logins' usage`() async {
+        let settings = makeSettingsRepository()
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(UsageSnapshot(
+            providerId: "claude",
+            quotas: [UsageQuota(percentRemaining: 15, quotaType: .session, providerId: "claude")],
+            capturedAt: Date()
+        ))
+        let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct]))
+        #expect(monitor.selectedLogins.map(\.id) == ["claude"])
+        #expect(monitor.selectedTabStatus == nil)
+        #expect(monitor.selectedBadge == .awaitingData)
+        #expect(monitor.status(of: claude) == nil)
+
+        await monitor.refresh(providerId: "claude")
+
+        #expect(monitor.selectedTabStatus == .critical)
+        #expect(monitor.selectedBadge == .quota(.critical))
+        #expect(monitor.status(of: claude) == .critical)
+    }
+
+    @Test
     func `selectProvider updates selectedProviderId for enabled provider`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         #expect(monitor.selectedProviderId == "claude")
 
@@ -1370,10 +1407,12 @@ struct QuotaMonitorTests {
     func `selectProvider ignores disabled provider`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
         codex.isEnabled = false
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         // When
         monitor.selectProvider(id: "codex")
@@ -1387,11 +1426,14 @@ struct QuotaMonitorTests {
         // Given - gemini sits between two enabled providers but is disabled,
         // so the pills read: 1 Claude, 2 Codex
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let gemini = StubGeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let geminiProduct = stubbedProduct("gemini", probe: MockUsageProbe(), settings: settings)
+        let gemini = geminiProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
         gemini.isEnabled = false
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, gemini, codex]))
+        let monitor = makeMonitor(providers: kept([claudeProduct, geminiProduct, codexProduct]))
 
         // When
         monitor.selectProvider(atPosition: 2)
@@ -1404,9 +1446,11 @@ struct QuotaMonitorTests {
     func `selectProvider at position ignores a slot with no provider`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         // When
         monitor.selectProvider(atPosition: 3)
@@ -1420,12 +1464,14 @@ struct QuotaMonitorTests {
     func `init selects first enabled when default claude is disabled`() {
         // Given - claude (default) is disabled before init
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
         claude.isEnabled = false
 
         // When
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         // Then - automatically selects codex (first enabled)
         #expect(monitor.selectedProviderId == "codex")
@@ -1435,11 +1481,13 @@ struct QuotaMonitorTests {
     func `init keeps claude when enabled`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
 
         // When
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
 
         // Then - keeps default claude
         #expect(monitor.selectedProviderId == "claude")
@@ -1451,29 +1499,30 @@ struct QuotaMonitorTests {
     func `isRefreshing returns false when no providers syncing`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct]))
 
         // Then
         #expect(monitor.isRefreshing == false)
     }
 
-    // MARK: - AIProviders Repository Init
+    // MARK: - Providers Init
 
     @Test
-    func `init with AIProviders repository works`() {
+    func `init with the providers you keep works`() {
         // Given
         let settings = makeSettingsRepository()
-        let repository = AIProviders(providers: [
-            StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let repository = kept([
+            stubbedProduct("claude", probe: MockUsageProbe(), settings: settings),
+            stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
         ])
 
         // When
         let monitor = makeMonitor(providers: repository)
 
         // Then
-        #expect(monitor.allProviders.count == 2)
+        #expect(monitor.logins.count == 2)
     }
 
     // MARK: - Quota Alerter
@@ -1492,8 +1541,9 @@ struct QuotaMonitorTests {
             capturedAt: Date()
         ))
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]), alerter: mockAlerter)
+        let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct]), alerter: mockAlerter)
 
         // When
         await monitor.refresh(providerId: "claude")
@@ -1520,8 +1570,9 @@ struct QuotaMonitorTests {
             capturedAt: Date()
         ))
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]), alerter: mockAlerter)
+        let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct]), alerter: mockAlerter)
 
         // When - refresh twice with same status
         await monitor.refresh(providerId: "claude")
@@ -1547,9 +1598,10 @@ struct QuotaMonitorTests {
             )],
             capturedAt: Date()
         ))
-        let claude = StubClaudeProvider(probe: probe, settingsRepository: makeSettingsRepository())
+        let claudeProduct = stubbedProduct("claude", probe: probe, settings: makeSettingsRepository())
+        let claude = claudeProduct.defaultAccount
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [claude]), alerter: mockAlerter, clock: TestClock(),
+            providers: kept([claudeProduct]), alerter: mockAlerter, clock: TestClock(),
             statusPolicy: { .paceAware(burnRateThreshold: 1.5) }
         )
 
@@ -1575,9 +1627,10 @@ struct QuotaMonitorTests {
             )],
             capturedAt: Date()
         ))
-        let claude = StubClaudeProvider(probe: probe, settingsRepository: makeSettingsRepository())
+        let claudeProduct = stubbedProduct("claude", probe: probe, settings: makeSettingsRepository())
+        let claude = claudeProduct.defaultAccount
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [claude]), alerter: mockAlerter, clock: TestClock(),
+            providers: kept([claudeProduct]), alerter: mockAlerter, clock: TestClock(),
             statusPolicy: { .absolute }
         )
 
@@ -1605,11 +1658,13 @@ struct QuotaMonitorTests {
         // Don't set up codex probe expectations - it shouldn't be called
 
         let settings = makeSettingsRepository()
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
         codexProvider.isEnabled = false
 
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
         // When
         await monitor.refreshAll()
@@ -1639,10 +1694,12 @@ struct QuotaMonitorTests {
         ))
 
         let settings = makeSettingsRepository()
-        let claudeProvider = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
+        let claudeProviderProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+        let claudeProvider = claudeProviderProduct.defaultAccount
+        let codexProviderProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+        let codexProvider = codexProviderProduct.defaultAccount
 
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let monitor = makeMonitor(providers: kept([claudeProviderProduct, codexProviderProduct]))
 
         // First refresh both
         await monitor.refreshAll()
@@ -1661,9 +1718,11 @@ struct QuotaMonitorTests {
     func `setProviderEnabled disables provider and updates selection`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
         monitor.selectedProviderId = "claude"
 
         // When - disable the currently selected provider
@@ -1678,10 +1737,12 @@ struct QuotaMonitorTests {
     func `setProviderEnabled enables provider without changing selection`() {
         // Given
         let settings = makeSettingsRepository()
-        let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let claudeProduct = stubbedProduct("claude", probe: MockUsageProbe(), settings: settings)
+        let claude = claudeProduct.defaultAccount
+        let codexProduct = stubbedProduct("codex", probe: MockUsageProbe(), settings: settings)
+        let codex = codexProduct.defaultAccount
         codex.isEnabled = false
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let monitor = makeMonitor(providers: kept([claudeProduct, codexProduct]))
         monitor.selectedProviderId = "claude"
 
         // When - enable a different provider

@@ -10,8 +10,8 @@ import Testing
 struct ZaiDefinitionTests {
 
     private func read(_ data: Data, providerId: String) throws -> UsageSnapshot {
-        let definition = try Providers.builtIn("zai")
-        let source = DataSources.make(definition.dataSources[0], providerId: providerId, scripts: Providers.builtInScripts, environment: { _ in nil })
+        let definition = try ProviderFactory.builtIn("zai")
+        let source = DataSources.make(definition.dataSources[0], providerId: providerId, scripts: ProviderFactory.builtInScripts, environment: { _ in nil })
         do { return try source.read(Response(body: data)) }
         catch let error as DataSourceError { throw error.reason }
     }

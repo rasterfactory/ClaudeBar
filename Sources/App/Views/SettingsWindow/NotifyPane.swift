@@ -459,7 +459,7 @@ struct NotifyPane: View {
                         ForEach(gaugeProviders, id: \.id) { provider in
                             MenuBarProviderChoiceButton(
                                 providerId: provider.id,
-                                providerName: provider.name,
+                                providerName: monitor.lineupName(of: provider),
                                 isSelected: settings.notifyGaugeProviderId == provider.id
                             ) {
                                 settings.notifyGaugeProviderId = provider.id
@@ -620,15 +620,15 @@ struct NotifyPane: View {
     /// remedy, which the link card above already spells out.
 
 
-    private var gaugeProviders: [any AIProvider] {
-        monitor.enabledProviders
+    private var gaugeProviders: [Account] {
+        monitor.lineup
     }
 
     private var isGaugeAutomatic: Bool {
         settings.notifyGaugeProviderId.isEmpty
     }
 
-    private var selectedGaugeProvider: (any AIProvider)? {
+    private var selectedGaugeProvider: Account? {
         gaugeProviders.first { $0.id == settings.notifyGaugeProviderId }
     }
 

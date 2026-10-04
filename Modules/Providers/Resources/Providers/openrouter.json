@@ -1,0 +1,41 @@
+{
+  "profile": {
+    "id": "openrouter",
+    "name": "OpenRouter",
+    "links": {
+      "dashboard": "https://openrouter.ai/credits",
+      "status": "https://status.openrouter.ai"
+    },
+    "look": {
+      "symbol": "arrow.triangle.branch",
+      "icon": "OpenRouterIcon",
+      "color": { "light": [0.4, 0.3, 0.92], "dark": [0.55, 0.42, 1.0] },
+      "gradientEnd": { "light": [0.24, 0.16, 0.75], "dark": [0.32, 0.22, 0.85] }
+    }
+  },
+  "enabledByDefault": false,
+  "settings": [
+    { "id": "apiKey", "label": "API key", "kind": "secret", "scope": "account" },
+    { "id": "authEnvVar", "label": "Environment variable", "default": "OPENROUTER_API_KEY" }
+  ],
+  "defaultDataSource": "api",
+  "dataSources": [
+    {
+      "kind": "api",
+      "label": "API",
+      "summary": "Reads the credit balance left after usage.",
+      "credential": { "firstOf": [ { "environment": "{{setting.authEnvVar}}" }, { "setting": "apiKey" } ] },
+      "fetch": {
+        "http": {
+          "url": "https://openrouter.ai/api/v1/credits",
+          "headers": { "Authorization": "Bearer {{token}}", "Accept": "application/json" },
+          "timeout": 30
+        }
+      },
+      "mapping": { "script": { "file": "openrouter-credits.js" } }
+    }
+  ],
+  "accounts": {
+    "patch": { "api": { "credential": { "firstOf": null, "setting": "apiKey" } } }
+  }
+}

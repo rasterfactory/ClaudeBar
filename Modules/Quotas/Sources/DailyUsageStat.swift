@@ -117,9 +117,10 @@ public struct DailyUsageStat: Sendable, Equatable, Codable {
 
     // MARK: - Cache
 
-    /// All tokens including cache (input + output + cache_creation + cache_read)
+    /// All tokens including cache: `totalTokens` (input + output, or the
+    /// log's own total when it keeps only that) + cache_creation + cache_read.
     public var totalTokensWithCache: Int {
-        inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens
+        totalTokens + cacheCreationTokens + cacheReadTokens
     }
 
     /// Total cache tokens (creation + read)

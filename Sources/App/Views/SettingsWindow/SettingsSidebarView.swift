@@ -41,11 +41,11 @@ struct SettingsSidebarView: View {
     }
 
     private var enabledProviderCount: Int {
-        monitor.enabledProviders.count
+        monitor.productTabs.filter(\.isEnabled).count
     }
 
     private var totalProviderCount: Int {
-        monitor.allProviders.count
+        monitor.productTabs.count
     }
 
     var body: some View {

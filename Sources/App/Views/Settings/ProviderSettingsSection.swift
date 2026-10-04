@@ -21,10 +21,10 @@ struct ProviderSettingsSection: View {
                 Spacer()
             }
             ForEach(provider.definition.defaultLoginSettings) { setting in
-                let kept = provider.hasSaved(setting, for: provider.defaultAccount)
+                let kept = provider.configuration.hasSaved(setting, for: provider.defaultAccount)
                 HStack(alignment: .bottom, spacing: 8) {
                     SettingField(setting: setting, value: Binding(
-                        get: { entered[setting.id] ?? provider.value(of: setting, for: provider.defaultAccount) ?? "" },
+                        get: { entered[setting.id] ?? provider.configuration.value(of: setting, for: provider.defaultAccount) ?? "" },
                         set: { entered[setting.id] = $0; saved = false }
                     ), secretPlaceholder: kept ? "Saved in Keychain — type to replace" : nil)
                     if kept {
@@ -49,7 +49,7 @@ struct ProviderSettingsSection: View {
 
     private func clear(_ setting: Setting) {
         do {
-            try provider.set(setting.id, to: nil)
+            try provider.configuration.set(setting.id, to: nil)
             entered[setting.id] = nil
             problem = nil
         } catch {
@@ -59,7 +59,7 @@ struct ProviderSettingsSection: View {
 
     private func save() {
         do {
-            for (id, value) in entered { try provider.set(id, to: value) }
+            for (id, value) in entered { try provider.configuration.set(id, to: value) }
             entered = [:]
             problem = nil
             saved = true

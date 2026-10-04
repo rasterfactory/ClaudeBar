@@ -24,6 +24,7 @@ extension Fetch {
         case .localServer(let call): call
         case .cloudWatch(let call): call
         case .directory(let call): call
+        case .script(let call): call
         }
     }
 
@@ -61,6 +62,12 @@ extension CloudWatchCall: Connection {
     /// The cloud's own SDK, signed with the person's profile — no key of ours.
     public var urls: [String] { [] }
     public var commands: [[String]] { [] }
+}
+
+extension ScriptCall: Connection {
+    public var urls: [String] { [] }
+    /// The person's own script — *Import* shows it before anything runs.
+    public var commands: [[String]] { [["/bin/sh", "-c", run]] }
 }
 
 extension DirectoryCall: Connection {

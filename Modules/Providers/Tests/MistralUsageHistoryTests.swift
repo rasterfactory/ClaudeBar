@@ -13,8 +13,8 @@ struct MistralUsageHistoryTests {
     private let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 
     private func report() async throws -> DailyUsageReport? {
-        let definition = try #require(try Providers.builtIn("mistral").usageHistory)
-        let history = UsageHistory(log: DataSources.makeUsageLog(definition, scripts: Providers.builtInScripts,
+        let definition = try #require(try ProviderFactory.builtIn("mistral").usageHistory)
+        let history = UsageHistory(log: DataSources.makeUsageLog(definition, scripts: ProviderFactory.builtInScripts,
                                                                  environment: { _ in nil }, homeDirectory: home))
         await history.read()
         return history.report
@@ -75,7 +75,7 @@ struct MistralUsageHistoryTests {
 
     @Test func `the time is read from the folder's name, in UTC`() throws {
         let rule = UsageLog.At.FromPath(pattern: #"session_(\d{8}_\d{6})"#, format: "yyyyMMdd_HHmmss", timeZone: "UTC")
-        let definition = try #require(try Providers.builtIn("mistral").usageHistory)
+        let definition = try #require(try ProviderFactory.builtIn("mistral").usageHistory)
         #expect(definition.records.at == .fromPath(rule))
         #expect(definition.records.format == .json)
     }

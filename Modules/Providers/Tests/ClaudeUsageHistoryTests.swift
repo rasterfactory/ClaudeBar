@@ -13,8 +13,8 @@ struct ClaudeUsageHistoryTests {
     private let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 
     private func history() throws -> UsageHistory {
-        let definition = try #require(try Providers.builtIn("claude").usageHistory)
-        return UsageHistory(log: DataSources.makeUsageLog(definition, scripts: Providers.builtInScripts,
+        let definition = try #require(try ProviderFactory.builtIn("claude").usageHistory)
+        return UsageHistory(log: DataSources.makeUsageLog(definition, scripts: ProviderFactory.builtInScripts,
                                                           environment: { _ in nil }, homeDirectory: home))
     }
 
@@ -190,9 +190,9 @@ struct ClaudeUsageHistoryTests {
 
     /// Claude with one added login in `work`, every history over `home`.
     private func provider(work: URL) throws -> Provider {
-        let definition = try Providers.builtIn("claude")
+        let definition = try ProviderFactory.builtIn("claude")
         let make = { (history: UsageLog.Definition) in
-            UsageHistory(log: DataSources.makeUsageLog(history, scripts: Providers.builtInScripts,
+            UsageHistory(log: DataSources.makeUsageLog(history, scripts: ProviderFactory.builtInScripts,
                                                        environment: { _ in nil }, homeDirectory: self.home))
         }
         return Provider(
@@ -238,16 +238,87 @@ struct ClaudeUsageHistoryTests {
         let added = try #require(provider.accounts.first { !$0.isDefault })
         #expect(added.usageHistory != nil)
 
-        provider.remove(added)
+        provider.accounts.remove(added)
 
         #expect(added.usageHistory == nil)
     }
 
     @Test func `the patch fills the folder into where the logs and the route are`() throws {
-        let own = try #require(try Providers.builtIn("claude").usageHistory(forAccount: ["configDirectory": "/tmp/work"]))
+        let own = try #require(try ProviderFactory.builtIn("claude").usageHistory(forAccount: ["configDirectory": "/tmp/work"]))
         #expect(own.records.files == "/tmp/work/projects/**/*.jsonl")
         #expect(own.freeWhen?.localEndpoint?.file == "/tmp/work/.claude.json")
         #expect(own.freeWhen?.localEndpoint?.url.count == 2)
-        #expect(try Providers.builtIn("claude").usageHistory(forAccount: [:]) == nil)
+        #expect(try ProviderFactory.builtIn("claude").usageHistory(forAccount: [:]) == nil)
+    }
+
+    @Test func `an added login's patch leaves out the Mac's other apps`() throws {
+        #expect(try ProviderFactory.builtIn("claude").usageHistory?.otherApps?.map(\.label) == ["Claude Desktop"])
+        #expect(try ProviderFactory.builtIn("claude").usageHistory(forAccount: ["configDirectory": "/tmp/work"])?.otherApps == nil)
+    }
+
+    // MARK: - Claude Desktop's buddy-tokens.json (#198)
+
+    private func desktop() async throws -> UsageHistory {
+        let definition = try #require(try ProviderFactory.builtIn("claude").usageHistory)
+        let history = UsageHistory(definition, login: "claude", log: {
+            DataSources.makeUsageLog($0, scripts: ProviderFactory.builtInScripts, environment: { _ in nil }, homeDirectory: home)
+        })
+        await history.read()
+        return try #require(history.otherApps.first)
+    }
+
+    private func buddyTokens(_ body: String) throws {
+        let dir = home.appendingPathComponent("Library/Application Support/Claude")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try body.write(to: dir.appendingPathComponent("buddy-tokens.json"), atomically: true, encoding: .utf8)
+    }
+
+    private static func day(daysAgo: Int = 0) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!)
+    }
+
+    @Test func `Claude Desktop's tokens today are their own history, with no cost`() async throws {
+        try write(Self.line())
+        try buddyTokens(#"{"tokens-today": {"date": "\#(Self.day())", "tokens": 74422}}"#)
+
+        let desktop = try await desktop()
+
+        #expect(desktop.label == "Claude Desktop")
+        #expect(desktop.report?.today.totalTokens == 74_422)
+        #expect(desktop.knowsCost == false)
+    }
+
+    @Test func `a count Claude Desktop wrote yesterday is yesterday's, and today is nothing yet`() async throws {
+        try buddyTokens(#"{"tokens-today": {"date": "\#(Self.day(daysAgo: 1))", "tokens": 61210}}"#)
+
+        let report = try #require(try await desktop().report)
+
+        #expect(report.previous.totalTokens == 61_210)
+        #expect(report.today.isEmpty)
+    }
+
+    @Test(arguments: [
+        "{ nope",
+        #"{"something-else": {}}"#,
+        #"{"tokens-today": {"tokens": 100}}"#,
+        #"{"tokens-today": {"date": "May 28 2026", "tokens": 100}}"#,
+        #"{"tokens-today": {"date": "2026-02-30", "tokens": 100}}"#,
+        #"{"tokens-today": {"date": "2099-12-31", "tokens": 100}}"#,
+    ])
+    func `a buddy-tokens file Claude Desktop changed the shape of shows nothing`(body: String) async throws {
+        try buddyTokens(body)
+        #expect(try await desktop().report == nil)
+    }
+
+    @Test(arguments: ["-5", "74422.5"])
+    func `a negative or fractional count shows nothing`(count: String) async throws {
+        try buddyTokens(#"{"tokens-today": {"date": "\#(Self.day())", "tokens": \#(count)}}"#)
+        #expect(try await desktop().report == nil)
+    }
+
+    @Test func `no Claude Desktop on this Mac shows nothing`() async throws {
+        #expect(try await desktop().report == nil)
     }
 }

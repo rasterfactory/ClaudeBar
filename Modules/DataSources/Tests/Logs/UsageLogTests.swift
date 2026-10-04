@@ -195,4 +195,43 @@ struct UsageLogTests {
         let again = try JSONDecoder().decode(UsageLog.Definition.self, from: JSONEncoder().encode(definition))
         #expect(again == definition)
     }
+
+    @Test func `other apps decode with a label, their own records and no prices`() throws {
+        let json = #"""
+        { "records": { "files": "~/x/*.jsonl", "at": "$.at", "tokens": { "total": "$.n" } },
+          "otherApps": [{ "label": "Desk", "records": { "files": "~/desk.json", "format": "json",
+                          "at": { "field": "$.day", "format": "yyyy-MM-dd" }, "tokens": { "total": "$.n" } } }] }
+        """#
+        let definition = try JSONDecoder().decode(UsageLog.Definition.self, from: Data(json.utf8))
+        let app = try #require(definition.otherApps?.first)
+        #expect(app.label == "Desk")
+        #expect(app.definition.records.at == .formatted(.init(field: "$.day", format: "yyyy-MM-dd")))
+        #expect(app.definition.prices == nil)
+        #expect(app.definition.otherApps == nil)
+        #expect(try JSONDecoder().decode(UsageLog.Definition.self, from: JSONEncoder().encode(definition)) == definition)
+    }
+
+    @Test func `other apps never change how the login's own days were summed`() {
+        let app = UsageLog.OtherApp(label: "Desk", records: UsageLog.Records(files: "~/desk.json", format: .json, at: "$.at"))
+        let with = UsageLog.Definition(records: Self.definition.records, prices: Self.definition.prices,
+                                       freeWhen: Self.definition.freeWhen, sessionGap: Self.definition.sessionGap, otherApps: [app])
+        #expect(log(with).fingerprint == log().fingerprint)
+    }
+
+    @Test func `an app that keeps only today's sum counts on the day it names`() async throws {
+        let app = UsageLog.OtherApp(label: "Desk", records: UsageLog.Records(
+            files: "~/desk/today.json", format: .json,
+            at: .formatted(.init(field: "$.day", format: "yyyy-MM-dd")), tokens: UsageLog.Tokens(total: "$.n")))
+        let url = home.appendingPathComponent("desk/today.json")
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let yesterday = formatter.string(from: calendar.date(byAdding: .day, value: -1, to: now)!)
+        try #"{"day":"\#(yesterday)","n":74422}"#.write(to: url, atomically: true, encoding: .utf8)
+
+        let days = await log(app.definition).days(last: 2)
+
+        #expect(days.map(\.totalTokens) == [74422, 0])
+        #expect(log(app.definition).knowsCost == false)
+    }
 }

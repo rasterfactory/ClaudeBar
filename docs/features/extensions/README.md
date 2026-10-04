@@ -40,7 +40,7 @@ chmod +x probe.sh
 Then:
 
 1. **Quit and reopen ClaudeBar.** Extensions are loaded only at launch.
-2. **Settings → Providers → My Provider** shows a **My Provider Configuration** card with the fields your manifest declares. Enter the API key there.
+2. **Settings → Providers → My Provider** shows the fields your manifest declares, like any provider's settings. Enter the API key there.
 3. The provider appears in the popover like any other and refreshes with the rest (**Settings → Sync & Alerts** sets how often).
 
 To try the bundled example: `cp -R docs/features/extensions/example-provider ~/.claudebar/extensions/`. Its scripts print fixed sample data, so it works without an account.
@@ -51,23 +51,21 @@ For each section, on every refresh:
 
 - ClaudeBar runs `command` with `/bin/sh -c`, from the extension's folder. A relative `command` is taken relative to that folder. It must be the path of an executable file (with a `#!` line and `chmod +x`).
 - Every config value, or its `default`, is passed as an environment variable: `CLAUDEBAR_` plus the field `id` in upper snake case. `apiKey` becomes `CLAUDEBAR_API_KEY`, and `base-url` becomes `CLAUDEBAR_BASE_URL`.
-- The script must exit `0` and print **one JSON object**. Which key it must contain depends on the section `type`: `quotas`, `costUsage`, `dailyUsage`, `metrics` or `status`. See [manifest.md](manifest.md#what-a-script-must-print).
+- The script must exit `0` and print **one JSON object** with `quotas` or `costUsage`. See [manifest.md](manifest.md#what-a-script-must-print).
 - It's stopped after `timeout` seconds (default 10).
 
-Sections run in parallel. The provider shows everything the successful sections returned. A section that fails is left out, and the provider shows an error only when every section fails.
+Sections run in parallel. The provider shows everything the successful sections returned. A section that fails is left out, and its error shows beside the rest (a down `healthCheck` reads *Couldn't connect*); the provider fails only when every section does.
 
 ## Gotchas
 
 - **Changed the manifest? Restart ClaudeBar.** Script changes are picked up on the next refresh, but manifests are read only at launch.
-- **An invalid manifest is skipped silently.** If the provider doesn't appear, check the JSON parses (`jq . manifest.json`) and that `id`, `name`, `version` and at least one section are present, and every section `type` is one of the six listed in [manifest.md](manifest.md#sections). At launch the log (**Settings → Logs → Open Log File**) records `Loaded N extension provider(s)` with their names.
+- **An invalid manifest is skipped silently.** If the provider doesn't appear, check the JSON parses (`jq . manifest.json`) and that `id`, `name`, `version` and at least one section are present, and at least one section is a `quotaGrid`, `costUsage` or `healthCheck` ([manifest.md](manifest.md#sections)). The log (**Settings → Logs → Open Log File**) records `Skipping extension <folder>` with the reason.
 - **`command` is a path, not a command line.** `./probe.sh` and `/usr/local/bin/my-probe` work. `python3 probe.py` and `./probe.sh --flag` don't: ClaudeBar checks that a file with that exact name exists, and skips the refresh when no section's file does. Use a wrapper script with a `#!` line instead.
 - **No spaces in the path.** The command path isn't quoted, so a folder name like `My Provider` breaks it. Use `my-provider`.
 - **Print only JSON, and print it all at once.** The script's stderr is captured together with stdout, so progress output (for example `curl` without `-s`) makes the JSON invalid. And once the script has printed something, ClaudeBar stops reading if it then prints nothing for 3 seconds. Build the result first, then print it.
 - **`probe.interval` is ignored.** Every section runs on each refresh, whatever its `interval` says.
-- **`statusBanner` shows nothing yet.** Its output is checked for errors and then dropped. Use a `metricsRow` card or a `healthCheck` section to show status.
-- **Daily usage cards** appear only with **Settings → General → Daily Usage Cards** on.
-- **Metric labels must be unique** within a provider. Cards are told apart by `label`, so two metrics with the same label display wrongly.
-- **Secrets aren't in the Keychain yet.** `secret` fields are stored in ClaudeBar's app preferences (UserDefaults), not in `settings.json`, and while a script runs its values are visible to your other processes through `ps`. Other fields go in `~/.claudebar/settings.json` under `extensions.<id>`.
+- **`dailyUsage`, `metricsRow` and `statusBanner` sections are no longer read** (since the release after 0.5.3). The log names each one skipped. For daily usage, write JSON-lines records that a provider's `usageHistory` reads, as every provider does.
+- **Secrets are in the Keychain**, and reach the script as real environment variables, not on its command line. Saved values from before moved there once, on upgrade. Other fields are the provider's settings in `~/.claudebar/settings.json`.
 - **Scripts run as you**, with your permissions. Only install extensions whose scripts you've read.
 - **Debug outside the app.** Run the script by hand with the same variables, for example `CLAUDEBAR_API_KEY=… ./probe.sh | jq .`. ClaudeBar doesn't show why a section failed.
 

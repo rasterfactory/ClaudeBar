@@ -141,8 +141,8 @@ public struct TouchBarActiveProviderBadge: View {
     }
 
     private var badgeText: String {
-        if let selected = monitor.selectedProvider {
-            let name = selected.name
+        if let selected = monitor.selectedLogin {
+            let name = monitor.lineupName(of: selected)
             if let lowest = monitor.usage(of: selected)?.lowestQuota {
                 let mode = AppSettings.shared.usageDisplayMode
                 let pct = Int(lowest.displayPercent(mode: mode))
@@ -175,9 +175,10 @@ public struct TouchBarProvidersScrollView: View {
     public var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(monitor.enabledProviders, id: \.id) { provider in
+                ForEach(monitor.lineup, id: \.id) { provider in
                     TouchBarProviderItem(
                         provider: provider,
+                        name: monitor.lineupName(of: provider),
                         lowest: monitor.usage(of: provider)?.lowestQuota,
                         isSelected: provider.id == monitor.selectedProviderId
                     ) {
@@ -193,14 +194,17 @@ public struct TouchBarProvidersScrollView: View {
 
 /// Individual provider button on the Touch Bar.
 public struct TouchBarProviderItem: View {
-    let provider: any AIProvider
+    let provider: Account
+    /// The name the lineup prints for it — its product's to say.
+    let name: String
     /// The lowest quota the person watches — hidden quotas left out (#140).
     let lowest: UsageQuota?
     let isSelected: Bool
     let action: () -> Void
 
-    public init(provider: any AIProvider, lowest: UsageQuota?, isSelected: Bool, action: @escaping () -> Void) {
+    public init(provider: Account, name: String, lowest: UsageQuota?, isSelected: Bool, action: @escaping () -> Void) {
         self.provider = provider
+        self.name = name
         self.lowest = lowest
         self.isSelected = isSelected
         self.action = action
@@ -235,9 +239,9 @@ public struct TouchBarProviderItem: View {
         if let lowest {
             let mode = AppSettings.shared.usageDisplayMode
             let pct = Int(lowest.displayPercent(mode: mode))
-            return "\(provider.name) \(pct)%"
+            return "\(name) \(pct)%"
         }
-        return provider.name
+        return name
     }
 }
 
@@ -255,9 +259,10 @@ public struct ClaudeBarNativeTouchBar: View {
             if settings.touchBarEnabled {
                 TouchBarActiveProviderBadge(monitor: monitor)
 
-                ForEach(monitor.enabledProviders, id: \.id) { provider in
+                ForEach(monitor.lineup, id: \.id) { provider in
                     TouchBarProviderItem(
                         provider: provider,
+                        name: monitor.lineupName(of: provider),
                         lowest: monitor.usage(of: provider)?.lowestQuota,
                         isSelected: provider.id == monitor.selectedProviderId
                     ) {

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings by Product</title>
+<style>
+:root{--paper:#F4F1F8;--side:#E9E4F0;--ink:#1E1B2E;--muted:#6B6580;--card:#fff;--hair:#E4DEEF;--accent:#C2507A;--healthy:#2E9E62;--warn:#E7A23A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 16px 56px;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font-size:26px;letter-spacing:-.02em}
+.sub{margin:4px 0 0;color:var(--muted);max-width:760px}
+h2{margin:0 0 8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.row2{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.pane{flex:1 1 420px;min-width:0;background:var(--paper);border:1px solid var(--hair);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.pane h3{margin:0 0 4px;font-size:20px}
+.prow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:10px 12px}
+.prow.off{opacity:.55}
+.ico{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;flex:none}
+.who{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.who b{font-weight:650}
+.who small{color:var(--muted)}
+.right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.bar{width:70px;height:4px;border-radius:2px;background:#ECE7F2;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--healthy)}
+.pct{font-weight:700;color:var(--healthy);font-size:12px;min-width:30px;text-align:right}
+.sw{width:36px;height:20px;border-radius:999px;background:var(--accent);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:18px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sw.off{background:#D9D3E2}.sw.off::after{left:2px}
+.chev{color:var(--muted)}
+.logins{display:grid;grid-template-columns:auto 70px auto;gap:2px 8px;align-items:center;font-size:11px}
+.logins span{color:var(--muted)}
+.logins .pct{min-width:0;font-size:11px}
+.bad{outline:2px solid #E86A6A;outline-offset:2px}
+.note{font-size:12px;color:var(--muted)}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px}
+.tag.bad{outline:none;background:#FCE4E4;color:#C23B3B}.tag.good{background:#DFF3E7;color:var(--healthy)}
+.page{display:flex;flex-direction:column;gap:10px}
+.head{display:flex;align-items:center;gap:12px}
+.head .ico{width:40px;height:40px;font-size:15px}
+.head b{font-size:19px}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.acc{display:flex;align-items:center;gap:10px;padding:4px 0}
+.acc .ico{width:24px;height:24px;font-size:11px}
+.pause{font-size:11px;font-weight:600;color:var(--muted);border:1px solid var(--hair);border-radius:6px;padding:2px 8px;background:#fff}
+.paused{opacity:.5}
+ul{margin:4px 0 0;padding-left:18px}
+li{margin:3px 0}
+code{font-size:12px;background:#EFEAF6;padding:1px 5px;border-radius:5px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#17151F;--side:#211E2C;--ink:#ECE9F5;--muted:#A49DB8;--card:#221F2E;--hair:#353047}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Settings → Providers, by product</h1>
+    <p class="sub">Slice 1 of TARGET §12. Mock data: two Claude logins, <i>personal</i> and <i>work</i>. The problem: today each login is a provider row; the page is titled by a login and its toggle pauses only that login.</p>
+  </header>
+
+  <div class="row2">
+    <section class="pane">
+      <h2>Today <span class="tag bad">the problem</span></h2>
+      <div class="prow bad"><span class="ico" style="background:#D77B5F">AI</span><span class="who"><b>personal</b><small>Updated 8s ago</small></span><span class="right"><span class="pct">60%</span><span class="bar"><i style="width:60%"></i></span><span class="sw"></span><span class="chev">›</span></span></div>
+      <div class="prow bad"><span class="ico" style="background:#D77B5F">AI</span><span class="who"><b>work</b><small>Updated 8s ago</small></span><span class="right"><span class="pct">78%</span><span class="bar"><i style="width:78%"></i></span><span class="sw"></span><span class="chev">›</span></span></div>
+      <div class="prow"><span class="ico" style="background:#2E9E8A">C</span><span class="who"><b>Codex</b><small>Updated 8s ago</small></span><span class="right"><span class="pct">55%</span><span class="bar"><i style="width:55%"></i></span><span class="sw"></span><span class="chev">›</span></span></div>
+      <p class="note">Two rows for one product; clicking <i>personal</i> opens a page titled "personal" whose toggle pauses only that login.</p>
+    </section>
+
+    <section class="pane">
+      <h2>Proposed <span class="tag good">one row per product</span></h2>
+      <div class="prow"><span class="ico" style="background:#D77B5F">AI</span><span class="who"><b>Claude</b><small>2 accounts · Updated 8s ago</small></span><span class="right"><span class="logins"><span>personal</span><span class="bar"><i style="width:60%"></i></span><span class="pct">60%</span><span>work</span><span class="bar"><i style="width:78%"></i></span><span class="pct">78%</span></span><span class="sw"></span><span class="chev">›</span></span></div>
+      <div class="prow"><span class="ico" style="background:#2E9E8A">C</span><span class="who"><b>Codex</b><small>Updated 8s ago</small></span><span class="right"><span class="pct">55%</span><span class="bar"><i style="width:55%"></i></span><span class="sw"></span><span class="chev">›</span></span></div>
+      <div class="prow off"><span class="ico" style="background:#8A7FB0">G</span><span class="who"><b>Gemini</b><small>Disabled</small></span><span class="right"><span class="sw off"></span><span class="chev">›</span></span></div>
+      <p class="note">The row is the product, and shows <b>each login's usage</b> — one meter per login, by name. A product with one login shows one meter, as today. Its toggle shows or hides <b>every</b> login.</p>
+    </section>
+  </div>
+
+  <section class="pane">
+    <h2>The page</h2>
+    <div class="page">
+      <div class="head"><span class="ico" style="background:#D77B5F">AI</span><span class="who"><b>Claude</b><small style="color:var(--healthy);font-weight:600">Enabled</small></span><span class="right"><span class="sw"></span></span></div>
+      <div class="card">
+        <b>Accounts</b>
+        <div class="acc"><span class="ico" style="background:#B04FD1">P</span><span class="who"><b>personal</b><small>Default account</small></span><span class="right"><span class="note">60% left</span><span class="pause">Pause</span></span></div>
+        <div class="acc paused"><span class="ico" style="background:#E8853A">W</span><span class="who"><b>work</b><small>work@example.com · paused</small></span><span class="right"><span class="note">—</span><span class="pause">Resume</span></span></div>
+      </div>
+      <ul class="note">
+        <li><b>The page toggle</b> is the product's: off hides Claude everywhere (pill, menu bar, alerts) and keeps every login and its settings.</li>
+        <li><b>Pause</b> (already in each login's ⋯ menu today) stops one login without hiding the product.</li>
+        <li>An extension keeps its own row and page until slice 4.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+</body>
+</html>

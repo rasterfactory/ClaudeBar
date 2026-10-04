@@ -51,6 +51,15 @@ Fix bugs using Chicago School TDD, root cause analysis, and rich domain design.
 3. **Actual**: What IS happening (current behavior)
 4. **Root cause**: WHY it's happening (code analysis)
 
+### Find the law it breaks
+
+The design docs are the source of truth ([AGENTS.md](../../../AGENTS.md#design-docs-are-the-source-of-truth)).
+A bug is usually a law in [CANONICAL_MODEL.md](../../../docs/architecture/CANONICAL_MODEL.md) §5 (or a feature's
+`design.md`) that the code breaks: find the law and its **one owner**, and fix it there, not
+at a call site. If the right fix changes a law or moves it to another owner, that is a
+design change: update the doc and ask the user to confirm before fixing. If no law covers
+it, propose the law first.
+
 ### Locate in Architecture
 
 > **Reference:** [MODULAR_DESIGN.md](../../../docs/architecture/MODULAR_DESIGN.md) (modules) ·
@@ -87,6 +96,8 @@ Check if the bug violates domain invariants that should be maintained:
 
 ### Chicago School TDD
 
+Name each test `should <outcome> [when <situation>]`, in the person's words, never a method, type or mechanism verb → [Naming tests](../implement-feature/references/tdd-patterns.md#naming-tests).
+
 We follow **Chicago School TDD** (state-based testing):
 - Test **state changes** and **return values**, not interactions
 - Focus on the "what" (observable outcomes), not the "how" (method calls)
@@ -102,7 +113,7 @@ Test the CORRECT behavior, not the bug:
 @Suite
 struct {Component}Tests {
 
-    @Test func `{describes correct behavior}`() async throws {
+    @Test func `should {correct outcome} when {the situation that showed the bug}`() async throws {
         // Given - the response that triggers the bug, captured from the real CLI/API
         let stub = try StubbedProvider(providerId: "codex")
         defer { stub.cleanUp() }

@@ -109,7 +109,7 @@ struct AddAccountSheet: View {
             }
             HStack {
                 if case .failed = fetch {
-                    Button("Remove") { provider.remove(account); monitor.removeProvider(id: account.id); dismiss() }
+                    Button("Remove") { provider.accounts.remove(account); dismiss() }
                     Spacer()
                     Button("Retry") { verify(account) }
                     // Only a login ClaudeBar knows the owner of may stay unchecked.
@@ -130,7 +130,7 @@ struct AddAccountSheet: View {
             HStack {
                 Spacer()
                 Button("Done") {
-                    provider.rename(account, to: name == account.accountEmail ? "" : name)
+                    provider.accounts.rename(account, to: name == account.accountEmail ? "" : name)
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -160,7 +160,7 @@ struct AddAccountSheet: View {
         case .signIn:
             let task = Task { @MainActor in
                 do {
-                    let account = try await provider.signIn()
+                    let account = try await provider.accounts.signIn()
                     added(account)
                 } catch is CancellationError {
                     step = .how
@@ -178,7 +178,7 @@ struct AddAccountSheet: View {
 
     private func addFromForm() {
         do {
-            added(try provider.addAccount(filling: entered))
+            added(try provider.accounts.add(filling: entered))
         } catch {
             step = .failed(error.localizedDescription)
         }
@@ -195,7 +195,7 @@ struct AddAccountSheet: View {
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             do {
-                added(try provider.addAccount(signedInAt: url))
+                added(try provider.accounts.add(signedInAt: url))
             } catch {
                 step = .failed(error.localizedDescription)
             }
@@ -203,7 +203,6 @@ struct AddAccountSheet: View {
     }
 
     private func added(_ account: Account) {
-        monitor.addProvider(account)
         verify(account)
     }
 
@@ -211,7 +210,7 @@ struct AddAccountSheet: View {
         step = .verify(account, fetch: .running)
         Task { @MainActor in
             do {
-                try await account.refresh()
+                try await provider.refresh(account)
                 step = .verify(account, fetch: .passed)
             } catch {
                 step = .verify(account, fetch: .failed(error.localizedDescription))

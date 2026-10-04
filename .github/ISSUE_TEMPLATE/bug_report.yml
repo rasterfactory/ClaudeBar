@@ -1,0 +1,60 @@
+name: Bug report
+description: ClaudeBar shows something wrong, or doesn't do what it says.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **What you saw and what you expected** help most — please don't only suggest a fix; the cause is often somewhere else.
+        Before filing, [Troubleshooting](https://github.com/tddworks/ClaudeBar/blob/main/docs/troubleshooting.md) covers the common errors and where the log is.
+
+  - type: textarea
+    id: did
+    attributes:
+      label: What did you do?
+      description: Steps, from opening ClaudeBar. Which provider, account and data source (CLI, API, …)?
+      placeholder: "1. Open the popover\n2. Select Claude → work\n3. …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: And how do you know — what does the provider's own site or CLI say?
+      placeholder: "The session quota at 40% left, as claude /usage shows…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: A screenshot helps. Hide emails you don't want public — Settings → Menu Bar → Hide Account Emails, or the eye on the account card.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: ClaudeBar version and macOS version
+      placeholder: "ClaudeBar 0.5.3 · macOS 15.4"
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log lines (optional)
+      description: From `~/Library/Logs/ClaudeBar/ClaudeBar.log`, around the time it happened. ClaudeBar never logs keys, but check before pasting.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you send
+      options:
+        - label: I searched the existing issues.
+          required: true
+        - label: Screenshots and logs contain no tokens, keys, cookies or emails I don't want public.
+          required: true

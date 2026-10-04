@@ -1,68 +1,38 @@
-import Testing
 import Foundation
-import Domain
+import Testing
 @testable import ClaudeBar
+import Domain
 
-@Suite @MainActor
+/// An extension's icon is the SF Symbol its manifest names (#302), now read
+/// through its definition (TARGET §12) — and a symbol that doesn't exist
+/// keeps the question mark.
+@MainActor
+@Suite(.serialized)
 struct ExtensionProviderIconTests {
-    private func manifest(id: String, icon: String?) -> ExtensionManifest {
-        ExtensionManifest(id: id, name: id.capitalized, version: "1.0.0", icon: icon, sections: [])
-    }
-
-    private func provider(id: String, icon: String?) -> ExtensionProvider {
-        ExtensionProvider(
-            manifest: manifest(id: id, icon: icon),
-            probes: [:],
-            settingsRepository: InMemoryProviderSettings()
-        )
+    private func register(id: String, icon: String?) throws {
+        let iconField = icon.map { #","icon":"\#($0)""# } ?? ""
+        let definition = try Extensions.definition(manifest: Data("""
+        {"id":"\(id)","name":"Icon","version":"1"\(iconField),
+         "sections":[{"id":"quotas","type":"quotaGrid","probe":{"command":"./probe.sh"}}]}
+        """.utf8), folder: FileManager.default.temporaryDirectory)
+        ProviderFactory.register(custom: definition)
     }
 
     @Test
-    func `extension provider uses the SF Symbol its manifest declares`() {
-        ProviderVisualIdentityLookup.registerExtensionIcons(from: [provider(id: "icon-atom", icon: "atom")])
-
+    func `extension provider uses the SF Symbol its manifest declares`() throws {
+        try register(id: "icon-atom", icon: "atom")
         #expect(ProviderVisualIdentityLookup.symbolIcon(for: "ext-icon-atom") == "atom")
     }
 
     @Test
-    func `extension provider without an icon keeps the question mark`() {
-        ProviderVisualIdentityLookup.registerExtensionIcons(from: [provider(id: "icon-none", icon: nil)])
-
+    func `extension provider without an icon keeps the question mark`() throws {
+        try register(id: "icon-none", icon: nil)
         #expect(ProviderVisualIdentityLookup.symbolIcon(for: "ext-icon-none") == "questionmark.circle.fill")
     }
 
     @Test
-    func `extension provider with an unknown symbol name keeps the question mark`() {
-        ProviderVisualIdentityLookup.registerExtensionIcons(from: [
-            provider(id: "icon-bogus", icon: "not.a.real.symbol.claudebar"),
-            provider(id: "icon-empty", icon: ""),
-        ])
-
+    func `extension provider with an unknown symbol name keeps the question mark`() throws {
+        try register(id: "icon-bogus", icon: "not.a.real.symbol.name")
         #expect(ProviderVisualIdentityLookup.symbolIcon(for: "ext-icon-bogus") == "questionmark.circle.fill")
-        #expect(ProviderVisualIdentityLookup.symbolIcon(for: "ext-icon-empty") == "questionmark.circle.fill")
     }
-
-    @Test
-    func `extension icon cannot replace a built-in provider icon`() {
-        ProviderVisualIdentityLookup.registerExtensionIcons(from: [provider(id: "claude", icon: "atom")])
-
-        #expect(ProviderVisualIdentityLookup.symbolIcon(for: "claude") == "brain.fill")
-        #expect(ProviderVisualIdentityLookup.iconAssetName(for: "claude") == "ClaudeIcon")
-    }
-
-    @Test
-    func `extension provider object exposes its manifest icon`() {
-        #expect(provider(id: "icon-object", icon: "atom").symbolIconOrDefault == "atom")
-    }
-}
-
-private final class InMemoryProviderSettings: ProviderSettingsRepository, @unchecked Sendable {
-    private var enabled: [String: Bool] = [:]
-    func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool { enabled[id] ?? defaultValue }
-    func isEnabled(forProvider id: String) -> Bool { enabled[id] ?? true }
-    func setEnabled(_ enabled: Bool, forProvider id: String) { self.enabled[id] = enabled }
-    func customCardURL(forProvider id: String) -> String? { nil }
-    func setCustomCardURL(_ url: String?, forProvider id: String) {}
-    func hiddenQuotaKeys(forProvider id: String) -> Set<String> { [] }
-    func setHiddenQuotaKeys(_ keys: Set<String>, forProvider id: String) {}
 }

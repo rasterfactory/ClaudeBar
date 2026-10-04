@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Desktop Tokens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: two popovers side by side — PR #446 vs the proposal — driven by one scenario bar, each with a checklist of the user's picture underneath. */
+:root{--paper:#FFF8EC;--dot:#E9DCC4;--ink:#1E1B2E;--muted:#5E5873;--card:#fff;--track:#F3EEE4;--rule:#EEE7DA;--bar:#2a2640;--onbar:#fff;--onfill:#1E1B2E;--lav:#EDE6FF;--mint:#9FE3B8;--pink:#FFB3C7;--sun:#FFD84D;--sky:#A9D8FF;--violet:#7C5CFF;--peach:#FFC9A8;--red:#FF8A8A;--code:#1E1B2E;--oncode:#EDE6FF;
+  --display:"Bricolage Grotesque",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#1A1826;--dot:#2A2740;--ink:#EDE6FF;--muted:#A9A2C2;--card:#24213A;--track:#33304A;--rule:#36324D;--bar:#0F0E18;--lav:#2E2950;--code:#0F0E18;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#1A1826;--dot:#2A2740;--ink:#EDE6FF;--muted:#A9A2C2;--card:#24213A;--track:#33304A;--rule:#36324D;--bar:#0F0E18;--lav:#2E2950;--code:#0F0E18;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);background-image:radial-gradient(var(--dot) 1.4px,transparent 1.4px);background-size:18px 18px;color:var(--ink);font:500 15px/1.45 var(--display)}
+.wrap{max-width:1180px;margin:0 auto;padding:36px 16px 64px;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:end}
+h1{margin:0;font-size:clamp(30px,5vw,44px);font-weight:800;letter-spacing:-.02em;line-height:1;text-wrap:balance}
+h2{margin:0;font-size:20px;font-weight:800}
+h3{margin:0;font-size:15px}
+.sub{margin:6px 0 0;color:var(--muted);max-width:720px}
+.tag{border:3px solid var(--ink);border-radius:999px;padding:3px 12px;font-weight:800;font-size:13px;background:var(--sun);color:var(--onfill);box-shadow:2px 2px 0 var(--ink)}
+.section-title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
+.label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.hint{font-size:12px;color:var(--muted)}
+.mono{font-family:var(--mono)}
+.card{background:var(--card);border:3px solid var(--ink);border-radius:18px;box-shadow:4px 4px 0 var(--ink);padding:14px;display:flex;flex-direction:column;gap:10px}
+
+/* Scenario bar */
+.demo{background:var(--lav);display:flex;flex-wrap:wrap;gap:16px 28px;align-items:flex-start}
+.demo .grp{display:flex;flex-direction:column;gap:6px;min-width:0}
+.seg{display:flex;flex-wrap:wrap;border:2px solid var(--ink);border-radius:14px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;color:var(--ink);font:800 12px var(--display);padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:2px solid var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--violet);outline-offset:2px}
+
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:28px;align-items:start}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.colhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.colhead .tag{background:var(--pink)}
+.colhead .tag.new{background:var(--mint)}
+
+/* Menu bar */
+.menubar{display:flex;justify-content:flex-end;align-items:center;gap:16px;height:34px;padding:0 14px;border:3px solid var(--ink);border-radius:12px;background:var(--bar);color:var(--onbar);font:600 13px system-ui,sans-serif}
+.menubar .item{display:flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.14);font-variant-numeric:tabular-nums}
+.menubar .dot{width:8px;height:8px;border-radius:50%}
+
+/* Popover */
+.pop{background:var(--paper);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:14px 14px;border:3px solid var(--ink);border-radius:22px;box-shadow:5px 5px 0 var(--ink);padding:14px;display:flex;flex-direction:column;gap:10px}
+.pop-head{display:flex;align-items:center;gap:10px}
+.logo{width:38px;height:38px;border-radius:50%;border:3px solid var(--ink);background:var(--peach);color:var(--onfill);display:grid;place-items:center;font-weight:800}
+.pop-head b{font-size:18px;line-height:1}
+.status{margin-left:auto;border:3px solid var(--ink);border-radius:999px;padding:3px 10px;font-weight:800;font-size:12px;background:var(--mint);color:var(--onfill)}
+.status.err{background:var(--red)}.status.none{background:var(--card);color:var(--muted)}
+.accounts{display:flex;flex-wrap:wrap;gap:6px}
+.acct{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--ink);border-radius:999px;padding:3px 10px;background:var(--card);color:var(--ink);font:800 12px var(--display);cursor:pointer;min-height:30px}
+.acct[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.acct .pct{font-family:var(--mono);font-size:11px;opacity:.8}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.q{background:var(--card);border:3px solid var(--ink);border-radius:14px;box-shadow:3px 3px 0 var(--ink);padding:10px;min-width:0}
+.q .big{font-size:26px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.q .vs{font-size:11px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.q.desk{background:var(--lav)}
+.bar{height:10px;border:2px solid var(--ink);border-radius:999px;background:var(--track);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--mint)}
+.err{border:3px solid var(--ink);border-radius:14px;background:var(--red);color:var(--onfill);padding:10px;font-weight:700;font-size:13px;box-shadow:3px 3px 0 var(--ink)}
+.err small{display:block;font-weight:500;opacity:.8;margin-top:2px}
+.setup{border:3px dashed var(--ink);border-radius:14px;background:var(--card);padding:10px;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.setup b{font-size:14px}
+.btn{align-self:flex-start;border:3px solid var(--ink);border-radius:999px;background:var(--violet);color:#fff;font:800 12px var(--display);padding:4px 12px;box-shadow:2px 2px 0 var(--ink);cursor:pointer;min-height:30px}
+.today-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:2px}
+.flag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:1px 7px;background:var(--sun);color:var(--onfill);border:2px solid var(--ink);vertical-align:middle}
+
+/* Settings */
+.settings label.opt{display:flex;gap:10px;align-items:flex-start;border:2px solid var(--ink);border-radius:12px;padding:8px 10px;background:var(--card);cursor:pointer}
+.settings label.opt small{display:block;color:var(--muted);font-size:12px}
+.settings label.opt.warn{background:var(--lav)}
+input[type=radio]{accent-color:var(--violet);width:16px;height:16px;margin-top:2px;flex:none}
+.row-toggle{display:flex;justify-content:space-between;gap:10px;align-items:center;font-weight:700;font-size:13px}
+.pill{border:2px solid var(--ink);border-radius:999px;padding:1px 9px;font-size:11px;font-weight:800;background:var(--mint);color:var(--onfill)}
+
+/* Checklist */
+.checks{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.checks li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;border:2px solid var(--ink);border-radius:12px;padding:7px 10px;background:var(--card)}
+.checks li .m{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--ink);display:grid;place-items:center;font-weight:800;font-size:12px;color:var(--onfill)}
+.checks li.ok .m{background:var(--mint)}.checks li.no .m{background:var(--red)}.checks li.na .m{background:var(--track);color:var(--muted)}
+.checks li .why{display:block;color:var(--muted);font-size:12px}
+
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:14px}
+.rules p{margin:0;font-size:13.5px;color:var(--muted)}
+.code{background:var(--code);color:var(--oncode);border-radius:12px;padding:10px 12px;font:500 12px/1.55 var(--mono);white-space:pre;overflow-x:auto}
+.code .c{color:#9C95B8}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Claude Desktop tokens</h1>
+      <p class="sub">Issue #198: someone uses Claude Desktop and has no Claude Code CLI. PR #446 adds <b>Local File</b> as a third way to fetch Claude's usage. The proposal shows Desktop's daily count next to the limits instead. Pick a person and a file state, then compare what each design shows them.</p>
+    </div>
+    <span class="tag">Mockup · sample numbers</span>
+  </header>
+
+  <div class="card demo">
+    <div class="grp"><span class="label">Who</span>
+      <div class="seg" id="who">
+        <button data-v="desktop" aria-pressed="true">Desktop only, no CLI (#198)</button>
+        <button data-v="both" aria-pressed="false">Claude Code + Desktop</button>
+        <button data-v="two" aria-pressed="false">Two Claude logins + Desktop</button>
+      </div></div>
+    <div class="grp"><span class="label">Desktop's buddy-tokens.json</span>
+      <div class="seg" id="file">
+        <button data-v="today" aria-pressed="true">Written today</button>
+        <button data-v="stale" aria-pressed="false">Still yesterday's</button>
+        <button data-v="missing" aria-pressed="false">Not there</button>
+      </div></div>
+  </div>
+
+  <div class="cols">
+    <div class="col" id="colPR">
+      <div class="colhead"><span class="tag">A · PR #446</span><h2>Local File is a data source</h2></div>
+      <div class="menubar"><span>Wi-Fi</span><span class="item"><span class="dot" id="prDot"></span><span id="prMB"></span></span><span>Sun 9:41</span></div>
+      <div class="pop" id="prPop"></div>
+      <p class="section-title">Settings → Providers → Claude</p>
+      <div class="card settings" id="prSettings"></div>
+      <p class="section-title">Does the user's picture hold?</p>
+      <ul class="checks" id="prChecks"></ul>
+    </div>
+
+    <div class="col" id="colNew">
+      <div class="colhead"><span class="tag new">B · Proposed</span><h2>Desktop's count sits beside the limits</h2></div>
+      <div class="menubar"><span>Wi-Fi</span><span class="item"><span class="dot" id="nwDot"></span><span id="nwMB"></span></span><span>Sun 9:41</span></div>
+      <div class="pop" id="nwPop"></div>
+      <p class="section-title">Settings → Providers → Claude</p>
+      <div class="card settings" id="nwSettings"></div>
+      <p class="section-title">Does the user's picture hold?</p>
+      <ul class="checks" id="nwChecks"></ul>
+    </div>
+  </div>
+
+  <div class="rules">
+    <div class="card"><h3>A data source changes how, never what</h3><p>CLI and API both answer "how much of my limit is left". A choice in that list that answers a different question breaks the menu bar and the card.</p></div>
+    <div class="card"><h3>Activity goes with activity</h3><p>Desktop's count is tokens used today, like the Claude Code token card. It belongs in the same Today section, labeled with where it came from.</p></div>
+    <div class="card"><h3>Say what's missing and what to do</h3><p>Without Claude Code there are no limits to read. The card says so and offers the next step, instead of an error or an empty menu bar.</p></div>
+    <div class="card"><h3>This Mac's app, not a login</h3><p>The file belongs to Claude Desktop on this Mac. It shows once, on the usual login, and never under an added account.</p></div>
+  </div>
+
+  <div class="card">
+    <h3>The JSON</h3>
+    <p class="hint" style="margin:0">It goes in Claude's existing <span class="mono">usageHistory</span>. Desktop's file reuses the reader <span class="mono">usageHistory</span> already has: <span class="mono">format: json</span> is one record per file, and <span class="mono">tokens.total</span> is for a log that keeps only the sum. Added logins drop it through the patch they already have, because the file belongs to the Mac, not a login. No <span class="mono">prices</span>, so the card shows tokens and no cost.</p>
+    <div class="code"><span class="c">// claude.json</span>
+"usageHistory": {
+  "records": { …Claude Code, unchanged… },
+  "prices": { "file": "claude-prices.json" },
+  "freeWhen": { … },
+  "sessionGap": 1800,
+  "otherApps": [{
+    "label": "Claude Desktop",
+    "records": {
+      "files":  "~/Library/Application Support/Claude/buddy-tokens.json",
+      "format": "json",
+      "at":     { "field": "$.tokens-today.date", "format": "yyyy-MM-dd" },
+      "tokens": { "total": "$.tokens-today.tokens" }
+    }
+  }]
+},
+"accounts": {
+  "patch": {
+    "usageHistory": {
+      "records": { "files": "{{account.configDirectory}}/projects/**/*.jsonl" },
+      "freeWhen": { … },
+      <b>"otherApps": null</b>   <span class="c">// merge-patch null removes it: the Mac's app shows on the usual login only</span>
+    }
+  }
+}</div>
+    <p class="hint" style="margin:0">Two general rules in <span class="mono">DataSources</span>, neither of which names Claude:</p>
+    <div class="code"><span class="c">// 1. "at" can read a field with a format, like fromPath does. Local time unless "timeZone" says otherwise.
+//    "2026-05-28" is the user's day; ISO8601Instant alone can't read it, so today the record is dropped.
+// 2. An otherApps entry whose files aren't found shows no card. A file dated yesterday is just yesterday's
+//    record, so today reads 0 ("Not used yet today") with no special case.</span></div>
+  </div>
+</div>
+
+<script>
+const S = { who: "desktop", file: "today", prMethod: "localFile", nwMethod: "cli", prChip: "personal", nwChip: "personal" };
+const ACC = { personal: { session: 62, weekly: 81, code: "1,284,310", codeVs: "Vs Oct 3 1,102,544" }, work: { session: 40, weekly: 70, code: "402,118", codeVs: "Vs Oct 3 511,930" } };
+const DESK = { today: "74,422", yesterday: "Vs Oct 3 61,210" };
+const FILE = "~/Library/Application Support/Claude/buddy-tokens.json";
+const $ = (id) => document.getElementById(id);
+const h = (tag, props = {}, ...kids) => { const n = document.createElement(tag); for (const [k, v] of Object.entries(props)) { if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else if (v !== false && v != null) n.setAttribute(k, v); } n.append(...kids.filter((x) => x !== null && x !== false && x !== undefined)); return n; };
+const color = (p) => p < 20 ? "#FF8A8A" : p < 50 ? "#FFD84D" : "#9FE3B8";
+const hasCLI = () => S.who !== "desktop";
+const chipsFor = () => S.who === "two" ? ["personal", "work"] : ["personal"];
+
+function head(statusText, cls) {
+  return h("div", { class: "pop-head" }, h("div", { class: "logo" }, "AI"), h("div", {}, h("b", {}, "Claude"), h("div", { class: "hint" }, "AI Usage Monitor")), h("span", { class: "status " + cls }, statusText));
+}
+function chips(key, pctOf) {
+  if (S.who !== "two") return null;
+  return h("div", { class: "accounts" }, ...chipsFor().map((id) => h("button", { class: "acct", "aria-pressed": String(S[key] === id), onclick: () => { S[key] = id; render(); } }, id, h("span", { class: "pct" }, pctOf(id)))));
+}
+function limits(a) {
+  return h("div", { class: "grid2" }, ...[["Session", a.session], ["Weekly", a.weekly]].map(([l, p]) =>
+    h("div", { class: "q" }, h("div", { class: "label" }, l + " left"), h("div", { class: "big" }, p + "%"), h("div", { class: "bar" }, h("i", { style: `width:${p}%` })))));
+}
+function codeCard(a) {
+  return h("div", { class: "q" }, h("div", { class: "label" }, "Claude Code · tokens today"), h("div", { class: "big" }, a.code), h("div", { class: "vs" }, a.codeVs));
+}
+
+/* ---------- A · PR #446 ---------- */
+function prResult(chip) {
+  if (S.prMethod === "localFile") {
+    if (S.file === "today") return { metric: DESK.today };
+    if (S.file === "stale") return { error: "No usage data", detail: "The counter isn't from today." };
+    return { error: "No file at " + FILE, detail: "Local File doesn't fall back to CLI or API." };
+  }
+  if (!hasCLI()) return S.prMethod === "cli" ? { error: "Claude CLI not found", detail: "Install Claude Code, or pick another data source." } : { error: "No OAuth credentials found", detail: "Run claude login." };
+  return { quotas: ACC[chip] };
+}
+function renderPR() {
+  const chip = S.prChip, r = prResult(chip);
+  $("prMB").textContent = r.quotas ? `${r.quotas.session}%` : "—";
+  $("prDot").style.background = r.quotas ? color(r.quotas.session) : "#8a83a8";
+  const kids = [head(r.quotas ? "HEALTHY" : r.error ? "ERROR" : "NO LIMITS", r.quotas ? "" : r.error ? "err" : "none"),
+    chips("prChip", (id) => { const x = prResult(id); return x.quotas ? x.quotas.session + "%" : x.metric ? x.metric : "!"; })];
+  if (r.quotas) kids.push(limits(r.quotas));
+  if (r.error) kids.push(h("div", { class: "err" }, r.error, h("small", {}, r.detail)));
+  if (r.metric || hasCLI()) {
+    kids.push(h("div", { class: "today-h" }, h("span", { class: "label" }, "Today"), null));
+    const cards = [];
+    if (r.metric) cards.push(h("div", { class: "q desk" }, h("div", { class: "label" }, "Claude Desktop · Tokens Today"), h("div", { class: "big" }, r.metric),
+      h("div", { class: "vs" }, S.who === "two" && chip === "work" ? h("span", { class: "flag" }, "Same number as personal") : "No comparison")));
+    if (hasCLI()) cards.push(codeCard(ACC[chip]));
+    kids.push(h("div", { class: "grid2" }, ...cards));
+  }
+  $("prPop").replaceChildren(...kids.filter(Boolean));
+
+  const opts = [["cli", "CLI", "Uses claude /usage command"], ["api", "API", "Calls Anthropic API directly"], ["localFile", "Local File", "Reads Claude Desktop's buddy-tokens.json (best-effort)"]];
+  $("prSettings").replaceChildren(h("span", { class: "label" }, "Data fetching method"),
+    ...opts.map(([v, t, d]) => h("label", { class: "opt" + (v === "localFile" ? " warn" : "") },
+      h("input", { type: "radio", name: "prm", id: "prm-" + v, checked: S.prMethod === v ? "" : false, onchange: () => { S.prMethod = v; render(); } }),
+      h("span", {}, h("b", {}, t), h("small", {}, d)))),
+    h("span", { class: "hint" }, "Each mode falls back to the other — except Local File."));
+
+  const two = S.who === "two";
+  setChecks("prChecks", [
+    [!!r.quotas, "The menu bar number means \"how much of my limit is left\"", r.quotas ? "" : S.prMethod === "localFile" ? "Local File has no limit, so the menu bar goes blank." : "Nothing to show."],
+    [false, "Changing the data source keeps the same kind of numbers", "Local File swaps session and weekly limits for one token count."],
+    [!hasCLI() ? false : null, "A Desktop-only user knows what to do next", !hasCLI() ? (S.prMethod === "localFile" ? "They see a count but no way to see their limits, and nothing says why." : "An error. The fix (pick Local File) is hidden in Settings.") : "Not this person."],
+    [S.prMethod === "localFile" && hasCLI() ? false : r.metric ? true : null, "Desktop's tokens can't be mistaken for my plan's usage", S.prMethod === "localFile" && hasCLI() ? "Two \"tokens today\" numbers, and the one in the Claude card isn't Claude Code's." : r.metric ? "It's the only number, labeled Claude Desktop." : "Not shown."],
+    [two ? (S.prMethod === "localFile" ? false : true) : null, "Each login shows only its own numbers", two ? (S.prMethod === "localFile" ? "Both logins show Desktop's 74,422." : "") : "One login."],
+    [true, "Yesterday's count never appears as today's", ""],
+  ]);
+}
+
+/* ---------- B · Proposed ---------- */
+function renderNew() {
+  const chip = S.nwChip, cli = hasCLI(), a = ACC[chip];
+  $("nwMB").textContent = cli ? `${a.session}%` : "—";
+  $("nwDot").style.background = cli ? color(a.session) : "#8a83a8";
+  const kids = [head(cli ? "HEALTHY" : "NO LIMITS YET", cli ? "" : "none"), chips("nwChip", (id) => ACC[id].session + "%")];
+  if (cli) kids.push(limits(a));
+  else kids.push(h("div", { class: "setup" }, h("b", {}, "See your session and weekly limits"), h("span", {}, "ClaudeBar reads your plan's limits through Claude Code. Install it and sign in once; Claude Desktop stays as it is."), h("button", { class: "btn" }, "Set up Claude Code")));
+
+  const showDesk = S.file !== "missing" && chip === "personal";
+  const cards = [];
+  if (cli) cards.push(codeCard(a));
+  if (showDesk) cards.push(h("div", { class: "q desk" }, h("div", { class: "label" }, "Claude Desktop · tokens today"),
+    h("div", { class: "big" }, S.file === "today" ? DESK.today : h("span", { style: "font-size:17px" }, "Not used yet today")), h("div", { class: "vs" }, DESK.yesterday)));
+  if (cards.length) kids.push(h("div", { class: "today-h" }, h("span", { class: "label" }, "Today"), h("span", { class: "hint" }, chip === "work" ? "work's Claude Code logs" : "this Mac")), h("div", { class: "grid2" }, ...cards));
+  else if (!cli) kids.push(h("p", { class: "hint", style: "margin:0" }, "No Claude Desktop on this Mac, so there's no daily count to show."));
+  $("nwPop").replaceChildren(...kids.filter(Boolean));
+
+  const opts = [["cli", "CLI", "Uses claude /usage command"], ["api", "API", "Calls Anthropic API directly"]];
+  $("nwSettings").replaceChildren(h("span", { class: "label" }, "Data fetching method"),
+    ...opts.map(([v, t, d]) => h("label", { class: "opt" },
+      h("input", { type: "radio", name: "nwm", id: "nwm-" + v, checked: S.nwMethod === v ? "" : false, onchange: () => { S.nwMethod = v; render(); } }),
+      h("span", {}, h("b", {}, t), h("small", {}, d)))),
+    h("div", { class: "row-toggle" }, h("span", {}, "Daily usage cards", h("span", { class: "hint", style: "display:block;font-weight:500" }, "Claude Code logs, plus Claude Desktop when it's on this Mac")), h("span", { class: "pill" }, "ON")));
+
+  const two = S.who === "two";
+  setChecks("nwChecks", [
+    [cli ? true : null, "The menu bar number means \"how much of my limit is left\"", cli ? "" : "No limits to read yet, so no number. Nothing else takes its place."],
+    [true, "Changing the data source keeps the same kind of numbers", "Both choices read the same limits."],
+    [!cli ? true : null, "A Desktop-only user knows what to do next", !cli ? "Today's Desktop count now, and one step to see the limits." : "Not this person."],
+    [showDesk ? true : null, "Desktop's tokens can't be mistaken for my plan's usage", showDesk ? "Labeled Claude Desktop, under Today, beside Claude Code's own card." : "Not shown."],
+    [two ? true : null, "Each login shows only its own numbers", two ? "Desktop's count shows on personal only." : "One login."],
+    [true, "Yesterday's count never appears as today's", S.file === "stale" ? "It reads \"Not used yet today\"." : ""],
+  ]);
+}
+
+function setChecks(id, rows) {
+  $(id).replaceChildren(...rows.map(([ok, text, why]) => h("li", { class: ok === null ? "na" : ok ? "ok" : "no" },
+    h("span", { class: "m", "aria-label": ok === null ? "not applicable" : ok ? "holds" : "breaks" }, ok === null ? "–" : ok ? "✓" : "✗"),
+    h("span", {}, text, why ? h("span", { class: "why" }, why) : null))));
+}
+
+function bindSeg(id, key) {
+  $(id).addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; S[key] = b.dataset.v; if (S.who !== "two") { S.prChip = S.nwChip = "personal"; } render(); });
+}
+function render() {
+  for (const [id, key] of [["who", "who"], ["file", "file"]]) for (const b of $(id).children) b.setAttribute("aria-pressed", String(b.dataset.v === S[key]));
+  renderPR(); renderNew();
+}
+bindSeg("who", "who"); bindSeg("file", "file");
+render();
+</script>
+</body>
+</html>

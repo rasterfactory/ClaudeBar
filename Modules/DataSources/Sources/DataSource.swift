@@ -97,6 +97,7 @@ public struct DataSource: Sendable {
     /// the cache while it is fresh, and refused without a request while a
     /// rate limit lasts. Throws a `DataSourceError` naming the step that failed.
     public func fetchUsage() async throws -> UsageSnapshot {
+        try Task.checkCancellation()
         if let ttl = cacheTTL, let cached = memory.snapshot(within: ttl, now: now()) {
             return cached
         }
@@ -105,6 +106,7 @@ public struct DataSource: Sendable {
         }
         do {
             let usage = try await fetchAndRead(recovering: true)
+            try Task.checkCancellation()
             if cacheTTL != nil { memory.remember(usage, at: now()) }
             return usage
         } catch let error as DataSourceError {

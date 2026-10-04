@@ -5,7 +5,6 @@ import Infrastructure
 // MARK: - Theme Registry
 
 /// Manages available themes in the application.
-/// Follows the same pattern as `AIProviders` for provider registration.
 ///
 /// ## Usage
 /// ```swift

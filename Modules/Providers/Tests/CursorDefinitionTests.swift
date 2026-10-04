@@ -16,8 +16,9 @@ struct CursorDefinitionTests {
         func set(_ value:String?) { lock.lock(); defer {lock.unlock()}; self.value=value }
         func get() -> String? { lock.lock(); defer {lock.unlock()}; return value }
     }
-    private func make(_ data:Data, token:String, capture:CookieCapture = CookieCapture()) throws -> Account {
-        let definition=try Providers.builtIn("cursor"), vault=MemoryVault(), network=MockNetworkClient()
+    /// Adds a login by its token, then refreshes it — asked of its provider.
+    private func refreshAdded(_ data:Data, token:String, capture:CookieCapture = CookieCapture()) async throws -> UsageSnapshot {
+        let definition=try ProviderFactory.builtIn("cursor"), vault=MemoryVault(), network=MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
             #expect(request.url?.absoluteString == "https://cursor.com/api/usage-summary")
             #expect(request.httpMethod == "GET" && request.timeoutInterval == 15)
@@ -25,16 +26,17 @@ struct CursorDefinitionTests {
             return (data,HTTPURLResponse(url:request.url!,statusCode:200,httpVersion:nil,headerFields:nil)!)
         }
         let provider=Provider(definition:definition,settings:InMemoryProviderSettings(),makeDataSource:{ source,login in
-            DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in nil},homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
+            DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:ProviderFactory.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in nil},homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
         },vault:vault)
-        return try provider.addAccount(filling:["accessToken":token])
+        let added = try provider.accounts.add(filling:["accessToken":token])
+        return try await provider.refresh(added)
     }
     private func parse(_ data:Data) async throws -> UsageSnapshot {
-        try await make(data,token:"header.eyJzdWIiOiJmaXh0dXJlLXVzZXIifQ.signature").refresh()
+        try await refreshAdded(data,token:"header.eyJzdWIiOiJmaXh0dXJlLXVzZXIifQ.signature")
     }
     private func userID(_ token:String) async throws -> String {
         let capture=CookieCapture()
-        _ = try await make(Data(#"{"isUnlimited":true}"#.utf8),token:token,capture:capture).refresh()
+        _ = try await refreshAdded(Data(#"{"isUnlimited":true}"#.utf8),token:token,capture:capture)
         let cookie=try #require(capture.get())
         #expect(cookie.hasPrefix("WorkosCursorSessionToken="))
         #expect(cookie.hasSuffix("::"+token))
@@ -897,7 +899,7 @@ struct CursorDefinitionTests {
     func `a token with no user id sends no session cookie`(_ token: String) async throws {
         // Not a JWT, or one with no `sub`: the cookie is left out, and Cursor answers for itself.
         let capture = CookieCapture()
-        _ = try await make(Data(#"{"isUnlimited":true}"#.utf8), token: token, capture: capture).refresh()
+        _ = try await refreshAdded(Data(#"{"isUnlimited":true}"#.utf8), token: token, capture: capture)
         #expect(capture.get() == nil)
     }
 
@@ -975,28 +977,28 @@ struct CursorDefinitionTests {
             let data=Data("{\"individualUsage\":{\"plan\":{\"enabled\":true,\"limit\":100,\"used\":\(100-remaining)}}}".utf8)
             return (data,HTTPURLResponse(url:request.url!,statusCode:200,httpVersion:nil,headerFields:nil)!)
         }
-        let definition=try Providers.builtIn("cursor")
+        let definition=try ProviderFactory.builtIn("cursor")
         let make: @MainActor () -> Provider = {
             Provider(definition:definition,settings:settings,accounts:settings.accounts(forProvider:"cursor"),makeDataSource:{source,login in
-                DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in personal},homeDirectory:root,now:{Date()})
+                DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:ProviderFactory.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in personal},homeDirectory:root,now:{Date()})
             },vault:vault)
         }
         let first=make()
         #expect(first.defaultAccount.displayName == "Cursor")
-        let added=try first.addAccount(filling:["accessToken":work]), second=try first.addAccount(filling:["accessToken":other])
-        first.rename(added,to:"Work");first.rename(second,to:"Other work")
+        let added=try first.accounts.add(filling:["accessToken":work]), second=try first.accounts.add(filling:["accessToken":other])
+        first.accounts.rename(added,to:"Work");first.accounts.rename(second,to:"Other work")
         #expect(added.displayName == "Work" && second.displayName == "Other work")
-        #expect((try await first.defaultAccount.refresh()).quotas[0].percentRemaining == 80)
-        #expect((try await added.refresh()).quotas[0].percentRemaining == 40)
-        #expect((try await second.refresh()).quotas[0].percentRemaining == 20)
+        #expect((try await first.refreshPlain()).quotas[0].percentRemaining == 80)
+        #expect((try await first.refresh(added)).quotas[0].percentRemaining == 40)
+        #expect((try await first.refresh(second)).quotas[0].percentRemaining == 20)
         #expect(settings.accounts(forProvider:"cursor").allSatisfy {$0.probeConfig.isEmpty})
         let relaunched=make(), saved=try #require(relaunched.accounts.first {$0.id == added.id})
         #expect(saved.displayName == "Work")
-        #expect((try await saved.refresh()).quotas[0].percentRemaining == 40)
+        #expect((try await relaunched.refresh(saved)).quotas[0].percentRemaining == 40)
         _ = vault.delete("accessToken",provider:saved.id)
-        await #expect(throws:UsageError.authenticationRequired) {try await saved.refresh()}
-        #expect((try await relaunched.defaultAccount.refresh()).quotas[0].percentRemaining == 80)
-        relaunched.remove(saved)
+        await #expect(throws:UsageError.authenticationRequired) {try await relaunched.refresh(saved)}
+        #expect((try await relaunched.refreshPlain()).quotas[0].percentRemaining == 80)
+        relaunched.accounts.remove(saved)
         #expect(!settings.accounts(forProvider:"cursor").contains {$0.accountId == saved.accountId})
         #expect(relaunched.accounts.count == 2)
         #expect(try Data(contentsOf:db) == bytes)
@@ -1007,11 +1009,11 @@ struct CursorDefinitionTests {
         given(network).request(.any).willProduce { @Sendable request in
             (Data("{}".utf8),HTTPURLResponse(url:request.url!,statusCode:fixture.0,httpVersion:nil,headerFields:nil)!)
         }
-        let provider=Provider(definition:try Providers.builtIn("cursor"),settings:InMemoryProviderSettings(),makeDataSource:{source,login in
-            DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:Providers.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in nil},homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
+        let provider=Provider(definition:try ProviderFactory.builtIn("cursor"),settings:InMemoryProviderSettings(),makeDataSource:{source,login in
+            DataSources.make(source,providerId:"cursor",cliExecutor:MockCLIExecutor(),network:network,makeTransport:{_,_,_,_ in MockRPCTransport()},scripts:ProviderFactory.builtInScripts,secrets:vault.scoped(to:login),environment:{_ in nil},homeDirectory:FileManager.default.temporaryDirectory,now:{Date()})
         },vault:vault)
-        let account=try provider.addAccount(filling:["accessToken":token("test")])
-        await #expect(throws:fixture.1) {try await account.refresh()}
+        let account=try provider.accounts.add(filling:["accessToken":token("test")])
+        await #expect(throws:fixture.1) {try await provider.refresh(account)}
     }
 
     @Test func `a 429 is a rate limit, not an HTTP error`() async throws {
@@ -1019,23 +1021,23 @@ struct CursorDefinitionTests {
         given(network).request(.any).willProduce { @Sendable request in
             (Data("{}".utf8), HTTPURLResponse(url: request.url!, statusCode: 429, httpVersion: nil, headerFields: nil)!)
         }
-        let provider = Provider(definition: try Providers.builtIn("cursor"), settings: InMemoryProviderSettings(), makeDataSource: { source, login in
+        let provider = Provider(definition: try ProviderFactory.builtIn("cursor"), settings: InMemoryProviderSettings(), makeDataSource: { source, login in
             DataSources.make(source, providerId: "cursor", cliExecutor: MockCLIExecutor(), network: network, makeTransport: { _, _, _, _ in MockRPCTransport() },
-                             scripts: Providers.builtInScripts, secrets: vault.scoped(to: login), environment: { _ in nil },
+                             scripts: ProviderFactory.builtInScripts, secrets: vault.scoped(to: login), environment: { _ in nil },
                              homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
         }, vault: vault)
-        let account = try provider.addAccount(filling: ["accessToken": token("test")])
-        await #expect { try await account.refresh() } throws: { ($0 as? UsageError)?.tag == "rateLimited" }
+        let account = try provider.accounts.add(filling: ["accessToken": token("test")])
+        await #expect { try await provider.refresh(account) } throws: { ($0 as? UsageError)?.tag == "rateLimited" }
     }
 
     @Test func `without the Cursor app's database the default login needs signing in, with Cursor's own hint`() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let provider = Provider(definition: try Providers.builtIn("cursor"), settings: InMemoryProviderSettings(), makeDataSource: { source, login in
+        let provider = Provider(definition: try ProviderFactory.builtIn("cursor"), settings: InMemoryProviderSettings(), makeDataSource: { source, login in
             DataSources.make(source, providerId: "cursor", cliExecutor: MockCLIExecutor(), network: MockNetworkClient(), makeTransport: { _, _, _, _ in MockRPCTransport() },
-                             scripts: Providers.builtInScripts, environment: { _ in nil }, homeDirectory: root, now: { Date() })
+                             scripts: ProviderFactory.builtInScripts, environment: { _ in nil }, homeDirectory: root, now: { Date() })
         })
-        #expect(await provider.defaultAccount.isAvailable() == false)
-        await #expect(throws: UsageError.authenticationRequired) { try await provider.defaultAccount.refresh() }
-        #expect(provider.keyHint == "Sign in again in Cursor settings, then refresh.")
+        #expect(await provider.isPlainAvailable() == false)
+        await #expect(throws: UsageError.authenticationRequired) { try await provider.refreshPlain() }
+        #expect(provider.configuration.keyHint == "Sign in again in Cursor settings, then refresh.")
     }
 }

@@ -60,9 +60,10 @@ struct NotificationsSpec {
                 capturedAt: Date()
             ))
 
-            let claude = StubClaudeProvider(probe: probe, settingsRepository: settings)
+            let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
+            let claude = claudeProduct.defaultAccount
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
+                providers: kept([claudeProduct]),
                 alerter: mockAlerter,
                 clock: TestClock()
             )
@@ -109,9 +110,10 @@ struct NotificationsSpec {
                 capturedAt: Date()
             ))
 
-            let claude = StubClaudeProvider(probe: probe, settingsRepository: settings)
+            let claudeProduct = stubbedProduct("claude", probe: probe, settings: settings)
+            let claude = claudeProduct.defaultAccount
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
+                providers: kept([claudeProduct]),
                 alerter: mockAlerter,
                 clock: TestClock()
             )
@@ -160,10 +162,12 @@ struct NotificationsSpec {
             given(codexProbe).isAvailable().willReturn(true)
             given(codexProbe).probe().willThrow(UsageError.timeout)
 
-            let claude = StubClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-            let codex = StubCodexProvider(probe: codexProbe, settingsRepository: settings)
+            let claudeProduct = stubbedProduct("claude", probe: claudeProbe, settings: settings)
+            let claude = claudeProduct.defaultAccount
+            let codexProduct = stubbedProduct("codex", probe: codexProbe, settings: settings)
+            let codex = codexProduct.defaultAccount
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: kept([claudeProduct, codexProduct]),
                 clock: TestClock()
             )
 

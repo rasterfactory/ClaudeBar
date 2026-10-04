@@ -33,8 +33,8 @@ struct CodexConfigSpec {
         home: URL,
         network: MockNetworkClient = MockNetworkClient(),
         transport: MockRPCTransport = MockRPCTransport()
-    ) throws -> Account {
-        let definition = try Providers.builtIn("codex")
+    ) throws -> Provider {
+        let definition = try ProviderFactory.builtIn("codex")
         return Provider(
             definition: definition,
             settings: settings,
@@ -50,7 +50,7 @@ struct CodexConfigSpec {
                     now: { Date() }
                 )
             }
-        ).defaultAccount
+        )
     }
 
     private static func makeHome() throws -> URL {
@@ -98,18 +98,19 @@ struct CodexConfigSpec {
                 Data(#"{"rate_limit":{"primary_window":{"used_percent":55}}}"#.utf8),
                 HTTPURLResponse(url: URL(string: "https://chatgpt.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             ))
-            let codex = try CodexConfigSpec.makeCodex(settings: settings, home: home, network: network, transport: transport)
+            let codexProduct = try CodexConfigSpec.makeCodex(settings: settings, home: home, network: network, transport: transport)
+            let codex = codexProduct.defaultAccount
 
             // Default is RPC mode
-            #expect(codex.provider.activeKind == "rpc")
+            #expect(codexProduct.configuration.activeKind == "rpc")
 
             // When — user switches to API mode
-            codex.provider.use("api")
-            let monitor = QuotaMonitor(providers: AIProviders(providers: [codex]), clock: CodexConfigSpec.TestClock())
+            codexProduct.configuration.use("api")
+            let monitor = QuotaMonitor(providers: kept([codexProduct]), clock: CodexConfigSpec.TestClock())
             await monitor.refresh(providerId: "codex")
 
             // Then — the API's answer (45% left) is shown, not RPC's (80%)
-            #expect(codex.provider.activeKind == "api")
+            #expect(codexProduct.configuration.activeKind == "api")
             #expect(codex.snapshot?.quotas.first?.percentRemaining == 45)
         }
 
@@ -119,7 +120,8 @@ struct CodexConfigSpec {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             let home = try CodexConfigSpec.makeHome()
             defer { try? FileManager.default.removeItem(at: home) }
-            let codex = try CodexConfigSpec.makeCodex(settings: settings, home: home)
+            let codexProduct = try CodexConfigSpec.makeCodex(settings: settings, home: home)
+            let codex = codexProduct.defaultAccount
             #expect(settings.codexProbeMode() == .rpc)
 
             // When — the Codex card saves API mode
@@ -127,7 +129,7 @@ struct CodexConfigSpec {
 
             // Then — persisted, and the provider follows it
             #expect(settings.codexProbeMode() == .api)
-            #expect(codex.provider.activeKind == "api")
+            #expect(codexProduct.configuration.activeKind == "api")
         }
     }
 
@@ -149,13 +151,14 @@ struct CodexConfigSpec {
                 Data(#"{"rate_limit":{"primary_window":{"used_percent":38}}}"#.utf8),
                 HTTPURLResponse(url: URL(string: "https://chatgpt.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             ))
-            let codex = try CodexConfigSpec.makeCodex(settings: settings, home: home, network: network)
-            codex.provider.use("api")
-            try await codex.refresh()
+            let codexProduct = try CodexConfigSpec.makeCodex(settings: settings, home: home, network: network)
+            let codex = codexProduct.defaultAccount
+            codexProduct.configuration.use("api")
+            try await codexProduct.refresh(codex)
 
             // When — the key is gone and Codex refreshes
             try FileManager.default.removeItem(at: home.appendingPathComponent(".codex/auth.json"))
-            await #expect(throws: (any Error).self) { try await codex.refresh() }
+            await #expect(throws: (any Error).self) { try await codexProduct.refresh(codex) }
 
             // Then — the popover can say "Couldn't read your key", with the
             // last usage still on screen, last seen via API
@@ -176,13 +179,14 @@ struct CodexConfigSpec {
             let settings = UserDefaultsProviderSettingsRepository(userDefaults: UserDefaults(suiteName: "com.claudebar.test.\(UUID().uuidString)")!)
             let home = try CodexConfigSpec.makeHome()
             defer { try? FileManager.default.removeItem(at: home) }
-            let codex = try CodexConfigSpec.makeCodex(settings: settings, home: home)
+            let codexProduct = try CodexConfigSpec.makeCodex(settings: settings, home: home)
+            let codex = codexProduct.defaultAccount
 
-            #expect(codex.hasKey(for: "api") == false)
+            #expect(codexProduct.hasKey(for: "api", account: codex) == false)
 
             try CodexConfigSpec.writeAuth(in: home)
 
-            #expect(codex.hasKey(for: "api") == true)
+            #expect(codexProduct.hasKey(for: "api", account: codex) == true)
         }
     }
 }

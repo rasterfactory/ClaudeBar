@@ -1,0 +1,61 @@
+name: Website
+
+# Deploys website/ (the landing page, the leaderboard page and its globe) to
+# claudebar.tddworks.com, a static-assets Worker. docs/appcast.xml is not part
+# of it: Sparkle's feed stays on GitHub Pages (deploy-pages.yml).
+#
+# Secrets (repo → Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   scoped to Workers Scripts: Edit and Workers Routes: Edit on tddworks.com
+#   CLOUDFLARE_ACCOUNT_ID
+# Only pushes to main deploy; pull requests only build, and never see the secrets.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'docs/screenshots/**'
+      - 'docs/sponsors/**'
+      - 'docs/app-icon.png'
+      - '.github/workflows/website.yml'
+  pull_request:
+    paths:
+      - 'website/**'
+      - '.github/workflows/website.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - run: npm ci
+
+      - name: Build and type-check
+        run: npm run typecheck
+
+      - run: npm test
+
+      - name: Deploy
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: npx cf deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

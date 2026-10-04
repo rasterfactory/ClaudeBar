@@ -110,7 +110,7 @@ struct MiniMaxDefinitionTests {
     private func make(body: String = sampleSuccessResponse, status: Int = 200, region: String? = "china",
                       authEnvVar: String? = nil, vault: MemoryVault = MemoryVault(["minimax.apiKey": "personal"]),
                       environment: [String: String] = [:]) throws -> Provider {
-        let definition = try Providers.builtIn("minimax")
+        let definition = try ProviderFactory.builtIn("minimax")
         let network = MockNetworkClient()
         given(network).request(.any).willProduce { @Sendable request in
             let international = request.value(forHTTPHeaderField: "Authorization") == "Bearer work" || region == "international"
@@ -126,7 +126,7 @@ struct MiniMaxDefinitionTests {
         settings.setValue(authEnvVar, "authEnvVar", forProvider: "minimax")
         return Provider(definition: definition, settings: settings, makeDataSource: { source, login in
             DataSources.make(source, providerId: definition.id, cliExecutor: MockCLIExecutor(), network: network,
-                             makeTransport: { _, _, _, _ in MockRPCTransport() }, scripts: Providers.builtInScripts,
+                             makeTransport: { _, _, _, _ in MockRPCTransport() }, scripts: ProviderFactory.builtInScripts,
                              secrets: vault.scoped(to: login), environment: { environment[$0] },
                              homeDirectory: FileManager.default.temporaryDirectory, now: { Date() })
         }, vault: vault)
@@ -135,13 +135,13 @@ struct MiniMaxDefinitionTests {
     @Test func `definition keeps identity and opt-in default`() throws {
         let provider = try make()
         #expect(provider.name == "MiniMax")
-        #expect(!provider.defaultAccount.isEnabled)
+        #expect(!provider.plainIsInLineup)
         #expect(provider.definition.keyDestinations == ["api.minimax.io", "api.minimaxi.com"])
         #expect(provider.definition.accounts?.ways == [.form])
     }
 
     @Test func `legacy counts are remaining and produce the original usage subtitle`() async throws {
-        let quota = try #require(try await make().defaultAccount.refresh().quotas.first)
+        let quota = try #require(try await make().refreshPlain().quotas.first)
         #expect(quota.percentRemaining == 17)
         #expect(quota.quotaType == .modelSpecific("minimax-m2"))
         #expect(quota.resetText == "1245/1500 requests")
@@ -150,7 +150,7 @@ struct MiniMaxDefinitionTests {
     }
 
     @Test func `Token Plan percentages produce independent interval and weekly windows`() async throws {
-        let quotas = try await make(body: Self.sampleTokenPlanResponse).defaultAccount.refresh().quotas
+        let quotas = try await make(body: Self.sampleTokenPlanResponse).refreshPlain().quotas
         #expect(quotas.count == 4)
         #expect(quotas.map(\.percentRemaining) == [100, 98, 100, 100])
         #expect(quotas[1].quotaType == .timeLimit("general Weekly"))
@@ -160,77 +160,78 @@ struct MiniMaxDefinitionTests {
     }
 
     @Test func `all original model and optional reset fixtures survive`() async throws {
-        #expect(try await make(body: Self.sampleMultiModelResponse).defaultAccount.refresh().quotas.map(\.percentRemaining) == [17, 80])
-        let quota = try #require(try await make(body: Self.sampleNoEndTimeResponse).defaultAccount.refresh().quotas.first)
+        #expect(try await make(body: Self.sampleMultiModelResponse).refreshPlain().quotas.map(\.percentRemaining) == [17, 80])
+        let quota = try #require(try await make(body: Self.sampleNoEndTimeResponse).refreshPlain().quotas.first)
         #expect(quota.percentRemaining == 50)
         #expect(quota.resetsAt == nil)
     }
 
     @Test func `body-level API errors and empty responses remain failures`() async throws {
         await #expect(throws: UsageError.executionFailed("MiniMax API error: invalid api key")) {
-            try await make(body: Self.sampleErrorResponse).defaultAccount.refresh()
+            try await make(body: Self.sampleErrorResponse).refreshPlain()
         }
-        await #expect(throws: UsageError.noData) { try await make(body: Self.sampleEmptyRemainsResponse).defaultAccount.refresh() }
-        await #expect(throws: UsageError.noData) { try await make(body: #"{"base_resp":{"status_code":0}}"#).defaultAccount.refresh() }
+        await #expect(throws: UsageError.noData) { try await make(body: Self.sampleEmptyRemainsResponse).refreshPlain() }
+        await #expect(throws: UsageError.noData) { try await make(body: #"{"base_resp":{"status_code":0}}"#).refreshPlain() }
     }
 
     @Test(arguments: ["not JSON", #"{"base_resp":{"status_code":0},"model_remains":[{}]}"#])
     func `malformed response fails mapping`(_ body: String) async throws {
-        let account = try make(body: body).defaultAccount
-        await #expect(throws: UsageError.self) { try await account.refresh() }
-        #expect(account.lastFailedStep == .mapping)
+        let provider = try make(body: body)
+        await #expect(throws: UsageError.self) { try await provider.refreshPlain() }
+        #expect(provider.defaultAccount.lastFailedStep == .mapping)
     }
 
     @Test func `no reported remaining amount has no data`() async throws {
         let body = #"{"base_resp":{"status_code":0},"model_remains":[{"model_name":"general","current_interval_total_count":0,"current_interval_usage_count":0}]}"#
-        await #expect(throws: UsageError.noData) { try await make(body: body).defaultAccount.refresh() }
+        await #expect(throws: UsageError.noData) { try await make(body: body).refreshPlain() }
     }
 
     @Test(arguments: ["china", "international"])
     func `the saved region selects its endpoint and dashboard`(_ region: String) async throws {
         let provider = try make(region: region)
-        #expect(try await provider.defaultAccount.refresh().quotas.count == 1)
-        #expect(provider.defaultAccount.dashboardURL?.host == (region == "international" ? "platform.minimax.io" : "platform.minimaxi.com"))
+        #expect(try await provider.refreshPlain().quotas.count == 1)
+        #expect(provider.plainDashboardURL?.host == (region == "international" ? "platform.minimax.io" : "platform.minimaxi.com"))
     }
 
     @Test func `no saved region is China, as before`() async throws {
         let provider = try make(region: nil)
-        #expect(try await provider.defaultAccount.refresh().quotas.count == 1)
+        #expect(try await provider.refreshPlain().quotas.count == 1)
     }
 
     @Test func `the key is read from the environment variable the person named`() async throws {
         let provider = try make(authEnvVar: "MY_MINIMAX_KEY", vault: MemoryVault(), environment: ["MY_MINIMAX_KEY": "personal"])
-        #expect(try await provider.defaultAccount.refresh().quotas.count == 1)
+        #expect(try await provider.refreshPlain().quotas.count == 1)
     }
 
     @Test func `Settings prints the lookup order with the variable's own name`() throws {
-        #expect(try make().definitionAsRun.dataSource("api")?.credential?.lookupOrder == ["$MINIMAX_API_KEY", "API key saved in ClaudeBar"])
-        #expect(try make(authEnvVar: "MY_MINIMAX_KEY").definitionAsRun.dataSource("api")?.credential?.lookupOrder.first == "$MY_MINIMAX_KEY")
+        #expect(try make().configuration.definitionAsRun.dataSource("api")?.credential?.lookupOrder == ["$MINIMAX_API_KEY", "API key saved in ClaudeBar"])
+        #expect(try make(authEnvVar: "MY_MINIMAX_KEY").configuration.definitionAsRun.dataSource("api")?.credential?.lookupOrder.first == "$MY_MINIMAX_KEY")
     }
 
     @Test func `an empty environment variable name means MINIMAX_API_KEY`() async throws {
         let provider = try make(authEnvVar: "", vault: MemoryVault(), environment: ["MINIMAX_API_KEY": "personal"])
-        #expect(try await provider.defaultAccount.refresh().quotas.count == 1)
+        #expect(try await provider.refreshPlain().quotas.count == 1)
     }
 
     @Test func `work account has its own region key and no environment fallback`() async throws {
         let vault = MemoryVault(["minimax.apiKey": "personal"])
         let provider = try make(vault: vault, environment: ["MINIMAX_API_KEY": "environment"])
-        let work = try provider.addAccount(filling: ["apiKey": "work", "region": "international"])
+        let work = try provider.accounts.add(filling: ["apiKey": "work", "region": "international"])
         #expect(work.isEnabled)
-        #expect(try await work.refresh().quotas.first?.percentRemaining == 17)
-        #expect(work.dashboardURL?.host == "platform.minimax.io")
+        #expect(try await provider.refresh(work).quotas.first?.percentRemaining == 17)
+        #expect(provider.dashboardURL(of: work)?.host == "platform.minimax.io")
         vault.secrets["\(work.id).apiKey"] = nil
-        await #expect(throws: UsageError.authenticationRequired) { try await work.refresh() }
+        await #expect(throws: UsageError.authenticationRequired) { try await provider.refresh(work) }
     }
 
     @Test(arguments: [401, 403]) func `invalid keys require authentication`(_ code: Int) async throws {
-        await #expect(throws: UsageError.authenticationRequired) { try await make(status: code).defaultAccount.refresh() }
+        await #expect(throws: UsageError.authenticationRequired) { try await make(status: code).refreshPlain() }
     }
 
     @Test(arguments: [429, 500]) func `HTTP failures remain fetch failures`(_ code: Int) async throws {
-        let account = try make(status: code).defaultAccount
-        await #expect(throws: UsageError.self) { try await account.refresh() }
+        let product = try make(status: code)
+        let account = product.defaultAccount
+        await #expect(throws: UsageError.self) { try await product.refresh(account) }
         #expect(account.lastFailedStep == .fetch)
     }
 }

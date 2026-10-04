@@ -1,5 +1,6 @@
 import AppKit
 import Infrastructure
+import UserNotifications
 
 /// Receives `claudebar://` URLs for the app's whole lifetime.
 ///
@@ -25,10 +26,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 AppLog.ui.info("Received unhandled URL: \(url.absoluteString)")
                 continue
             }
-            AppLog.ui.info("Received URL action: \(action.rawValue)")
+            AppLog.ui.info("Received URL action: \(action.name)")
             pending.append(action)
         }
         deliverPending()
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // A notification's button (In use: *Use for New Sessions*, *Undo*)
+        // opens its `claudebar://` link through the routing above.
+        if Bundle.main.bundleIdentifier != nil {
+            UNUserNotificationCenter.current().delegate = self
+        }
     }
 
     private func deliverPending() {
@@ -36,5 +45,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let actions = pending
         pending.removeAll()
         actions.forEach(onAction)
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard response.actionIdentifier == SystemAlertSender.linkAction,
+              let link = (response.notification.request.content.userInfo["link"] as? String).flatMap(URL.init(string:)) else { return }
+        await MainActor.run { application(NSApplication.shared, open: [link]) }
     }
 }

@@ -6,8 +6,8 @@ import Quotas
 /// Kimi's mappings read through its definition, as the old probes' fixtures were.
 enum KimiDefinitionFixtures {
     static func read(_ response: Response, kind: String, providerId: String = "kimi") throws -> UsageSnapshot {
-        let definition = try Providers.builtIn("kimi")
-        let source = DataSources.make(definition.dataSource(kind)!, providerId: providerId, scripts: Providers.builtInScripts,
+        let definition = try ProviderFactory.builtIn("kimi")
+        let source = DataSources.make(definition.dataSource(kind)!, providerId: providerId, scripts: ProviderFactory.builtInScripts,
                                       environment: { _ in nil })
         do { return try source.read(response) }
         catch let error as DataSourceError { throw error.reason }

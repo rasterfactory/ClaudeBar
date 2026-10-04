@@ -49,7 +49,7 @@ Rules:
 README.md                       tier 1: pitch, screenshot, install, provider table → links
 AGENTS.md                       tier 1: agent rules only (TDD gate, layers, build/test, one-line gotchas → links)
 CONTRIBUTING.md                 tier 1: build, test, Tuist caveats, where things go → links
-CHANGELOG.md                    tier 1: one line per change, what the user sees
+CHANGELOG.md                    tier 1: [Unreleased] + current minor only, one line per change → links
 docs/
 ├── README.md                   tier 1: index, GENERATED from descriptions
 ├── documentation-design/       this design (README.md) + layout.md
@@ -57,6 +57,8 @@ docs/
 ├── troubleshooting.md          tier 3: logs, Console filters, common probe errors (moved from CLAUDE.md)
 ├── settings.md                 tier 3: settings.json namespaces and where credentials live (moved from CLAUDE.md)
 ├── release/                    maintainer-only: RELEASE_SETUP, SPARKLE_SETUP (unchanged)
+├── changelog/                  tier 3: one file per past minor, moved as-is, never edited
+│   └── 0.4.md
 ├── providers/                  one folder per provider, shaped like a Skill
 │   ├── claude/
 │   │   ├── README.md           tier 2: setup, data sources, permissions, gotchas (≤200 lines)
@@ -77,7 +79,7 @@ docs/
     └── multi-account/
 ```
 
-Outside this design and left alone: the website (`docs/index.html`), **`docs/appcast.xml`** (Sparkle reads it from that URL; moving it breaks auto-update for every installed copy), `docs/screenshots/` and `docs/sponsors/`. They are pages or assets, not docs, and `check-docs` skips them. HTML mockups and design pages live outside `docs/`, in `design-concept/`.
+Outside this design and left alone: the website ([`website/`](../../website/README.md), served at claudebar.tddworks.com; `docs/index.html` only points there), **`docs/appcast.xml`** (Sparkle reads it from that URL; moving it breaks auto-update for every installed copy), `docs/screenshots/` and `docs/sponsors/`. They are pages or assets, not docs, and `check-docs` skips them. HTML mockups and design pages live outside `docs/`, in `design-concept/`.
 
 File-by-file detail, written from the reader's side with a mockup of each file: [layout.md](layout.md).
 
@@ -144,11 +146,24 @@ Keeps: build/test commands (with the Tuist caching caveat), the three-layer rule
 
 `scripts/extract-changelog.sh` copies a release's section into the GitHub release **and Sparkle's "What's new" dialog**. So the reader is a user deciding whether to click *Install Update*. Their questions, in order: *will this break me → is my bug fixed → what's new*.
 
-- `Removed` / `Changed` come before `Fixed` and `Added`; anything that changes existing behaviour starts with `Breaking:` and says what to do instead.
+- **One heading of each kind per release, in the reader's order:** `Removed` → `Changed` → `Deprecated` → `Fixed` → `Security` → `Added`. Anything that changes existing behaviour starts with `Breaking:` and says what to do instead.
 - Each bullet starts with what the user sees or touches (a provider name, a Settings pane, the menu bar, the notch), says the effect rather than the implementation, and is ≤300 chars (URLs excluded). Related fixes are merged.
-- Every bullet ends with its issue or PR link. **Links are absolute URLs**: relative links don't resolve in Sparkle's dialog or the GitHub release page. A bullet that changes how you use something may add `→ [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/…)`.
+- Every bullet ends with its issue or PR link. **Links are absolute URLs**: relative links don't resolve in Sparkle's dialog or the GitHub release page.
+
+  | Link | Points to | Reader gets | When |
+  |---|---|---|---|
+  | `→ [docs](https://github.com/tddworks/ClaudeBar/blob/main/docs/…/README.md)` | The provider or feature doc | How to use it now | **Every `Added` and `Changed` bullet**; a fix with a gotcha |
+  | `([#123](https://github.com/tddworks/ClaudeBar/pull/123))` | The issue or PR | Why and how | Every bullet |
 - Type names, file paths and probe internals go in the PR and the provider's `design.md`, never in the bullet.
-- **History is kept in place.** Old entries keep their wording; see [Decisions](#decisions).
+- **Old entries keep their wording.**
+
+#### Size: the current minor stays, older minors roll off
+
+- `CHANGELOG.md` holds `[Unreleased]` plus the **current minor** (today 0.5.x), then an "Older releases" line linking each `docs/changelog/<minor>.md`.
+- **When a new minor is released**, the previous minor's sections move unchanged into `docs/changelog/<minor>.md` with their compare links. `scripts/changelog-rollover.py`, run by `scripts/promote-changelog.sh` in the release workflow, does it; `scripts/test-changelog-release.sh` covers patch and minor releases with and without entries. Sparkle's dialog and the GitHub release read only the newest section (`scripts/extract-changelog.sh`), so the move never reaches them.
+- **Archived sections are moved, never rewritten.**
+
+The initial split (2026-10-04) turned 1,347 lines into ~90 in `CHANGELOG.md`, with `docs/changelog/0.1.md` → `0.4.md` holding the rest.
 
 ## Tier 2: provider or feature doc (≤200 lines)
 
@@ -184,6 +199,8 @@ No type lists, no file maps, no test snippets, no settings-key tables (those are
 | Contributor | CONTRIBUTING → `docs/architecture/ARCHITECTURE.md` → provider `design.md` → code |
 | Agent fixing a bug | AGENTS.md → `fix-bug` skill → provider `design.md` |
 | Agent adding a provider | AGENTS.md → `add-provider` skill → a similar provider's `design.md` |
+| Changing the domain | AGENTS.md *Design docs are the source of truth* → `docs/architecture/CANONICAL_MODEL.md` (the tree, laws and owners) → `TARGET_ARCHITECTURE.md` (pieces, slices) → the feature's `design.md` |
+| Reporting a problem or opening a PR | the issue / PR template — the problem first, then the design |
 
 ## Update rules
 
@@ -195,6 +212,9 @@ No type lists, no file maps, no test snippets, no settings-key tables (those are
 | New feature | `docs/features/<x>/README.md`, one CHANGELOG line, a README feature-table row | |
 | Bug fix | One CHANGELOG line; a Gotchas entry if users could hit it again | |
 | New agent-wide rule | One line in `AGENTS.md`, linking to where it's explained | |
+| A domain or design change | `CANONICAL_MODEL.md` / `TARGET_ARCHITECTURE.md` or the feature's `design.md` **first**, confirmed with the maintainer before code; the build-truth row once built | |
+| A UI change | a mockup in `design-concept/<x>/` first; once built, screenshots of the real app on mock data (`scripts/demo-screenshots.sh`) beside it — never real names, emails or usage | |
+| A release | nothing by hand: the workflow promotes `[Unreleased]` and rolls a past minor into `docs/changelog/` | |
 
 Skills follow the same rule: `.claude/skills/*` carry agent workflows and link to docs rather than restate them.
 
@@ -208,6 +228,10 @@ Skills follow the same rule: `.claude/skills/*` carry agent workflows and link t
 | Char budget | AGENTS.md ≤12,000 |
 | CHANGELOG bullet length in `[Unreleased]` | ≤300 chars, URLs excluded |
 | CHANGELOG links in `[Unreleased]` | absolute URLs only (Sparkle can't resolve relative ones) |
+| CHANGELOG headings in `[Unreleased]` | one of each kind, `Removed` → `Changed` → `Deprecated` → `Fixed` → `Security` → `Added` |
+| CHANGELOG `Added` / `Changed` bullets in `[Unreleased]` | each has `→ [docs](…)` |
+| `CHANGELOG.md` holds only `[Unreleased]` + one minor | fails once a second minor appears (rollover forgotten) |
+| The release scripts keep everything | `scripts/test-changelog-release.sh`: patch and minor releases, with and without entries, nothing lost, links resolve, idempotent |
 | Every provider / feature README has a `description` | required, ≤250 chars |
 | Every provider in `Sources/Domain/Provider/` has `docs/providers/<id>/README.md` | required |
 | Relative links resolve (code fences and inline code skipped) | all `.md` files |
@@ -238,7 +262,10 @@ Each one is judged by the goal: *does the next change touch fewer places?*
 | `docs/plans/` | **Move into the owning `design.md`** | A dated plan is research about one provider or feature; filed by date, nobody finds it from the feature |
 | File trees, protocol trees, type lists | **Delete** | They copy the code, so every refactor would need a doc edit nobody makes |
 | `CLAUDE.md` vs `AGENTS.md` | **`AGENTS.md` only** | Contributors use several agents and every one reads it, Claude Code included (v2.1.277+). One file can't drift from a second. Sessions without native support can add a local, untracked `CLAUDE.md` containing `@AGENTS.md` |
-| CHANGELOG size | **Keep history in place; enforce style on `[Unreleased]` only** | baguette rolls off by minor, but ~70 of ClaudeBar's 89 releases are 0.4.x, so a minor rollover wouldn't shrink the file. Bullets are already short on average; rewriting history is work with no gain |
+| ~~CHANGELOG size: keep history in place~~ | ~~Enforce style on `[Unreleased]` only~~ | Reversed 2026-10-04: it held because ~70 of 89 releases were 0.4.x, so rolling off by minor wouldn't shrink the file. Once 0.5 shipped, the same rollover cut 1,347 lines to ~90 |
+| CHANGELOG size | **Current minor in `CHANGELOG.md`, older minors in `docs/changelog/<minor>.md`** (as baguette) | Tier 1 stays small for readers and for every agent adding a line; one scripted move per minor; CI catches a forgotten rollover |
+| CHANGELOG headings | **One of each kind, in the reader's order — checked** | The order was a rule nobody checked, and it drifted (0.5.2 put `Fixed` before `Changed`; `[Unreleased]` had two `Changed`) |
+| CHANGELOG docs link | **Required on `Added` and `Changed`** (as baguette) | "How do I use it now" is one click from Sparkle's dialog; without it the reader only gets the PR |
 | CHANGELOG links | **Absolute URLs** | The same text renders in Sparkle's dialog and GitHub releases, where relative links break |
 | Contributors in the README | **Keep, in full; the generated block doesn't count toward the budget** | It's generated by `sync-contributors.py`, so it costs no manual edits; moving it would hide the thanks for no gain in maintainability |
 | Frontmatter fields | **`description` only** | Every extra field has to be kept correct |

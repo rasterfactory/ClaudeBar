@@ -43,6 +43,38 @@ struct JSONLogReaderTests {
         #expect(reader(at: "$.when").records(in: [url]).first?.at == ISO8601DateFormatter().date(from: "2026-10-03T08:00:00Z"))
     }
 
+    @Test(arguments: ["America/Los_Angeles", "Asia/Shanghai"])
+    func `a field with a format is read in the rule's zone, local unless it names one`(zone: String) throws {
+        let url = try file("desk/today.json", #"{"day":"2026-05-28","used":74422}"#)
+        let local = UsageLog.At.Formatted(field: "$.day", format: "yyyy-MM-dd")
+        let named = UsageLog.At.Formatted(field: "$.day", format: "yyyy-MM-dd", timeZone: zone)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: zone)!
+        let midnight = calendar.date(from: DateComponents(year: 2026, month: 5, day: 28))
+
+        #expect(reader(at: .formatted(named)).records(in: [url]).first?.at == midnight)
+        calendar.timeZone = .current
+        #expect(reader(at: .formatted(local)).records(in: [url]).first?.at == calendar.date(from: DateComponents(year: 2026, month: 5, day: 28)))
+    }
+
+    @Test(arguments: ["2026-02-30", "May 28 2026", "2026-05-28T08:00:00Z"])
+    func `a field that doesn't read in the format is skipped`(text: String) throws {
+        let url = try file("desk/today.json", #"{"day":"\#(text)","used":5}"#)
+        #expect(reader(at: .formatted(.init(field: "$.day", format: "yyyy-MM-dd"))).records(in: [url]).isEmpty)
+    }
+
+    @Test(arguments: ["-5", "74422.5", "\"lots\""])
+    func `a count that isn't a whole number of tokens is skipped`(count: String) throws {
+        let url = try file("a/summary.json", #"{"when":"2026-10-03T08:00:00Z","used":\#(count)}"#)
+        #expect(reader(at: "$.when").records(in: [url]).isEmpty)
+    }
+
+    @Test func `at decodes a field with a format`() throws {
+        let formatted = try JSONDecoder().decode(UsageLog.At.self, from: Data(#"{"field":"$.day","format":"yyyy-MM-dd"}"#.utf8))
+        #expect(formatted == .formatted(.init(field: "$.day", format: "yyyy-MM-dd")))
+        #expect(try JSONDecoder().decode(UsageLog.At.self, from: JSONEncoder().encode(formatted)) == formatted)
+    }
+
     @Test func `at decodes from text or from a path rule`() throws {
         let field = try JSONDecoder().decode(UsageLog.At.self, from: Data(#""$.ts""#.utf8))
         let path = try JSONDecoder().decode(UsageLog.At.self, from: Data(#"{"fromPath":"x_(\\d+)","format":"yyyyMMdd","timeZone":"UTC"}"#.utf8))

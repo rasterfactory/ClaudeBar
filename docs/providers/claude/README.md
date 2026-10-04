@@ -44,6 +44,7 @@ A shell alias or function (`alias c=…`) can't be used: ClaudeBar starts a prog
 - **Account email and organization come from `~/.claude.json`**, because Claude CLI v2.1.79+ no longer shows them on the Usage tab.
 - **More than one Claude login?** Use **Accounts → Add Account** in the provider settings to sign in with your browser or choose a `CLAUDE_CONFIG_DIR` folder. See [multiple accounts](../../features/multi-account/README.md). Each account shows its own today's cost and 30-day chart, read from its own folder's logs; guest passes stay with your usual login.
 - **Daily cost and token cards** read `~/.claude/projects/*/*.jsonl`. They're only calculated when the popover is open, not during background refreshes.
+- **Claude Desktop's tokens** appear as their own **Claude Desktop · Token Usage** card on your usual login, read from Desktop's `~/Library/Application Support/Claude/buddy-tokens.json`. It counts Desktop on this Mac only, shows no cost, and doesn't change your limits or the menu bar. Your session and weekly limits still need Claude Code: without it, Claude says so in a card with a *Set up Claude Code* button, with the Desktop card below it.
 - **Share Claude Code** (guest passes) only appears for Max accounts.
 - **Claude API Budget** in the same pane only applies to pay-as-you-go API accounts, not to Max or Pro Extra Usage.
 

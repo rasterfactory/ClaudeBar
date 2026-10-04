@@ -33,7 +33,7 @@ struct AccountsCardText {
     }
 
     /// What *Add Account*'s form asks for.
-    var fields: [Setting] { provider.accountForm }
+    var fields: [Setting] { provider.accounts.form }
 
     /// The login a person runs themselves to sign in to `folder`.
     func signInCommand(in folder: String) -> String? {
@@ -68,7 +68,7 @@ struct AccountsCardText {
         }
         if account.isDefault, provider.definition.cli == nil {
             // The key lookup says how its key comes back — Cursor: the app's own login.
-            return provider.keyHint ?? "Update the default account's key in Settings, then refresh."
+            return provider.configuration.keyHint ?? "Update the default account's key in Settings, then refresh."
         }
         guard let folder = account.folder, !folder.goesWithAccount else { return nil }
         guard let command = signInCommand(in: folder.url.path) else { return "Sign in again in \(folder.url.path), then refresh." }

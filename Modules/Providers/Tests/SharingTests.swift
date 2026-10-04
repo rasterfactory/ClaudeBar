@@ -70,7 +70,7 @@ struct SharingTests {
         let fresh = try catalog.review(try gateway.exported())
         try catalog.add(gateway)
         let again = try catalog.review(try gateway.exported())
-        let builtIn = try catalog.review(try Providers.builtIn("codex").exported())
+        let builtIn = try catalog.review(try ProviderFactory.builtIn("codex").exported())
 
         #expect(fresh.definition.id == gateway.id)
         #expect(again.definition.id != gateway.id)

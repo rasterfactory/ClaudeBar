@@ -10,7 +10,7 @@ import Quotas
 @MainActor @Suite("Kiro definition")
 struct KiroDefinitionTests {
     private func make(_ output: String, located: Bool = true, workHome: String? = nil, now: Date = Date()) throws -> Provider {
-        let definition = try Providers.builtIn("kiro")
+        let definition = try ProviderFactory.builtIn("kiro")
         let cli = MockCLIExecutor()
         given(cli).locate(.any).willReturn(located ? "/usr/local/bin/kiro-cli" : nil)
         given(cli).execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
@@ -36,11 +36,11 @@ struct KiroDefinitionTests {
                 }
                 return cli
             }, network: MockNetworkClient(),
-                makeTransport: { _,_,_,_ in MockRPCTransport() }, security: { _ in (1, "") }, scripts: Providers.builtInScripts, secrets: nil,
+                makeTransport: { _,_,_,_ in MockRPCTransport() }, security: { _ in (1, "") }, scripts: ProviderFactory.builtInScripts, secrets: nil,
                 browserCookies: SystemBrowserCookies(), environment: { _ in nil }, homeDirectory: FileManager.default.temporaryDirectory, now: { now })
         }, paths: DiskPaths())
     }
-    private func parse(_ output: String) async throws -> UsageSnapshot { try await make(output).defaultAccount.refresh() }
+    private func parse(_ output: String) async throws -> UsageSnapshot { try await make(output).refreshPlain() }
 
     
     @Test
@@ -176,23 +176,24 @@ struct KiroDefinitionTests {
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: home) }
         let provider = try make("Credits (10 of 50 covered in plan)", workHome: home.path)
-        let work = try provider.addAccount(filling: ["home":home.path])
+        let work = try provider.accounts.add(filling: ["home":home.path])
         #expect(work.isEnabled)
-        #expect(try await work.refresh().quotas.first?.percentRemaining == 20)
-        #expect(try await provider.defaultAccount.refresh().quotas.first?.percentRemaining == 80)
+        #expect(try await provider.refresh(work).quotas.first?.percentRemaining == 20)
+        #expect(try await provider.refreshPlain().quotas.first?.percentRemaining == 80)
         try FileManager.default.removeItem(at: home)
-        await #expect(throws: UsageError.authenticationRequired) { try await work.refresh() }
-        #expect(try await provider.defaultAccount.refresh().quotas.first?.percentRemaining == 80)
+        await #expect(throws: UsageError.authenticationRequired) { try await provider.refresh(work) }
+        #expect(try await provider.refreshPlain().quotas.first?.percentRemaining == 80)
     }
     @Test func `missing binary preserves the CLI error`() async throws {
-        let account = try make("", located: false).defaultAccount
-        #expect(!(await account.isAvailable()))
-        await #expect(throws: UsageError.cliNotFound("kiro-cli")) { try await account.refresh() }
+        let product = try make("", located: false)
+        let account = product.defaultAccount
+        #expect(!(await product.isAvailable(account)))
+        await #expect(throws: UsageError.cliNotFound("kiro-cli")) { try await product.refresh(account) }
     }
 
     @Test func `reset dates retain relative expiry and next-year rollover`() async throws {
         let now = try #require(Calendar.current.date(from: DateComponents(year:2026,month:3,day:15,hour:12)))
-        let snapshot = try await make("Bonus credits: 100/500 used, expires in 29 days\nCredits (10 of 50 covered in plan) resets on 03/15", now:now).defaultAccount.refresh()
+        let snapshot = try await make("Bonus credits: 100/500 used, expires in 29 days\nCredits (10 of 50 covered in plan) resets on 03/15", now:now).refreshPlain()
         let bonus = snapshot.quota(for: .timeLimit("Bonus credits"))
         #expect(bonus?.resetsAt == now.addingTimeInterval(29*86400))
         #expect(bonus?.window?.length == nil) // an expiring grant is not a 7-day window

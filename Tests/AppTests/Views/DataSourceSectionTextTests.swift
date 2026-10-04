@@ -9,8 +9,8 @@ import Testing
 /// provider that is data needs no card of its own.
 @Suite
 struct DataSourceSectionTextTests {
-    private func codex() throws -> ProviderDefinition { try Providers.builtIn("codex") }
-    private func claude() throws -> ProviderDefinition { try Providers.builtIn("claude") }
+    private func codex() throws -> ProviderDefinition { try ProviderFactory.builtIn("codex") }
+    private func claude() throws -> ProviderDefinition { try ProviderFactory.builtIn("claude") }
 
     @Test
     func `the header names the product and its origin`() throws {

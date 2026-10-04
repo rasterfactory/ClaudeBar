@@ -52,4 +52,31 @@ struct URLSchemeActionTests {
         let url = URL(string: string)!
         #expect(URLSchemeAction(url: url) == nil)
     }
+
+    // MARK: - use: which login new terminal sessions start with
+
+    @Test(arguments: [
+        ("claudebar://use?provider=claude&account=work", "claude", "work"),
+        ("claudebar:///use?provider=codex&account=default", "codex", "default"),
+        ("claudebar://use?account=Work%20%E2%80%94%20Acme&provider=claude", "claude", "Work — Acme"),
+    ])
+    func `use names a provider and one of its logins`(string: String, provider: String, account: String) {
+        #expect(URLSchemeAction(url: URL(string: string)!) == .use(provider: provider, account: account))
+    }
+
+    @Test(arguments: [
+        "claudebar://use",
+        "claudebar://use?provider=claude",
+        "claudebar://use?account=work",
+        "claudebar://use?provider=claude&account=",
+        "claudebar://use?provider=claude&account=work&x=1",
+        "claudebar://use?provider=claude&provider=codex&account=work",
+        "claudebar://use?provider=../claude&account=work",
+        "claudebar://use/extra?provider=claude&account=work",
+        "claudebar://use?provider=claude&account=work#top",
+        "claudebar://guest@use?provider=claude&account=work",
+    ])
+    func `a use URL that isn't exactly a provider and a login is nil`(string: String) {
+        #expect(URLSchemeAction(url: URL(string: string)!) == nil)
+    }
 }

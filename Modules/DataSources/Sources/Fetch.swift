@@ -24,6 +24,52 @@ public enum Fetch: Sendable, Equatable {
     case cloudWatch(CloudWatchCall)
     /// A folder some tool fills — the names in it.
     case directory(DirectoryCall)
+    /// A script of the person's, run from its own folder with every setting
+    /// in its environment — what an extension's section runs.
+    case script(ScriptCall)
+}
+
+/// `"script": { "run": "./probe.sh", "folder": "/Users/you/.claudebar/extensions/acme",
+/// "environment": { "CLAUDEBAR_REGION": "{{setting.region}}" },
+/// "secrets": { "CLAUDEBAR_API_KEY": "apiKey" }, "timeout": 10 }` — runs `run`
+/// with `/bin/sh` from `folder`. `environment` is filled like any definition
+/// string; each of `secrets` is a setting read from the login's vault, so a
+/// script may take several keys (a `command` reaches one, as `{{token}}`).
+public struct ScriptCall: Sendable, Equatable, Codable {
+    public let run: String
+    public let folder: String
+    public let environment: [String: String]
+    /// Environment variable → the vault setting whose value it takes.
+    public let secrets: [String: String]
+    public let timeout: TimeInterval
+
+    public init(run: String, folder: String, environment: [String: String] = [:], secrets: [String: String] = [:], timeout: TimeInterval = 10) {
+        self.run = run
+        self.folder = folder
+        self.environment = environment
+        self.secrets = secrets
+        self.timeout = timeout
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            run: try container.decode(String.self, forKey: .run),
+            folder: try container.decode(String.self, forKey: .folder),
+            environment: try container.decodeIfPresent([String: String].self, forKey: .environment) ?? [:],
+            secrets: try container.decodeIfPresent([String: String].self, forKey: .secrets) ?? [:],
+            timeout: try container.decodeIfPresent(TimeInterval.self, forKey: .timeout) ?? 10
+        )
+    }
+
+    /// The script's own path: `run` in `folder`, unless it is absolute.
+    var path: String {
+        if run.hasPrefix("/") { return run }
+        let relative = run.hasPrefix("./") ? String(run.dropFirst(2)) : run
+        return URL(fileURLWithPath: folder).appendingPathComponent(relative).path
+    }
+
+    private enum CodingKeys: String, CodingKey { case run, folder, environment, secrets, timeout }
 }
 
 /// `"directory": { "path": "~/.tool/logs", "match": "^session_" }` — the
@@ -618,7 +664,7 @@ extension CLICall {
 // MARK: - JSON
 
 extension Fetch: Codable {
-    private static let tags = ["http", "jsonRpc", "cli", "command", "file", "localServer", "cloudWatch", "directory"]
+    private static let tags = ["http", "jsonRpc", "cli", "command", "file", "localServer", "cloudWatch", "directory", "script"]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: TagKey.self)
@@ -634,6 +680,7 @@ extension Fetch: Codable {
         case "localServer": self = .localServer(try container.decode(LocalServerCall.self, forKey: TagKey("localServer")))
         case "cloudWatch": self = .cloudWatch(try container.decode(CloudWatchCall.self, forKey: TagKey("cloudWatch")))
         case "directory": self = .directory(try container.decode(DirectoryCall.self, forKey: TagKey("directory")))
+        case "script": self = .script(try container.decode(ScriptCall.self, forKey: TagKey("script")))
         default: self = .cli(try container.decode(CLICall.self, forKey: TagKey("cli")))
         }
     }
@@ -650,6 +697,7 @@ extension Fetch: Codable {
         case .localServer(let call): try container.encode(call, forKey: TagKey("localServer"))
         case .cloudWatch(let call): try container.encode(call, forKey: TagKey("cloudWatch"))
         case .directory(let call): try container.encode(call, forKey: TagKey("directory"))
+        case .script(let call): try container.encode(call, forKey: TagKey("script"))
         }
     }
 }

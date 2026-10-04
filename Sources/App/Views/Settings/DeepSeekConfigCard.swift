@@ -285,19 +285,19 @@ struct DeepSeekConfigCard: View {
             deepSeekApiKeyInput = ""
         }
 
-        guard let provider = monitor.provider(for: "deepseek") else {
+        guard let provider = monitor.providers.provider(id: "deepseek") else {
             deepSeekTestResult = "Failed: DeepSeek provider is not registered"
             return
         }
 
-        guard await provider.isAvailable() else {
+        guard await provider.isAvailable(provider.defaultAccount) else {
             deepSeekTestResult = "Failed: No API key found"
             return
         }
 
         AppLog.credentials.info("Testing DeepSeek connection via provider refresh")
         do {
-            _ = try await provider.refresh()
+            _ = try await provider.refresh(provider.defaultAccount)
             AppLog.credentials.info("DeepSeek connection test succeeded")
             deepSeekTestResult = "Success: Connection verified"
         } catch UsageError.authenticationRequired {

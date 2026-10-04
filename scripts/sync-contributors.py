@@ -3,7 +3,7 @@
 
 all-contributors (the bot, and CI's `add`/`generate`) owns .all-contributorsrc
 and the README table. It can only emit its own <table> markup, though, which
-doesn't fit the card grid in docs/index.html — so this script renders that one surface instead, from the same
+doesn't fit the card grid in website/public/index.html — so this script renders that one surface instead, from the same
 source of truth. It never edits .all-contributorsrc or the README.
 
 Run after .all-contributorsrc changes (CI does this automatically):
@@ -21,7 +21,7 @@ from html import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RC = os.path.join(ROOT, ".all-contributorsrc")
-INDEX = os.path.join(ROOT, "docs", "index.html")
+INDEX = os.path.join(ROOT, "website", "public", "index.html")
 
 START = "<!-- CONTRIBUTORS:START"
 END = "<!-- CONTRIBUTORS:END -->"
@@ -58,12 +58,12 @@ def main():
     updated = head + "".join(card(c) for c in contributors) + "            " + html[j:]
 
     if updated == html:
-        print("docs/index.html already up to date")
+        print("website/public/index.html already up to date")
         return
 
     with open(INDEX, "w") as f:
         f.write(updated)
-    print(f"docs/index.html synced ({len(contributors)} contributors)")
+    print(f"website/public/index.html synced ({len(contributors)} contributors)")
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ extension MockLeaderboardAPI {
         let api = MockLeaderboardAPI()
         given(api).join(username: .any, publicKey: .any).willReturn(())
         given(api).upload(.any, as: .any).willReturn(())
-        given(api).update(username: .any, visible: .any, as: .any).willReturn(())
+        given(api).update(.any, as: .any).willReturn(())
         given(api).leave(as: .any).willReturn(())
         return api
     }

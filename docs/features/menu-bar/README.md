@@ -92,7 +92,7 @@ The duration is the time until the quota window resets:
 | Under a minute | `soon` |
 | Unknown | `—` |
 
-The countdown updates on its own every half second while a duration is shown, and in the `H:MM` range the colon pulses so you can see it's live. The design is in [countdown-colon.md](countdown-colon.md).
+While a duration is shown the countdown refreshes itself, and in the `H:MM` range the colon pulses so you can see it's live. Label redraws are coalesced to at most one per second, so the pulse beats at 1 Hz — a limit that keeps a stream of tiny updates from overwhelming the system's status-item service ([#281](https://github.com/tddworks/ClaudeBar/issues/281)). The design is in [countdown-colon.md](countdown-colon.md).
 
 ## Several providers
 

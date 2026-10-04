@@ -14,6 +14,12 @@ final class InMemoryProviderSettings: MultiAccountSettingsRepository, @unchecked
     private var flags: [String: Bool]
     /// Quota keys hidden per provider (issue #140).
     private var hiddenKeys: [String: Set<String>] = [:]
+    /// The Providers pane's order, by lineup id.
+    private var order: [String] = []
+
+    func providerOrder() -> [String] { order }
+
+    func setProviderOrder(_ order: [String]) { self.order = order }
 
     init(dataSourceKinds: [String: String] = [:], flags: [String: Bool] = [:]) {
         self.kinds = dataSourceKinds

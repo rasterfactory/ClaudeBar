@@ -27,19 +27,14 @@ struct UpdatesSpec {
     struct UpdateInfrastructure {
 
         @Test
-        func `providers expose status page URLs for fallback`() {
+        func `providers expose status page URLs for fallback`() throws {
             // Given — when updates fail, users can check status pages
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
-
-            let claude = StubClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            let codex = StubCodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let claude = try ProviderFactory.builtIn("claude")
+            let codex = try ProviderFactory.builtIn("codex")
 
             // Then
-            #expect(claude.statusPageURL?.absoluteString == "https://status.anthropic.com")
-            #expect(codex.statusPageURL?.absoluteString == "https://status.openai.com")
+            #expect(claude.profile.links.status?.absoluteString == "https://status.anthropic.com")
+            #expect(codex.profile.links.status?.absoluteString == "https://status.openai.com")
         }
     }
 }

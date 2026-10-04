@@ -14,6 +14,13 @@ public enum ProviderBadgeState: Equatable, Sendable {
     case syncing
     /// The last probe failed, so there are no numbers to show.
     case unavailable
+    /// Nothing to read with yet — no CLI on this Mac, or no sign-in (#198).
+    /// Waiting for the person, not failing.
+    case notSetUp
+    /// Waiting for setup, but its usage is read — Claude Desktop's tokens
+    /// without Claude Code. The person did set it up; the card says what the
+    /// limits need, and the header says nothing (#198).
+    case usageOnly
     /// No probe has produced data yet (first launch, provider just enabled).
     case awaitingData
     /// We have numbers, and this is what they say.
@@ -23,19 +30,64 @@ public enum ProviderBadgeState: Equatable, Sendable {
     ///   - isSyncing: whether a refresh is currently running.
     ///   - quotaStatus: status derived from the latest snapshot, nil when there is none.
     ///   - hasError: whether the last probe attempt failed.
-    public init(isSyncing: Bool, quotaStatus: QuotaStatus?, hasError: Bool) {
+    ///   - needsSetup: whether that failure is only that nothing is set up yet.
+    ///   - readsUsage: whether usage history is read all the same.
+    public init(isSyncing: Bool, quotaStatus: QuotaStatus?, hasError: Bool, needsSetup: Bool = false, readsUsage: Bool = false) {
         if isSyncing {
             self = .syncing
         } else if let quotaStatus {
             // Stale numbers still beat no numbers, so a snapshot wins over an
             // error from a later failed refresh.
             self = .quota(quotaStatus)
+        } else if needsSetup {
+            self = readsUsage ? .usageOnly : .notSetUp
         } else if hasError {
             self = .unavailable
         } else {
             self = .awaitingData
         }
     }
+
+    /// What the header says about a tab of logins: syncing while any is;
+    /// unavailable only when every one failed; not set up only when every one
+    /// is waiting for setup — and nothing alarming while any shows usage.
+    @MainActor
+    public init(of logins: [Account], quotaStatus: QuotaStatus?) {
+        self.init(of: logins.map { Login(isSyncing: $0.isSyncing, failed: $0.lastError != nil,
+                                         needsSetup: $0.needsSetup, readsUsage: $0.readsUsage) },
+                  quotaStatus: quotaStatus)
+    }
+
+    /// What the badge reads of one login.
+    public struct Login: Sendable {
+        let isSyncing: Bool
+        let failed: Bool
+        let needsSetup: Bool
+        let readsUsage: Bool
+
+        public init(isSyncing: Bool = false, failed: Bool = false, needsSetup: Bool = false, readsUsage: Bool = false) {
+            self.isSyncing = isSyncing
+            self.failed = failed
+            self.needsSetup = needsSetup
+            self.readsUsage = readsUsage
+        }
+    }
+
+    /// A tab's state from its logins: syncing when one is, failed or waiting
+    /// for setup only when every one is, usage read when one reads it.
+    public init(of logins: [Login], quotaStatus: QuotaStatus?) {
+        self.init(
+            isSyncing: logins.contains { $0.isSyncing },
+            quotaStatus: quotaStatus,
+            hasError: !logins.isEmpty && logins.allSatisfy(\.failed),
+            needsSetup: !logins.isEmpty && logins.allSatisfy(\.needsSetup),
+            readsUsage: logins.contains { $0.readsUsage }
+        )
+    }
+
+    /// Whether the header shows a badge at all — not while a login waiting
+    /// for setup still shows its usage.
+    public var showsBadge: Bool { self != .usageOnly }
 
     /// Whether this state represents real usage data.
     public var hasData: Bool {

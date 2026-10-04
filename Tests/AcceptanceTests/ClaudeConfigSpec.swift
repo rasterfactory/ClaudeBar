@@ -52,8 +52,8 @@ struct ClaudeConfigSpec {
         deinit { try? FileManager.default.removeItem(at: home) }
 
         @MainActor
-        func claude() throws -> Account {
-            let definition = try Providers.builtIn("claude")
+        func claude() throws -> Provider {
+            let definition = try ProviderFactory.builtIn("claude")
             let home = self.home
             let cli = self.cli
             let network = self.network
@@ -67,13 +67,13 @@ struct ClaudeConfigSpec {
                         cliExecutor: cli,
                         network: network,
                         makeTransport: { _, _, _, _ in MockRPCTransport() },
-                        scripts: Providers.builtInScripts,
+                        scripts: ProviderFactory.builtInScripts,
                         environment: { _ in nil },
                         homeDirectory: home,
                         now: { Date() }
                     )
                 }
-            ).defaultAccount
+            )
         }
 
         func cliAnswers(_ screen: String) {
@@ -125,16 +125,17 @@ struct ClaudeConfigSpec {
             world.cliAnswers(ClaudeConfigSpec.usageScreen)
             world.apiAnswers(ClaudeConfigSpec.apiUsage)
             try world.loggedIn()
-            let claude = try world.claude()
-            #expect(claude.provider.activeKind == "cli")
+            let claudeProduct = try world.claude()
+            let claude = claudeProduct.defaultAccount
+            #expect(claudeProduct.configuration.activeKind == "cli")
 
             // When — the Claude card saves API mode
             world.settings.setClaudeProbeMode(.api)
-            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: ClaudeConfigSpec.TestClock())
+            let monitor = QuotaMonitor(providers: kept([claudeProduct]), clock: ClaudeConfigSpec.TestClock())
             await monitor.refresh(providerId: "claude")
 
             // Then — the API's answer is shown
-            #expect(claude.provider.activeKind == "api")
+            #expect(claudeProduct.configuration.activeKind == "api")
             #expect(claude.snapshot?.quotas.first?.percentRemaining == 45)
         }
 
@@ -155,8 +156,9 @@ struct ClaudeConfigSpec {
             let world = try World()
             world.cliAnswers(ClaudeConfigSpec.usageScreen)
             world.settings.setClaudeProbeMode(.api)
-            let claude = try world.claude()
-            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: ClaudeConfigSpec.TestClock())
+            let claudeProduct = try world.claude()
+            let claude = claudeProduct.defaultAccount
+            let monitor = QuotaMonitor(providers: kept([claudeProduct]), clock: ClaudeConfigSpec.TestClock())
 
             // When
             await monitor.refresh(providerId: "claude")
@@ -173,11 +175,12 @@ struct ClaudeConfigSpec {
             world.cliAnswers(ClaudeConfigSpec.usageScreen)
             world.settings.setClaudeProbeMode(.api)
             world.settings.setClaudeCliFallbackEnabled(false)
-            let claude = try world.claude()
+            let claudeProduct = try world.claude()
+            let claude = claudeProduct.defaultAccount
 
             // Then — nothing is available, and a refresh reports the API's failure
-            #expect(await claude.isAvailable() == false)
-            await #expect(throws: UsageError.authenticationRequired) { try await claude.refresh() }
+            #expect(await claudeProduct.isAvailable(claude) == false)
+            await #expect(throws: UsageError.authenticationRequired) { try await claudeProduct.refresh(claude) }
             #expect(claude.snapshot == nil)
         }
 
@@ -188,8 +191,9 @@ struct ClaudeConfigSpec {
             world.cliAnswers("Claude Code v2.1.0\nSomething unexpected")
             world.apiAnswers(ClaudeConfigSpec.apiUsage)
             try world.loggedIn()
-            let claude = try world.claude()
-            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: ClaudeConfigSpec.TestClock())
+            let claudeProduct = try world.claude()
+            let claude = claudeProduct.defaultAccount
+            let monitor = QuotaMonitor(providers: kept([claudeProduct]), clock: ClaudeConfigSpec.TestClock())
 
             // When
             await monitor.refresh(providerId: "claude")
@@ -210,13 +214,14 @@ struct ClaudeConfigSpec {
         @Test
         func `OAuth credentials are found once claude has logged in`() throws {
             let world = try World()
-            let claude = try world.claude()
+            let claudeProduct = try world.claude()
+            let claude = claudeProduct.defaultAccount
 
-            #expect(claude.hasKey(for: "api") == false)
+            #expect(claudeProduct.hasKey(for: "api", account: claude) == false)
 
             try world.loggedIn()
 
-            #expect(claude.hasKey(for: "api") == true)
+            #expect(claudeProduct.hasKey(for: "api", account: claude) == true)
         }
     }
 
@@ -234,8 +239,9 @@ struct ClaudeConfigSpec {
             world.settings.setClaudeCliFallbackEnabled(false)
             world.apiAnswers("", status: 401)
             try world.loggedIn()
-            let claude = try world.claude()
-            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: ClaudeConfigSpec.TestClock())
+            let claudeProduct = try world.claude()
+            let claude = claudeProduct.defaultAccount
+            let monitor = QuotaMonitor(providers: kept([claudeProduct]), clock: ClaudeConfigSpec.TestClock())
 
             // When
             await monitor.refresh(providerId: "claude")

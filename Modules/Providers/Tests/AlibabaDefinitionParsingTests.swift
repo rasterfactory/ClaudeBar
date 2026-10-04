@@ -8,8 +8,8 @@ import Quotas
 /// fixtures, quota for quota.
 enum AlibabaDefinitionFixtures {
     static func parse(_ data: Data, providerId: String) throws -> UsageSnapshot {
-        let definition = try Providers.builtIn("alibaba")
-        let source = DataSources.make(definition.dataSource("api")!, providerId: providerId, scripts: Providers.builtInScripts,
+        let definition = try ProviderFactory.builtIn("alibaba")
+        let source = DataSources.make(definition.dataSource("api")!, providerId: providerId, scripts: ProviderFactory.builtInScripts,
                                       environment: { _ in nil })
         do { return try source.read(Response(body: data)) }
         catch let error as DataSourceError { throw error.reason }

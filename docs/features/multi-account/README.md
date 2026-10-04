@@ -52,4 +52,6 @@ If a different person signs in to that folder, ClaudeBar refuses to show their u
 
 ## See also
 
+- [In use](../in-use/README.md): choose which login new `claude` / `codex` sessions start with
+
 [Claude setup](../../providers/claude/README.md) · [Codex setup](../../providers/codex/README.md) · [Settings storage](../../settings.md) · [Design (contributors)](design.md)

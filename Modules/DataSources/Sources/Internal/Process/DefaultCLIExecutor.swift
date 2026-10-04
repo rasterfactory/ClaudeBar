@@ -70,12 +70,18 @@ public struct DefaultCLIExecutor: CLIExecutor {
             Self.executionQueue.async {
                 continuation.resume(
                     with: Swift.Result {
-                        let result = try runner.run(
-                            binary: binary,
-                            input: inputText,
-                            options: options
-                        )
-                        return CLIResult(output: result.output, exitCode: result.exitCode)
+                        do {
+                            let result = try runner.run(
+                                binary: binary,
+                                input: inputText,
+                                options: options
+                            )
+                            return CLIResult(output: result.output, exitCode: result.exitCode)
+                        } catch InteractiveRunner.RunError.binaryNotFound(let tool) {
+                            // The fact every caller reads, so a missing CLI is
+                            // never just a failed run (#198).
+                            throw UsageError.cliNotFound(tool)
+                        }
                     }
                 )
             }

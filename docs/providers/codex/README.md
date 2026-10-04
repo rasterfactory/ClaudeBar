@@ -8,7 +8,7 @@ Shows your OpenAI Codex rate-limit windows (usually the 5-hour session and weekl
 
 ## Setup
 
-1. Install the [Codex CLI](https://github.com/openai/codex) and run `codex` once to sign in with your ChatGPT account.
+1. Use the Codex executable bundled with Codex or ChatGPT, or choose an existing executable under **CLI location** below. Only if neither is available, install the [Codex CLI](https://github.com/openai/codex). Sign in with your ChatGPT account if you have not already.
 2. Settings → Providers → Codex: turn it on (it is on by default).
 3. Optional: in the same pane, **Codex Configuration → Data fetching method** picks RPC or API.
 
@@ -20,7 +20,7 @@ Use **Accounts → Add Account** in the provider settings to add another ChatGPT
 
 | Mode | Needs | Pick it when |
 |---|---|---|
-| RPC (default) | `codex` on your login shell's `PATH` | Almost always |
+| RPC (default) | A configured or bundled Codex executable, or `codex` on your login shell's `PATH` | Almost always |
 | API | A ChatGPT sign-in saved in `~/.codex/auth.json` | You'd rather not start a `codex` process on every refresh |
 
 RPC mode starts `codex app-server` for each refresh and asks it for your rate limits. If that fails it runs `codex` with `/status` and reads the screen instead. API mode calls the ChatGPT usage endpoint directly and refreshes the token in `~/.codex/auth.json` when it's more than 8 days old. Neither mode falls back to the other, so if one keeps failing, switch modes.

@@ -257,7 +257,7 @@ struct ClaudeCLIDefinitionTests {
 
     static let subscriptionMisread =
         "The Claude CLI did not see this account's subscription — its usage screen reported API billing instead of a plan. "
-        + "Run `claude login` again, or switch Claude to API mode in Settings."
+        + "Run `claude auth login` again, or switch Claude to API mode in Settings."
 
     private func answerScreens(_ claude: ClaudeHarness, usage: String, cost: String? = nil) {
         given(claude.cli).locate(.any).willReturn("/usr/local/bin/claude")

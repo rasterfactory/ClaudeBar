@@ -1001,7 +1001,7 @@ struct ClaudeUsageScreenTests {
 
     static let subscriptionMisread =
         "The Claude CLI did not see this account's subscription — its usage screen reported API billing instead of a plan. "
-        + "Run `claude login` again, or switch Claude to API mode in Settings."
+        + "Run `claude auth login` again, or switch Claude to API mode in Settings."
 
     @Test
     func `still-loading output reports that usage data never arrived`() {
@@ -1009,6 +1009,22 @@ struct ClaudeUsageScreenTests {
             "Claude usage data did not finish loading — the usage endpoint may be rate limited. Try again in a moment."
         )) {
             try read(Self.stillLoadingOutput)
+        }
+    }
+
+    @Test
+    func `a cost-only usage panel without its header still routes to the cost fallback`() throws {
+        let panel = "Session\nTotal cost: $0.0000\nTotal duration (API): 0s\nEsc to cancel"
+        #expect(throws: UsageError.subscriptionRequired) { try read(panel) }
+    }
+
+    @Test
+    func `a subscription account with a headerless cost panel gets a reconnect explanation`() throws {
+        let claude = try ClaudeHarness()
+        defer { claude.cleanUp() }
+        try claude.writeClaudeConfig(email: "user@example.com", billingType: "stripe_subscription")
+        #expect(throws: UsageError.executionFailed(Self.subscriptionMisread)) {
+            try claude.readUsageScreen("Session\nTotal cost: $0.0000\nTotal duration (API): 0s\nEsc to cancel")
         }
     }
 

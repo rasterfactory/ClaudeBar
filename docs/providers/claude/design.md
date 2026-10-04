@@ -121,3 +121,5 @@ A second Claude login lives in its own config folder, as `CLAUDE_CONFIG_DIR=<fol
 
 - The default login's credential file path ignores `CLAUDE_CONFIG_DIR`. Only the trust write and `.claude.json` lookup respect it. An added login's paths all use its folder.
 - The OAuth `client_id` is Claude Code's. If Claude Code changes it, token refresh breaks.
+
+A completed cost-only Usage panel is recognized by `Total cost` and `Total duration (API)`, even when a fullscreen redraw removed its API-billing header. Subscription accounts receive a reconnect explanation; API-billed accounts use the cost fallback. Existing quota bars take precedence.

@@ -10,7 +10,7 @@
 
 var SUBSCRIPTION_MISREAD =
   "The Claude CLI did not see this account's subscription — its usage screen reported API billing " +
-  "instead of a plan. Run `claude login` again, or switch Claude to API mode in Settings.";
+  "instead of a plan. Run `claude auth login` again, or switch Claude to API mode in Settings.";
 
 function read(response, context) {
   var screen = response.text;
@@ -33,7 +33,9 @@ function read(response, context) {
     if (lower.indexOf("loading usage data") !== -1) {
       return { error: { executionFailed: "Claude usage data did not finish loading — the usage endpoint may be rate limited. Try again in a moment." } };
     }
-    if (lower.indexOf("api usage billing") !== -1 && lower.indexOf("total cost:") !== -1) {
+    // Fullscreen redraws can remove the header while keeping the completed cost panel.
+    var costPanel = /total\s+cost:\s*\$?[\d,.]+/i.test(screen) && /total\s+duration\s*\(api\)/i.test(screen);
+    if (costPanel || (lower.indexOf("api usage billing") !== -1 && lower.indexOf("total cost:") !== -1)) {
       // An API-billed account: hand off to `/cost`, unless the account is
       // really a subscription the CLI misread (#271/#317).
       return { error: subscriptionBilled ? { executionFailed: SUBSCRIPTION_MISREAD } : "subscriptionRequired" };
